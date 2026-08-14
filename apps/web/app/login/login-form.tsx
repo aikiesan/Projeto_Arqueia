@@ -87,44 +87,55 @@ export function LoginForm({
         <span className="section-kicker">Acesso seguro</span>
         <h2 id="auth-title">Entrar no Arqueia</h2>
         <p>Use as credenciais da sua conta para continuar.</p>
-      <form className="login-form" noValidate onSubmit={handleSubmit}>
-          <label htmlFor="email"><span>E-mail</span>
-          <input
-            autoComplete="username"
-            autoFocus
-            id="email"
-            name="email"
-            onChange={(event) => setEmail(event.target.value)}
-            required
-            type="email"
-            value={email}
-          />
+        <form className="login-form" noValidate onSubmit={handleSubmit}>
+          <label htmlFor="email">
+            <span>E-mail</span>
+            <input
+              autoCapitalize="none"
+              autoComplete="username"
+              autoCorrect="off"
+              autoFocus
+              id="email"
+              inputMode="email"
+              name="email"
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="seu.email@instituicao.br"
+              required
+              spellCheck="false"
+              type="email"
+              value={email}
+            />
           </label>
 
-          <label htmlFor="password"><span>Senha</span>
-          <input
-            autoComplete="current-password"
-            id="password"
-            name="password"
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            type="password"
-            value={password}
-          />
+          <label htmlFor="password">
+            <span>Senha</span>
+            <input
+              autoCapitalize="none"
+              autoComplete="current-password"
+              autoCorrect="off"
+              id="password"
+              name="password"
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="••••••••"
+              required
+              spellCheck="false"
+              type="password"
+              value={password}
+            />
           </label>
 
-        {error ? (
-          <p className="form-error" role="alert">{error}</p>
-        ) : null}
+          {error ? (
+            <p className="form-error" role="alert">{error}</p>
+          ) : null}
 
-        <button className="primary-button login-submit" disabled={submitting} type="submit">
-          {submitting ? 'Entrando…' : 'Entrar'}
-        </button>
-      </form>
+          <button className="primary-button login-submit" disabled={submitting} type="submit">
+            {submitting ? 'Entrando…' : 'Entrar'}
+          </button>
+        </form>
 
-      {oidc.enabled && oidc.authorizationUrl ? (
+        {oidc.enabled && oidc.authorizationUrl ? (
           <a className="secondary-button login-submit" href={oidc.authorizationUrl}>{oidc.displayName}</a>
-      ) : null}
+        ) : null}
         <p className="login-security">Sua sessão é protegida e as permissões são verificadas no servidor.</p>
         <div className="login-cp2b-mobile">
           <span>Uma iniciativa</span>
