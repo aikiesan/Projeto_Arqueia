@@ -6,6 +6,56 @@ import { PostgresManagementRepository } from './postgres-management-repository.j
 describe('PostgresManagementRepository Unit & Contract Tests', () => {
   const labId = '11111111-1111-4111-a111-111111111111';
 
+  it('builds a connected dashboard with bounded set-based queries', async () => {
+    const equipmentId = '22222222-2222-4222-a222-222222222222';
+    const reservationId = '33333333-3333-4333-a333-333333333333';
+    const productId = '44444444-4444-4444-a444-444444444444';
+    const query = vi.fn().mockImplementation((sql: string) => {
+      if (sql.includes('SELECT timezone FROM laboratories')) return Promise.resolve({ rows: [{ timezone: 'America/Sao_Paulo' }] });
+      if (sql.includes('SELECT id, name, status')) return Promise.resolve({ rows: [{ id: equipmentId, name: 'HPLC', status: 'MAINTENANCE' }] });
+      if (sql.includes('WITH day_bounds AS')) return Promise.resolve({ rows: [{ id: reservationId, equipment_id: equipmentId, equipment_name: 'HPLC', starts_at: new Date('2026-08-14T12:00:00.000Z'), ends_at: new Date('2026-08-14T13:00:00.000Z'), purpose: 'Análise', status: 'ACTIVE' }] });
+      if (sql.includes('WITH batch_balances AS')) return Promise.resolve({ rows: [{ kind: 'LOW_STOCK', product_id: productId, product_name: 'Acetona', batch_id: null, batch_number: null, detail: 'Saldo abaixo do mínimo', priority_order: 3 }] });
+      return Promise.resolve({ rows: [] });
+    });
+    const repository = new PostgresManagementRepository({ query } as unknown as DatabasePool);
+
+    const result = await repository.getDashboardSummary(labId, { equipment: true, scheduling: true, inventory: true, maintenance: true });
+
+    expect(result.equipmentSummary.byStatus.MAINTENANCE).toBe(1);
+    expect(result.todayReservations[0]?.status).toBe('CONFIRMED');
+    expect(result.inventoryAlerts[0]?.productId).toBe(productId);
+    expect(result.upcomingActions[0]?.kind).toBe('EQUIPMENT_ATTENTION');
+    expect(result.availability).toEqual({ equipment: true, scheduling: true, inventory: true, maintenance: true, pendingActions: true });
+    expect(query).toHaveBeenCalledTimes(4);
+  });
+
+  it('does not query unauthorized dashboard sections and isolates their data', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [{ timezone: 'America/Sao_Paulo' }] });
+    const repository = new PostgresManagementRepository({ query } as unknown as DatabasePool);
+
+    const result = await repository.getDashboardSummary(labId, { equipment: false, scheduling: false, inventory: false, maintenance: false });
+
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(result.todayReservations).toEqual([]);
+    expect(result.inventoryAlerts).toEqual([]);
+    expect(result.availability).toEqual({ equipment: false, scheduling: false, inventory: false, maintenance: false, pendingActions: false });
+  });
+
+  it('keeps successful dashboard sections when the inventory query fails', async () => {
+    const query = vi.fn().mockImplementation((sql: string) => {
+      if (sql.includes('SELECT timezone FROM laboratories')) return Promise.resolve({ rows: [{ timezone: 'America/Sao_Paulo' }] });
+      if (sql.includes('WITH batch_balances AS')) return Promise.reject(new Error('inventory unavailable'));
+      return Promise.resolve({ rows: [] });
+    });
+    const repository = new PostgresManagementRepository({ query } as unknown as DatabasePool);
+
+    const result = await repository.getDashboardSummary(labId, { equipment: true, scheduling: true, inventory: true, maintenance: true });
+
+    expect(result.availability.equipment).toBe(true);
+    expect(result.availability.scheduling).toBe(true);
+    expect(result.availability.inventory).toBe(false);
+  });
+
   it('queries analytics with laboratory timezone and correct set-based SQL queries', async () => {
     const mockPool: DatabasePool = {
       query: vi.fn().mockImplementation((sql: string) => {

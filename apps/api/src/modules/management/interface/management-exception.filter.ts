@@ -6,15 +6,19 @@ import type { Response } from 'express';
 import {
   AuditEventNotFoundError,
   InvalidPeriodError,
+  ManagementLaboratoryNotFoundError,
 } from '../domain/management.errors.js';
 
-@Catch(AuditEventNotFoundError, InvalidPeriodError)
+@Catch(AuditEventNotFoundError, InvalidPeriodError, ManagementLaboratoryNotFoundError)
 export class ManagementExceptionFilter implements ExceptionFilter {
   public catch(exception: Error, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
 
-    if (exception instanceof AuditEventNotFoundError) {
+    if (
+      exception instanceof AuditEventNotFoundError ||
+      exception instanceof ManagementLaboratoryNotFoundError
+    ) {
       response.status(HttpStatus.NOT_FOUND).json({
         statusCode: HttpStatus.NOT_FOUND,
         code: 'NOT_FOUND',
