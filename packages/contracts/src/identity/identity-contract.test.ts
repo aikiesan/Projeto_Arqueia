@@ -7,8 +7,11 @@ import {
   createMembershipInputSchema,
   createSystemRoleAssignmentInputSchema,
   createUserInputSchema,
+  bffPublicLoginResponseSchema,
   localLoginInputSchema,
+  refreshSessionInputSchema,
   revokeAccessRequestSchema,
+  sessionMetadataSchema,
   userAccessQuerySchema,
   userAccessSnapshotSchema,
   userSchema,
@@ -123,5 +126,52 @@ describe('identity contract', () => {
       confirmationPassword: 'x',
     });
     expect(() => revokeAccessRequestSchema.parse({})).toThrow();
+  });
+
+  it('validates revocable session metadata and opaque refresh tokens', () => {
+    const sessionId = uuid;
+    const session = sessionMetadataSchema.parse({
+      id: sessionId,
+      deviceInfo: 'Chrome 128 (Windows 11)',
+      ipAddress: '192.168.1.100',
+      isCurrent: true,
+      createdAt: '2026-08-14T10:00:00.000Z',
+      lastActiveAt: '2026-08-14T12:00:00.000Z',
+      expiresAt: '2026-08-21T10:00:00.000Z',
+    });
+    expect(session.id).toBe(sessionId);
+    expect(session.isCurrent).toBe(true);
+
+    const refreshInput = refreshSessionInputSchema.parse({
+      refreshToken: 'opaque-refresh-token-high-entropy-random-string-12345',
+    });
+    expect(refreshInput.refreshToken).toBeDefined();
+
+    expect(() => refreshSessionInputSchema.parse({ sessionId })).toThrow();
+  });
+
+  it('separates public BFF login response from internal API result', () => {
+    const publicResponse = bffPublicLoginResponseSchema.parse({
+      expiresInSeconds: 900,
+      principal: {
+        user: {
+          id: uuid,
+          institutionId: otherUuid,
+          name: 'Ana Pesquisadora',
+          email: 'ana@unicamp.br',
+          supervisorUserId: null,
+          status: 'ACTIVE',
+          identityProvider: 'LOCAL',
+          createdAt: '2026-08-14T00:00:00.000Z',
+          updatedAt: '2026-08-14T00:00:00.000Z',
+          archivedAt: null,
+        },
+        memberships: [],
+        systemRoles: [],
+      },
+    });
+
+    expect(publicResponse).not.toHaveProperty('accessToken');
+    expect(publicResponse).not.toHaveProperty('refreshToken');
   });
 });
