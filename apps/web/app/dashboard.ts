@@ -36,3 +36,35 @@ export function createDashboardSummary(
     generatedAt: generatedAt.toISOString(),
   });
 }
+
+export function createUnavailableDashboardSummary(
+  laboratoryId: string,
+  timezone: string,
+  generatedAt = new Date(),
+): DashboardSummary {
+  return dashboardSummarySchema.parse({
+    laboratoryId,
+    timezone,
+    equipmentSummary: {
+      total: 0,
+      byStatus: {
+        AVAILABLE: 0,
+        UNDER_EVALUATION: 0,
+        UNAVAILABLE: 0,
+        MAINTENANCE: 0,
+      },
+    },
+    todayReservations: [],
+    upcomingActions: [],
+    inventoryAlerts: [],
+    quickActions: [],
+    availability: {
+      equipment: false,
+      scheduling: false,
+      inventory: false,
+      maintenance: false,
+      pendingActions: false,
+    },
+    generatedAt: generatedAt.toISOString(),
+  });
+}

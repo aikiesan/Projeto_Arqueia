@@ -21,12 +21,13 @@ describe('LoginForm Component', () => {
   });
 
   it('renders login form elements and accessibility labels cleanly', () => {
-    render(<LoginForm next="/" oidc={mockOidcDisabled} />);
+    const { container } = render(<LoginForm next="/" oidc={mockOidcDisabled} />);
 
     expect(screen.getByRole('heading', { name: 'Entrar no Arqueia' })).toBeInTheDocument();
     expect(screen.getByLabelText('E-mail')).toBeInTheDocument();
     expect(screen.getByLabelText('Senha')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Entrar' })).toBeInTheDocument();
+    expect(container.querySelector('form')).toHaveAttribute('method', 'post');
     expect(
       screen.getByText('Sua sessão é protegida e as permissões são verificadas no servidor.'),
     ).toBeInTheDocument();

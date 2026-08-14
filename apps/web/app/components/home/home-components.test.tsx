@@ -15,7 +15,7 @@ import {
   PendingActionsCard,
   QuickActions,
   TodayReservationsCard,
-} from './index.js';
+} from './index';
 
 describe('Home Presentational Components', () => {
   const timezone = 'America/Sao_Paulo';
