@@ -26,12 +26,12 @@ function ContextPanel({ summary, equipmentDataAvailable }: Pick<HomeDashboardPro
       </section>
       <section className="context-note">
         <span className="context-note-icon"><ArqueiaIcon name="agenda" size={18} /></span>
-        <div><strong>Agenda em preparação</strong><p>Reservas e bloqueios serão conectados no próximo módulo.</p></div>
+        <div><strong>{summary.availability.scheduling ? `${summary.todayReservations.length} reserva(s) hoje` : 'Agenda indisponível'}</strong><p>{summary.availability.scheduling ? 'Dados carregados diretamente da agenda do laboratório.' : 'Não foi possível consultar reservas agora.'}</p></div>
       </section>
       <section>
         <span className="section-kicker">Acesso rápido</span>
         <a className="quiet-link" href="/equipamentos"><span>Cadastro</span><strong>Equipamentos</strong></a>
-        <a className="quiet-link" href="/agenda"><span>Próximo módulo</span><strong>Agenda e reservas</strong></a>
+        <a className="quiet-link" href="/agenda"><span>Operação</span><strong>Agenda e reservas</strong></a>
       </section>
     </div>
   );
@@ -86,10 +86,7 @@ export function HomeDashboard({ presentation, summary, equipmentDataAvailable }:
           <div><span className="section-kicker">Agenda</span><h2>Reservas de hoje</h2></div>
           <a href="/agenda">Abrir agenda</a>
         </div>
-        <div className="dashboard-empty">
-          <span className="dashboard-empty-icon"><ArqueiaIcon name="agenda" size={25} /></span>
-          <div><h3>A agenda será o próximo módulo</h3><p>Quando reservas e bloqueios estiverem ativos, os compromissos de hoje aparecerão aqui.</p></div>
-        </div>
+        {summary.todayReservations.length > 0 ? <div className="schedule-list">{summary.todayReservations.map((reservation) => <article className="schedule-item" key={reservation.id}><time>{new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: summary.timezone }).format(new Date(reservation.startsAt))}</time><div><strong>{reservation.equipmentName}</strong><span>{reservation.purpose}</span></div><a href={`/agenda?equipmentId=${reservation.equipmentId}`}>Ver</a></article>)}</div> : <div className="dashboard-empty"><span className="dashboard-empty-icon"><ArqueiaIcon name="agenda" size={25} /></span><div><h3>{summary.availability.scheduling ? 'Nenhuma reserva para hoje' : 'Agenda temporariamente indisponível'}</h3><p>{summary.availability.scheduling ? 'O laboratório não possui compromissos registrados para o dia.' : 'Tente novamente em alguns instantes.'}</p></div></div>}
       </section>
 
       <section className="attention-grid">
@@ -98,9 +95,9 @@ export function HomeDashboard({ presentation, summary, equipmentDataAvailable }:
           <div><span className="section-kicker">Equipamentos</span><h3>{equipmentDataAvailable ? (attentionCount > 0 ? `${attentionCount} requerem atenção` : 'Tudo certo por aqui') : 'Atualização indisponível'}</h3><p>{equipmentDataAvailable ? 'Situação calculada a partir dos equipamentos cadastrados.' : 'Tente novamente em alguns instantes.'}</p></div>
           <a href="/equipamentos">Ver</a>
         </article>
-        <article className="attention-card attention-card--pending">
+        <article className={summary.inventoryAlerts.length > 0 ? 'attention-card attention-card--warning' : 'attention-card'}>
           <span className="attention-icon"><ArqueiaIcon name="estoque" size={21} /></span>
-          <div><span className="section-kicker">Estoque</span><h3>Aguardando livro de movimentações</h3><p>Alertas só serão exibidos quando puderem ser derivados do ledger real.</p></div>
+          <div><span className="section-kicker">Estoque</span><h3>{summary.availability.inventory ? (summary.inventoryAlerts.length > 0 ? `${summary.inventoryAlerts.length} alerta(s) ativo(s)` : 'Estoque sem alertas') : 'Atualização indisponível'}</h3><p>{summary.availability.inventory ? (summary.inventoryAlerts[0]?.detail ?? 'Saldos e validades calculados a partir do ledger.') : 'Não foi possível consultar o ledger agora.'}</p></div>
           <a href="/estoque">Abrir</a>
         </article>
       </section>

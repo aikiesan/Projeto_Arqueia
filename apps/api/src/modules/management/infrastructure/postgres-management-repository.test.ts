@@ -6,6 +6,36 @@ import { PostgresManagementRepository } from './postgres-management-repository.j
 describe('PostgresManagementRepository Unit & Contract Tests', () => {
   const labId = '11111111-1111-4111-a111-111111111111';
 
+  it('builds the home dashboard from equipment, reservations and ledger alerts', async () => {
+    const reservationId = '22222222-2222-4222-a222-222222222222';
+    const equipmentId = '33333333-3333-4333-a333-333333333333';
+    const mockPool = {
+      query: vi.fn().mockImplementation((sql: string) => {
+        if (sql.includes('SELECT timezone FROM laboratories')) {
+          return Promise.resolve({ rows: [{ timezone: 'America/Sao_Paulo' }] });
+        }
+        if (sql.includes('SELECT id, name, status FROM equipment')) {
+          return Promise.resolve({ rows: [{ id: equipmentId, name: 'HPLC', status: 'MAINTENANCE' }] });
+        }
+        if (sql.includes('FROM reservations r')) {
+          return Promise.resolve({ rows: [{ id: reservationId, equipment_id: equipmentId, equipment_name: 'HPLC', starts_at: new Date('2026-08-14T12:00:00.000Z'), ends_at: new Date('2026-08-14T13:00:00.000Z'), purpose: 'Análise cromatográfica', status: 'CONFIRMED' }] });
+        }
+        if (sql.includes('WITH balances AS')) {
+          return Promise.resolve({ rows: [{ kind: 'LOW_STOCK', product_id: '44444444-4444-4444-a444-444444444444', product_name: 'Acetona', batch_id: null, batch_number: null, detail: 'Saldo abaixo do mínimo' }] });
+        }
+        return Promise.resolve({ rows: [] });
+      }),
+    } as unknown as DatabasePool;
+
+    const result = await new PostgresManagementRepository(mockPool).getDashboardSummary(labId);
+
+    expect(result.timezone).toBe('America/Sao_Paulo');
+    expect(result.equipmentSummary.byStatus.MAINTENANCE).toBe(1);
+    expect(result.todayReservations[0]?.equipmentName).toBe('HPLC');
+    expect(result.inventoryAlerts[0]?.kind).toBe('LOW_STOCK');
+    expect(result.availability).toEqual({ scheduling: true, inventory: true, maintenance: true });
+  });
+
   it('queries analytics with laboratory timezone and correct set-based SQL queries', async () => {
     const mockPool: DatabasePool = {
       query: vi.fn().mockImplementation((sql: string) => {
@@ -139,5 +169,52 @@ describe('PostgresManagementRepository Unit & Contract Tests', () => {
     expect(result.items[0]?.consumedProducts).toHaveLength(1);
     expect(result.items[0]?.consumedProducts[0]?.productId).toBe(prodId);
     expect(result.items[0]?.consumedProducts[0]?.productName).toBe('Acetona PA');
+  });
+
+  it('enforces strict multi-laboratory isolation in management queries', async () => {
+    const labA = '11111111-1111-4111-a111-111111111111';
+    const labB = '99999999-9999-4999-a999-999999999999';
+
+    const mockPool: DatabasePool = {
+      query: vi.fn().mockImplementation((sql: string, params: unknown[]) => {
+        const queryLabId = params[0];
+        if (queryLabId === labA) {
+          return Promise.resolve({
+            rows: [
+              {
+                id: '88888888-8888-4888-a888-888888888888',
+                occurred_at: new Date('2026-08-14T10:00:00.000Z'),
+                actor_id: null,
+                actor_name: 'Sistema',
+                action: 'equipment.created',
+                entity: 'Equipment',
+                entity_id: 'eq-1',
+                laboratory_id: labA,
+                origin: 'api',
+                before: null,
+                after: null,
+              },
+            ],
+          });
+        }
+        return Promise.resolve({ rows: [] });
+      }),
+    } as unknown as DatabasePool;
+
+    const repository = new PostgresManagementRepository(mockPool);
+    const logsLabA = await repository.listAuditLogs({
+      laboratoryId: labA,
+      startsAt: '2026-08-01T00:00:00.000Z',
+      endsAt: '2026-08-14T23:59:59.000Z',
+    });
+    const logsLabB = await repository.listAuditLogs({
+      laboratoryId: labB,
+      startsAt: '2026-08-01T00:00:00.000Z',
+      endsAt: '2026-08-14T23:59:59.000Z',
+    });
+
+    expect(logsLabA.items).toHaveLength(1);
+    expect(logsLabA.items[0]?.laboratoryId).toBe(labA);
+    expect(logsLabB.items).toHaveLength(0);
   });
 });

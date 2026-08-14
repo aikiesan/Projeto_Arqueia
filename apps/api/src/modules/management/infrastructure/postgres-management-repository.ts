@@ -3,11 +3,12 @@ import {
   auditLogPageSchema,
   auditLogSummarySchema,
   decodeAuditCursor,
+  dashboardSummarySchema,
   encodeAuditCursor,
   managementAnalyticsSchema,
   projectUsagePageSchema,
   type AuditLogDetail,
-
+  type DashboardSummary,
   type AuditLogPage,
   type ListAuditLogsQuery,
   type ManagementAnalytics,
@@ -229,6 +230,75 @@ export class PostgresManagementRepository implements ManagementRepository {
       [laboratoryId],
     );
     return res.rows[0]?.timezone ?? 'America/Sao_Paulo';
+  }
+
+  public async getDashboardSummary(laboratoryId: string): Promise<DashboardSummary> {
+    const timezone = await this.getLaboratoryTimezone(laboratoryId);
+    const [equipmentResult, reservationsResult, inventoryResult] = await Promise.allSettled([
+      this.pool.query<{ id: string; name: string; status: 'AVAILABLE' | 'UNDER_EVALUATION' | 'UNAVAILABLE' | 'MAINTENANCE' }>(
+        `SELECT id, name, status FROM equipment WHERE laboratory_id = $1 AND archived_at IS NULL ORDER BY name ASC`,
+        [laboratoryId],
+      ),
+      this.pool.query<{ id: string; equipment_id: string; equipment_name: string; starts_at: Date; ends_at: Date; purpose: string; status: 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' }>(
+        `SELECT r.id, r.equipment_id, e.name AS equipment_name, eo.starts_at, eo.ends_at, r.purpose, eo.status
+           FROM reservations r
+           JOIN equipment_occupations eo ON eo.id = r.id
+           JOIN equipment e ON e.id = r.equipment_id
+          WHERE r.laboratory_id = $1
+            AND r.archived_at IS NULL
+            AND eo.archived_at IS NULL
+            AND eo.status != 'CANCELLED'
+            AND eo.starts_at < ((date_trunc('day', now() AT TIME ZONE $2) + interval '1 day') AT TIME ZONE $2)
+            AND eo.ends_at > (date_trunc('day', now() AT TIME ZONE $2) AT TIME ZONE $2)
+          ORDER BY eo.starts_at ASC, r.id ASC
+          LIMIT 8`,
+        [laboratoryId, timezone],
+      ),
+      this.pool.query<{ kind: 'LOW_STOCK' | 'EXPIRING' | 'EXPIRED'; product_id: string; product_name: string; batch_id: string | null; batch_number: string | null; detail: string }>(
+        `WITH balances AS (
+           SELECT p.id AS product_id, p.name AS product_name, p.minimum_stock_threshold,
+                  COALESCE(SUM(CASE WHEN sm.movement_type IN ('ENTRY', 'ADJUSTMENT') THEN sm.quantity WHEN sm.movement_type IN ('WITHDRAWAL', 'DISCARD') THEN -sm.quantity ELSE 0 END), 0) AS balance
+             FROM products p
+             LEFT JOIN stock_movements sm ON sm.product_id = p.id AND sm.laboratory_id = p.laboratory_id
+            WHERE p.laboratory_id = $1 AND p.archived_at IS NULL
+            GROUP BY p.id, p.name, p.minimum_stock_threshold
+         ), alerts AS (
+           SELECT 'LOW_STOCK'::text AS kind, product_id, product_name, NULL::uuid AS batch_id, NULL::text AS batch_number,
+                  'Saldo abaixo do estoque mínimo'::text AS detail, 2 AS priority
+             FROM balances
+            WHERE minimum_stock_threshold > 0
+              AND balance <= minimum_stock_threshold
+           UNION ALL
+           SELECT CASE WHEN b.expiration_date < (now() AT TIME ZONE $2)::date THEN 'EXPIRED' ELSE 'EXPIRING' END,
+                  p.id, p.name, b.id, b.batch_number,
+                  CASE WHEN b.expiration_date < (now() AT TIME ZONE $2)::date THEN 'Lote vencido' ELSE 'Validade nos próximos 30 dias' END,
+                  CASE WHEN b.expiration_date < (now() AT TIME ZONE $2)::date THEN 1 ELSE 3 END
+             FROM batches b JOIN products p ON p.id = b.product_id
+            WHERE b.laboratory_id = $1 AND b.archived_at IS NULL
+              AND b.status NOT IN ('EXHAUSTED', 'DISCARDED')
+              AND b.expiration_date IS NOT NULL
+              AND b.expiration_date < (((now() AT TIME ZONE $2)::date + interval '31 days') AT TIME ZONE $2)
+         )
+         SELECT kind, product_id, product_name, batch_id, batch_number, detail
+           FROM alerts ORDER BY priority ASC, product_name ASC, batch_number ASC NULLS LAST LIMIT 8`,
+        [laboratoryId, timezone],
+      ),
+    ]);
+
+    const equipment = equipmentResult.status === 'fulfilled' ? equipmentResult.value.rows : [];
+    const byStatus = { AVAILABLE: 0, UNDER_EVALUATION: 0, UNAVAILABLE: 0, MAINTENANCE: 0 };
+    for (const item of equipment) byStatus[item.status] += 1;
+
+    return dashboardSummarySchema.parse({
+      laboratoryId,
+      timezone,
+      equipmentSummary: { total: equipment.length, byStatus },
+      todayReservations: reservationsResult.status === 'fulfilled' ? reservationsResult.value.rows.map((row) => ({ id: row.id, equipmentId: row.equipment_id, equipmentName: row.equipment_name, startsAt: row.starts_at.toISOString(), endsAt: row.ends_at.toISOString(), purpose: row.purpose, status: row.status === 'COMPLETED' ? 'COMPLETED' : 'CONFIRMED' })) : [],
+      upcomingActions: equipmentResult.status === 'fulfilled' ? equipment.filter(({ status }) => status !== 'AVAILABLE').slice(0, 8).map((item) => ({ kind: 'EQUIPMENT_ATTENTION', entityId: item.id, title: item.name, detail: item.status === 'MAINTENANCE' ? 'Em manutenção' : item.status === 'UNDER_EVALUATION' ? 'Em avaliação' : 'Indisponível', href: `/equipamentos?laboratory=${laboratoryId}` })) : [],
+      inventoryAlerts: inventoryResult.status === 'fulfilled' ? inventoryResult.value.rows.map((row) => ({ kind: row.kind, productId: row.product_id, productName: row.product_name, batchId: row.batch_id, batchNumber: row.batch_number, detail: row.detail })) : [],
+      availability: { scheduling: reservationsResult.status === 'fulfilled', inventory: inventoryResult.status === 'fulfilled', maintenance: equipmentResult.status === 'fulfilled' },
+      generatedAt: new Date().toISOString(),
+    });
   }
 
   public async getAnalytics(query: ManagementAnalyticsQuery): Promise<ManagementAnalytics> {

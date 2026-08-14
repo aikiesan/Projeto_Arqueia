@@ -31,6 +31,23 @@ describe('home workspace', () => {
     expect(screen.getByRole('button', { name: 'Sair' })).toBeInTheDocument();
   });
 
+  it('renderiza reservas e alertas conectados sem mensagens de módulo futuro', () => {
+    const summary = {
+      ...createDashboardSummary(laboratories[0]!.id, []),
+      todayReservations: [{ id: '10000000-0000-4000-8000-000000000001', equipmentId: '10000000-0000-4000-8000-000000000002', equipmentName: 'HPLC', startsAt: '2026-08-14T12:00:00.000Z', endsAt: '2026-08-14T13:00:00.000Z', purpose: 'Análise cromatográfica', status: 'CONFIRMED' as const }],
+      inventoryAlerts: [{ kind: 'LOW_STOCK' as const, productId: '10000000-0000-4000-8000-000000000003', productName: 'Acetona', batchId: null, batchCode: null, detail: 'Saldo abaixo do mínimo' }],
+      availability: { scheduling: true, inventory: true, maintenance: true },
+    };
+
+    render(<HomeDashboard equipmentDataAvailable presentation={createWorkspacePresentation(principal, laboratories)} summary={summary} />);
+
+    expect(screen.getByText('HPLC')).toBeInTheDocument();
+    expect(screen.getByText('Análise cromatográfica')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '1 alerta(s) ativo(s)' })).toBeInTheDocument();
+    expect(screen.queryByText('A agenda será o próximo módulo')).not.toBeInTheDocument();
+    expect(screen.queryByText('Aguardando livro de movimentações')).not.toBeInTheDocument();
+  });
+
   it('renderiza smoke test em viewport mobile (390px)', () => {
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 390 });
     window.dispatchEvent(new Event('resize'));

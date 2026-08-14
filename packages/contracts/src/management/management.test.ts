@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   decodeAuditCursor,
+  dashboardSummarySchema,
   encodeAuditCursor,
   listAuditLogsQuerySchema,
   managementAnalyticsQuerySchema,
@@ -11,6 +12,21 @@ import {
 
 describe('Management Contracts Unit Tests (Canonical Plan)', () => {
   const labId = '11111111-1111-4111-a111-111111111111';
+
+  it('accepts a connected dashboard with reservations and inventory alerts', () => {
+    const result = dashboardSummarySchema.parse({
+      laboratoryId: labId,
+      timezone: 'America/Sao_Paulo',
+      equipmentSummary: { total: 1, byStatus: { AVAILABLE: 1, UNDER_EVALUATION: 0, UNAVAILABLE: 0, MAINTENANCE: 0 } },
+      todayReservations: [{ id: labId, equipmentId: labId, equipmentName: 'HPLC', startsAt: '2026-08-14T12:00:00.000Z', endsAt: '2026-08-14T13:00:00.000Z', purpose: 'Análise', status: 'CONFIRMED' }],
+      upcomingActions: [],
+      inventoryAlerts: [{ kind: 'LOW_STOCK', productId: labId, productName: 'Acetona', batchId: null, batchNumber: null, detail: 'Saldo abaixo do mínimo' }],
+      availability: { scheduling: true, inventory: true, maintenance: true },
+      generatedAt: '2026-08-14T10:00:00.000Z',
+    });
+    expect(result.todayReservations).toHaveLength(1);
+    expect(result.inventoryAlerts).toHaveLength(1);
+  });
 
   it('accepts valid semi-open interval [startsAt, endsAt) within 90 days', () => {
     const validQuery = {

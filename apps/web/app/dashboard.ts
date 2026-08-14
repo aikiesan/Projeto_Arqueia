@@ -8,6 +8,7 @@ export function createDashboardSummary(
   laboratoryId: string,
   equipment: readonly Equipment[],
   generatedAt = new Date(),
+  timezone = 'America/Sao_Paulo',
 ): DashboardSummary {
   const byStatus = {
     AVAILABLE: 0,
@@ -19,6 +20,7 @@ export function createDashboardSummary(
 
   return dashboardSummarySchema.parse({
     laboratoryId,
+    timezone,
     equipmentSummary: { total: equipment.length, byStatus },
     todayReservations: [],
     upcomingActions: [],
