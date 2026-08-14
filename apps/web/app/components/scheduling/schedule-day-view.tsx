@@ -1,6 +1,12 @@
 import type { ScheduleCapabilities, ScheduleItem } from '@arqueia/contracts';
 import React, { useMemo } from 'react';
 
+import {
+  formatCalendarDate,
+  getCalendarDateInTimezone,
+  getHourInTimezone,
+} from './calendar-time';
+import type { ScheduleSlotSelection } from './calendar-time';
 import { ScheduleEventCard } from './schedule-event-card';
 
 export interface ScheduleDayViewProps {
@@ -8,7 +14,7 @@ export interface ScheduleDayViewProps {
   readonly timezone: string;
   readonly items: readonly ScheduleItem[];
   readonly onItemClick?: ((item: ScheduleItem) => void) | undefined;
-  readonly onSlotClick?: ((date: Date, hour: number) => void) | undefined;
+  readonly onSlotClick?: ((selection: ScheduleSlotSelection) => void) | undefined;
   readonly capabilities?: ScheduleCapabilities | undefined;
   readonly startHour?: number | undefined;
   readonly endHour?: number | undefined;
@@ -18,36 +24,7 @@ export interface ScheduleDayViewProps {
 interface HourSlotData {
   hour: number;
   label: string;
-  slotDate: Date;
   items: ScheduleItem[];
-}
-
-function getDayStringInTimezone(date: Date, timezone: string): string {
-  try {
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-    return formatter.format(date); // YYYY-MM-DD
-  } catch {
-    return date.toISOString().slice(0, 10);
-  }
-}
-
-function getHourInTimezone(date: Date, timezone: string): number {
-  try {
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      hour: 'numeric',
-      hour12: false,
-    });
-    const parsed = parseInt(formatter.format(date), 10);
-    return parsed === 24 ? 0 : parsed;
-  } catch {
-    return date.getHours();
-  }
 }
 
 export function ScheduleDayView({
@@ -62,24 +39,27 @@ export function ScheduleDayView({
   className = '',
 }: ScheduleDayViewProps) {
   const currentDayStr = useMemo(
-    () => getDayStringInTimezone(currentDate, timezone),
+    () => getCalendarDateInTimezone(currentDate, timezone),
     [currentDate, timezone],
   );
 
   const formattedDayHeader = useMemo(() => {
-    try {
-      const formatter = new Intl.DateTimeFormat('pt-BR', {
-        timeZone: timezone,
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-      });
-      const formatted = formatter.format(currentDate);
-      return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-    } catch {
-      return currentDate.toLocaleDateString('pt-BR');
-    }
-  }, [currentDate, timezone]);
+    const formatted = formatCalendarDate(currentDayStr, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    });
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  }, [currentDayStr]);
+
+  const dayItems = useMemo(
+    () =>
+      items.filter(
+        (item) =>
+          getCalendarDateInTimezone(new Date(item.startsAt), timezone) === currentDayStr,
+      ),
+    [currentDayStr, items, timezone],
+  );
 
   const slots: HourSlotData[] = useMemo(() => {
     const list: HourSlotData[] = [];
@@ -87,36 +67,31 @@ export function ScheduleDayView({
 
     for (let i = 0; i < totalHours; i++) {
       const hour = startHour + i;
-      const slotDate = new Date(currentDate);
-      slotDate.setHours(hour, 0, 0, 0);
-
-      const itemsInHour = items.filter((item) => {
+      const itemsInHour = dayItems.filter((item) => {
         const itemStartDate = new Date(item.startsAt);
-        const itemDayStr = getDayStringInTimezone(itemStartDate, timezone);
         const itemHour = getHourInTimezone(itemStartDate, timezone);
-
-        return itemDayStr === currentDayStr && itemHour === hour;
+        return itemHour === hour;
       });
 
       list.push({
         hour,
         label: `${String(hour).padStart(2, '0')}:00`,
-        slotDate,
         items: itemsInHour,
       });
     }
 
     return list;
-  }, [currentDate, items, timezone, currentDayStr, startHour, endHour]);
+  }, [dayItems, timezone, startHour, endHour]);
 
-  const canCreateInSlot = Boolean(onSlotClick && (capabilities?.canReserve ?? true));
+  const canCreateInSlot = Boolean(onSlotClick && capabilities?.canReserve === true);
 
   return (
     <div className={`schedule-day-view ${className}`}>
       <div className="schedule-day-header">
         <h3 className="schedule-day-title">{formattedDayHeader}</h3>
         <span className="schedule-day-subtitle">
-          {items.length} {items.length === 1 ? 'compromisso no dia' : 'compromissos no dia'}
+          {dayItems.length}{' '}
+          {dayItems.length === 1 ? 'compromisso no dia' : 'compromissos no dia'}
         </span>
       </div>
 
@@ -157,7 +132,12 @@ export function ScheduleDayView({
                     className={`schedule-day-slot-empty ${canCreateInSlot ? 'schedule-day-slot-empty--clickable' : ''}`}
                     onClick={
                       canCreateInSlot && onSlotClick
-                        ? () => onSlotClick(slot.slotDate, slot.hour)
+                        ? () =>
+                            onSlotClick({
+                              date: currentDayStr,
+                              hour: slot.hour,
+                              timezone,
+                            })
                         : undefined
                     }
                     onKeyDown={
@@ -165,7 +145,11 @@ export function ScheduleDayView({
                         ? (e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
                               e.preventDefault();
-                              onSlotClick(slot.slotDate, slot.hour);
+                              onSlotClick({
+                                date: currentDayStr,
+                                hour: slot.hour,
+                                timezone,
+                              });
                             }
                           }
                         : undefined

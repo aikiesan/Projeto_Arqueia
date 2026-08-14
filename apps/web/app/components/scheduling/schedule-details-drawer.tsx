@@ -1,5 +1,5 @@
 import type { ScheduleItem, TechnicalBlockReason } from '@arqueia/contracts';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useId, useMemo, useRef } from 'react';
 
 export interface ScheduleDetailsDrawerProps {
   readonly item: ScheduleItem | null;
@@ -18,6 +18,13 @@ const blockReasonFriendlyNames: Record<TechnicalBlockReason, string> = {
   OTHER: 'Outro Bloqueio Operacional',
 };
 
+const statusFriendlyNames: Record<ScheduleItem['status'], string> = {
+  CONFIRMED: 'Confirmada',
+  ACTIVE: 'Ativo',
+  CANCELLED: 'Cancelado',
+  COMPLETED: 'Concluído',
+};
+
 export function ScheduleDetailsDrawer({
   item,
   isOpen,
@@ -28,15 +35,49 @@ export function ScheduleDetailsDrawer({
   className = '',
 }: ScheduleDetailsDrawerProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
 
   // Close on Escape key
   useEffect(() => {
     if (!isOpen) return;
 
+    const previouslyFocused =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const getFocusableElements = () =>
+      Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
         onClose();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+      const focusableElements = getFocusableElements();
+      const first = focusableElements[0];
+      const last = focusableElements.at(-1);
+      if (!first || !last) {
+        event.preventDefault();
+        dialogRef.current?.focus();
+        return;
+      }
+
+      const activeElement = document.activeElement;
+      if (event.shiftKey && (activeElement === first || !dialogRef.current?.contains(activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     };
 
@@ -45,6 +86,8 @@ export function ScheduleDetailsDrawer({
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousBodyOverflow;
+      previouslyFocused?.focus();
     };
   }, [isOpen, onClose]);
 
@@ -92,15 +135,19 @@ export function ScheduleDetailsDrawer({
 
   return (
     <div
-      aria-labelledby="schedule-drawer-title"
-      aria-modal="true"
       className="schedule-drawer-backdrop"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      role="dialog"
     >
-      <div className={`schedule-drawer-container ${className}`}>
+      <div
+        aria-labelledby={titleId}
+        aria-modal="true"
+        className={`schedule-drawer-container ${className}`}
+        ref={dialogRef}
+        role="dialog"
+        tabIndex={-1}
+      >
         <header className="schedule-drawer-header">
           <div className="schedule-drawer-header-left">
             <span
@@ -108,7 +155,7 @@ export function ScheduleDetailsDrawer({
             >
               {isBlock ? 'Bloqueio Técnico' : item.isMine ? 'Minha Reserva' : 'Reserva'}
             </span>
-            <h2 className="schedule-drawer-title" id="schedule-drawer-title">
+            <h2 className="schedule-drawer-title" id={titleId}>
               {item.title}
             </h2>
           </div>
@@ -149,7 +196,7 @@ export function ScheduleDetailsDrawer({
                   <span
                     className={`schedule-status-tag ${isCancelled ? 'schedule-status-tag--cancelled' : 'schedule-status-tag--active'}`}
                   >
-                    {item.status}
+                    {statusFriendlyNames[item.status]}
                   </span>
                 </dd>
               </div>

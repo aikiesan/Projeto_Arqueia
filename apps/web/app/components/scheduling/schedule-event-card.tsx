@@ -51,24 +51,9 @@ export function ScheduleEventCard({
     return `${typeLabel}${mineLabel}: ${item.title}, Equipamento: ${item.equipmentName}, Horário: ${fullTimeLabel}${cancelledLabel}`;
   }, [isBlock, isMine, isCancelled, item.title, item.equipmentName, fullTimeLabel]);
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (!onClick) return;
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onClick(item);
-    }
-  };
-
-  return (
-    <div
-      aria-label={ariaLabel}
-      className={`schedule-card ${typeClass} ${statusClass} ${compactClass} ${className} ${onClick ? 'schedule-card--interactive' : ''}`}
-      onClick={onClick ? () => onClick(item) : undefined}
-      onKeyDown={onClick ? handleKeyDown : undefined}
-      role={onClick ? 'button' : 'article'}
-      tabIndex={onClick ? 0 : undefined}
-    >
-      <div className="schedule-card-header">
+  const content = (
+    <>
+      <span className="schedule-card-header">
         <time className="schedule-card-time" dateTime={item.startsAt}>
           {fullTimeLabel}
         </time>
@@ -76,18 +61,39 @@ export function ScheduleEventCard({
         <span className="schedule-card-badge">
           {isBlock ? 'Bloqueio' : isMine ? 'Minha' : 'Ocupado'}
         </span>
-      </div>
+      </span>
 
-      <div className="schedule-card-body">
+      <span className="schedule-card-body">
         <strong className="schedule-card-title">{item.title}</strong>
         {!isCompact && (
           <span className="schedule-card-equipment">{item.equipmentName}</span>
         )}
-      </div>
+      </span>
 
       {isCancelled && (
-        <div className="schedule-card-cancelled-tag">Cancelado</div>
+        <span className="schedule-card-cancelled-tag">Cancelado</span>
       )}
-    </div>
+    </>
+  );
+
+  const classes = `schedule-card ${typeClass} ${statusClass} ${compactClass} ${className} ${onClick ? 'schedule-card--interactive' : ''}`;
+
+  if (onClick) {
+    return (
+      <button
+        aria-label={ariaLabel}
+        className={classes}
+        onClick={() => onClick(item)}
+        type="button"
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <article aria-label={ariaLabel} className={classes}>
+      {content}
+    </article>
   );
 }

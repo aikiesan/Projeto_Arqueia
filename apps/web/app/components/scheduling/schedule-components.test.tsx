@@ -235,7 +235,7 @@ describe('Scheduling Presentational Components', () => {
   });
 
   describe('ScheduleEventCard', () => {
-    it('renders time formatted in America/Sao_Paulo, title, equipment and handles click/keyboard', () => {
+    it('renders time in the laboratory timezone and uses a native interactive button', () => {
       const onClick = vi.fn();
 
       render(
@@ -254,15 +254,9 @@ describe('Scheduling Presentational Components', () => {
 
       // Click
       const card = screen.getByRole('button');
+      expect(card.tagName).toBe('BUTTON');
       fireEvent.click(card);
       expect(onClick).toHaveBeenCalledWith(sampleReservationMine);
-
-      // Keyboard (Enter / Space)
-      fireEvent.keyDown(card, { key: 'Enter' });
-      expect(onClick).toHaveBeenCalledTimes(2);
-
-      fireEvent.keyDown(card, { key: ' ' });
-      expect(onClick).toHaveBeenCalledTimes(3);
     });
 
     it('renders technical block with appropriate badge and formatting', () => {
@@ -461,6 +455,60 @@ describe('Scheduling Presentational Components', () => {
       fireEvent.keyDown(window, { key: 'Escape' });
       expect(onClose).toHaveBeenCalledTimes(1);
     });
+
+    it('traps focus and restores it to the opener when closed', () => {
+      const onClose = vi.fn();
+      const { rerender } = render(
+        <>
+          <button type="button">Abrir detalhes</button>
+          <ScheduleDetailsDrawer
+            isOpen={false}
+            item={sampleReservationMine}
+            onClose={onClose}
+            timezone={timezone}
+          />
+        </>,
+      );
+      const opener = screen.getByRole('button', { name: 'Abrir detalhes' });
+      opener.focus();
+
+      rerender(
+        <>
+          <button type="button">Abrir detalhes</button>
+          <ScheduleDetailsDrawer
+            isOpen={true}
+            item={sampleReservationMine}
+            onClose={onClose}
+            timezone={timezone}
+          />
+        </>,
+      );
+
+      const closeIcon = screen.getByRole('button', { name: 'Fechar detalhes' });
+      const closeFooter = screen.getByRole('button', { name: 'Fechar' });
+      expect(closeIcon).toHaveFocus();
+
+      closeFooter.focus();
+      fireEvent.keyDown(window, { key: 'Tab' });
+      expect(closeIcon).toHaveFocus();
+
+      closeIcon.focus();
+      fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+      expect(closeFooter).toHaveFocus();
+
+      rerender(
+        <>
+          <button type="button">Abrir detalhes</button>
+          <ScheduleDetailsDrawer
+            isOpen={false}
+            item={sampleReservationMine}
+            onClose={onClose}
+            timezone={timezone}
+          />
+        </>,
+      );
+      expect(opener).toHaveFocus();
+    });
   });
 
   describe('ScheduleDayView', () => {
@@ -470,6 +518,7 @@ describe('Scheduling Presentational Components', () => {
 
       render(
         <ScheduleDayView
+          capabilities={{ canReserve: true, canManageBlocks: false }}
           currentDate={baseDate}
           endHour={18}
           items={[sampleReservationMine, sampleReservationOther]}
@@ -492,7 +541,11 @@ describe('Scheduling Presentational Components', () => {
       // Click on available slot (e.g. 08:00)
       const slot8 = screen.getByLabelText('Horário disponível às 08:00');
       fireEvent.click(slot8);
-      expect(onSlotClick).toHaveBeenCalledWith(expect.any(Date), 8);
+      expect(onSlotClick).toHaveBeenCalledWith({
+        date: '2026-08-14',
+        hour: 8,
+        timezone,
+      });
     });
 
     it('supports keyboard on empty time slots', () => {
@@ -500,6 +553,7 @@ describe('Scheduling Presentational Components', () => {
 
       render(
         <ScheduleDayView
+          capabilities={{ canReserve: true, canManageBlocks: false }}
           currentDate={baseDate}
           endHour={12}
           items={[]}
@@ -511,7 +565,42 @@ describe('Scheduling Presentational Components', () => {
 
       const slot9 = screen.getByLabelText('Horário disponível às 09:00');
       fireEvent.keyDown(slot9, { key: 'Enter' });
-      expect(onSlotClick).toHaveBeenCalledWith(expect.any(Date), 9);
+      expect(onSlotClick).toHaveBeenCalledWith({
+        date: '2026-08-14',
+        hour: 9,
+        timezone,
+      });
+    });
+
+    it('fails closed when scheduling capabilities are absent', () => {
+      render(
+        <ScheduleDayView
+          currentDate={baseDate}
+          items={[]}
+          onSlotClick={vi.fn()}
+          startHour={9}
+          endHour={9}
+          timezone={timezone}
+        />,
+      );
+
+      expect(screen.queryByRole('button', { name: /Horário disponível/ })).not.toBeInTheDocument();
+      expect(screen.getByText('Disponível')).toBeInTheDocument();
+    });
+
+    it('counts only items belonging to the selected laboratory day', () => {
+      render(
+        <ScheduleDayView
+          currentDate={baseDate}
+          items={[
+            sampleReservationMine,
+            { ...sampleReservationOther, startsAt: '2026-08-15T17:00:00.000Z' },
+          ]}
+          timezone={timezone}
+        />,
+      );
+
+      expect(screen.getByText('1 compromisso no dia')).toBeInTheDocument();
     });
   });
 
@@ -524,6 +613,7 @@ describe('Scheduling Presentational Components', () => {
 
       render(
         <ScheduleWeekView
+          capabilities={{ canReserve: true, canManageBlocks: false }}
           currentDate={baseDate}
           items={weekItems}
           onItemClick={onItemClick}
@@ -557,6 +647,7 @@ describe('Scheduling Presentational Components', () => {
 
       render(
         <ScheduleWeekView
+          capabilities={{ canReserve: true, canManageBlocks: false }}
           currentDate={baseDate}
           items={[]} // Empty week
           onSlotClick={onSlotClick}
@@ -566,7 +657,40 @@ describe('Scheduling Presentational Components', () => {
 
       const bookBtn = screen.getByRole('button', { name: '+ Reservar horário neste dia' });
       fireEvent.click(bookBtn);
-      expect(onSlotClick).toHaveBeenCalledWith(expect.any(Date), 9);
+      expect(onSlotClick).toHaveBeenCalledWith({
+        date: '2026-08-14',
+        hour: 9,
+        timezone,
+      });
+    });
+
+    it('derives the week from the laboratory calendar date at a UTC boundary', () => {
+      render(
+        <ScheduleWeekView
+          currentDate={new Date('2026-08-17T01:00:00.000Z')}
+          items={[]}
+          timezone={timezone}
+        />,
+      );
+
+      expect(screen.getByRole('tab', { name: /dom, 16 de ago/i })).toBeInTheDocument();
+      expect(screen.queryByRole('tab', { name: /seg, 17 de ago/i })).not.toBeInTheDocument();
+    });
+
+    it('supports arrow-key navigation between mobile day tabs', () => {
+      render(
+        <ScheduleWeekView currentDate={baseDate} items={[]} timezone={timezone} />,
+      );
+
+      const selected = screen.getAllByRole('tab').find((tab) => tab.getAttribute('aria-selected') === 'true');
+      expect(selected).toBeDefined();
+      if (!selected) return;
+
+      selected.focus();
+      fireEvent.keyDown(selected, { key: 'ArrowRight' });
+      expect(document.activeElement).toHaveAttribute('role', 'tab');
+      expect(document.activeElement).toHaveAttribute('aria-selected', 'true');
+      expect(document.activeElement).not.toBe(selected);
     });
   });
 

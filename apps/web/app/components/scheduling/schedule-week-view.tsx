@@ -1,6 +1,14 @@
 import type { ScheduleCapabilities, ScheduleItem } from '@arqueia/contracts';
 import React, { useMemo, useState } from 'react';
 
+import {
+  addCalendarDays,
+  formatCalendarDate,
+  getCalendarDateInTimezone,
+  getCalendarWeekStart,
+  getHourInTimezone,
+} from './calendar-time';
+import type { ScheduleSlotSelection } from './calendar-time';
 import { ScheduleEventCard } from './schedule-event-card';
 
 export interface ScheduleWeekViewProps {
@@ -8,7 +16,7 @@ export interface ScheduleWeekViewProps {
   readonly timezone: string;
   readonly items: readonly ScheduleItem[];
   readonly onItemClick?: ((item: ScheduleItem) => void) | undefined;
-  readonly onSlotClick?: ((date: Date, hour: number) => void) | undefined;
+  readonly onSlotClick?: ((selection: ScheduleSlotSelection) => void) | undefined;
   readonly capabilities?: ScheduleCapabilities | undefined;
   readonly startHour?: number | undefined;
   readonly endHour?: number | undefined;
@@ -16,42 +24,12 @@ export interface ScheduleWeekViewProps {
 }
 
 interface WeekDayData {
-  date: Date;
   dateStr: string;
   dayName: string;
   dayNumber: string;
   monthName: string;
   isToday: boolean;
-  isSelected: boolean;
   items: ScheduleItem[];
-}
-
-function getDayStringInTimezone(date: Date, timezone: string): string {
-  try {
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-    return formatter.format(date); // YYYY-MM-DD
-  } catch {
-    return date.toISOString().slice(0, 10);
-  }
-}
-
-function getHourInTimezone(date: Date, timezone: string): number {
-  try {
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: timezone,
-      hour: 'numeric',
-      hour12: false,
-    });
-    const parsed = parseInt(formatter.format(date), 10);
-    return parsed === 24 ? 0 : parsed;
-  } catch {
-    return date.getHours();
-  }
 }
 
 export function ScheduleWeekView({
@@ -66,59 +44,40 @@ export function ScheduleWeekView({
   className = '',
 }: ScheduleWeekViewProps) {
   // Calculate 7 days of the week starting from Monday
-  const todayStr = useMemo(() => getDayStringInTimezone(new Date(), timezone), [timezone]);
+  const todayStr = useMemo(
+    () => getCalendarDateInTimezone(new Date(), timezone),
+    [timezone],
+  );
   const currentDayStr = useMemo(
-    () => getDayStringInTimezone(currentDate, timezone),
+    () => getCalendarDateInTimezone(currentDate, timezone),
     [currentDate, timezone],
   );
 
   const [selectedMobileDayStr, setSelectedMobileDayStr] = useState<string>(currentDayStr);
 
   const weekDays: WeekDayData[] = useMemo(() => {
-    const currentDayOfWeek = currentDate.getDay(); // 0 Sun, 1 Mon...
-    const diffToMonday = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek;
-    const monday = new Date(currentDate);
-    monday.setDate(currentDate.getDate() + diffToMonday);
-
-    const dayNameFormatter = new Intl.DateTimeFormat('pt-BR', {
-      timeZone: timezone,
-      weekday: 'short',
-    });
-    const dayNumberFormatter = new Intl.DateTimeFormat('pt-BR', {
-      timeZone: timezone,
-      day: 'numeric',
-    });
-    const monthNameFormatter = new Intl.DateTimeFormat('pt-BR', {
-      timeZone: timezone,
-      month: 'short',
-    });
+    const monday = getCalendarWeekStart(currentDayStr);
 
     const days: WeekDayData[] = [];
     for (let i = 0; i < 7; i++) {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      d.setHours(0, 0, 0, 0);
-
-      const dStr = getDayStringInTimezone(d, timezone);
+      const dStr = addCalendarDays(monday, i);
       const dayItems = items.filter((item) => {
         const itemDate = new Date(item.startsAt);
-        return getDayStringInTimezone(itemDate, timezone) === dStr;
+        return getCalendarDateInTimezone(itemDate, timezone) === dStr;
       });
 
       days.push({
-        date: d,
         dateStr: dStr,
-        dayName: dayNameFormatter.format(d).replace('.', ''),
-        dayNumber: dayNumberFormatter.format(d),
-        monthName: monthNameFormatter.format(d).replace('.', ''),
+        dayName: formatCalendarDate(dStr, { weekday: 'short' }).replace('.', ''),
+        dayNumber: formatCalendarDate(dStr, { day: 'numeric' }),
+        monthName: formatCalendarDate(dStr, { month: 'short' }).replace('.', ''),
         isToday: dStr === todayStr,
-        isSelected: dStr === (selectedMobileDayStr || currentDayStr),
         items: dayItems,
       });
     }
 
     return days;
-  }, [currentDate, items, timezone, todayStr, selectedMobileDayStr, currentDayStr]);
+  }, [currentDayStr, items, timezone, todayStr]);
 
   const hoursList = useMemo(() => {
     const hours: number[] = [];
@@ -128,22 +87,31 @@ export function ScheduleWeekView({
     return hours;
   }, [startHour, endHour]);
 
-  const canCreate = Boolean(onSlotClick && (capabilities?.canReserve ?? true));
+  const canCreate = Boolean(onSlotClick && capabilities?.canReserve === true);
+
+  const selectedDayStr = weekDays.some((day) => day.dateStr === selectedMobileDayStr)
+    ? selectedMobileDayStr
+    : currentDayStr;
 
   // Active day for mobile single-day focus tab
   const activeMobileDay =
-    weekDays.find((d) => d.dateStr === selectedMobileDayStr) ??
+    weekDays.find((d) => d.dateStr === selectedDayStr) ??
     weekDays.find((d) => d.dateStr === currentDayStr) ??
     weekDays[0] ?? {
-      date: currentDate,
       dateStr: currentDayStr,
       dayName: 'Hoje',
-      dayNumber: String(currentDate.getDate()),
+      dayNumber: formatCalendarDate(currentDayStr, { day: 'numeric' }),
       monthName: '',
       isToday: true,
-      isSelected: true,
       items: [],
     };
+
+  const selectMobileDay = (index: number) => {
+    const nextDay = weekDays[index];
+    if (!nextDay) return;
+    setSelectedMobileDayStr(nextDay.dateStr);
+    document.getElementById(`schedule-week-tab-${nextDay.dateStr}`)?.focus();
+  };
 
   return (
     <div className={`schedule-week-view ${className}`}>
@@ -153,18 +121,34 @@ export function ScheduleWeekView({
         className="schedule-week-mobile-strip"
         role="tablist"
       >
-        {weekDays.map((day) => {
+        {weekDays.map((day, index) => {
           const isSelected = day.dateStr === activeMobileDay.dateStr;
           return (
             <button
-              aria-controls={`schedule-week-panel-${day.dateStr}`}
+              aria-controls="schedule-week-panel"
               aria-label={`${day.dayName}, ${day.dayNumber} de ${day.monthName} (${day.items.length} ${day.items.length === 1 ? 'item' : 'itens'})`}
               aria-selected={isSelected}
               className={`schedule-week-mobile-day-btn ${isSelected ? 'schedule-week-mobile-day-btn--selected' : ''} ${day.isToday ? 'schedule-week-mobile-day-btn--today' : ''}`}
               id={`schedule-week-tab-${day.dateStr}`}
               key={day.dateStr}
               onClick={() => setSelectedMobileDayStr(day.dateStr)}
+              onKeyDown={(event) => {
+                if (event.key === 'ArrowRight') {
+                  event.preventDefault();
+                  selectMobileDay((index + 1) % weekDays.length);
+                } else if (event.key === 'ArrowLeft') {
+                  event.preventDefault();
+                  selectMobileDay((index - 1 + weekDays.length) % weekDays.length);
+                } else if (event.key === 'Home') {
+                  event.preventDefault();
+                  selectMobileDay(0);
+                } else if (event.key === 'End') {
+                  event.preventDefault();
+                  selectMobileDay(weekDays.length - 1);
+                }
+              }}
               role="tab"
+              tabIndex={isSelected ? 0 : -1}
               type="button"
             >
               <span className="schedule-week-mobile-day-name">{day.dayName}</span>
@@ -186,7 +170,7 @@ export function ScheduleWeekView({
       <div
         aria-labelledby={`schedule-week-tab-${activeMobileDay.dateStr}`}
         className="schedule-week-mobile-day-content"
-        id={`schedule-week-panel-${activeMobileDay.dateStr}`}
+        id="schedule-week-panel"
         role="tabpanel"
       >
         <div className="schedule-week-mobile-summary">
@@ -217,7 +201,13 @@ export function ScheduleWeekView({
             {canCreate && onSlotClick && (
               <button
                 className="schedule-week-mobile-empty-btn"
-                onClick={() => onSlotClick(activeMobileDay.date, 9)}
+                onClick={() =>
+                  onSlotClick({
+                    date: activeMobileDay.dateStr,
+                    hour: 9,
+                    timezone,
+                  })
+                }
                 type="button"
               >
                 + Reservar horário neste dia
@@ -259,19 +249,21 @@ export function ScheduleWeekView({
                   return getHourInTimezone(itemStartDate, timezone) === hour;
                 });
 
-                const slotDate = new Date(day.date);
-                slotDate.setHours(hour, 0, 0, 0);
-
                 const hasItems = cellItems.length > 0;
 
                 return (
                   <div
                     aria-label={`${day.dayName} às ${String(hour).padStart(2, '0')}:00${hasItems ? ` (${cellItems.length} ocupações)` : ' (Livre)'}`}
-                    className={`schedule-week-grid-cell ${hasItems ? 'schedule-week-grid-cell--occupied' : 'schedule-week-grid-cell--free'} ${canCreate ? 'schedule-week-grid-cell--clickable' : ''}`}
+                    className={`schedule-week-grid-cell ${hasItems ? 'schedule-week-grid-cell--occupied' : 'schedule-week-grid-cell--free'} ${!hasItems && canCreate ? 'schedule-week-grid-cell--clickable' : ''}`}
                     key={`${day.dateStr}-${hour}`}
                     onClick={
                       !hasItems && canCreate && onSlotClick
-                        ? () => onSlotClick(slotDate, hour)
+                        ? () =>
+                            onSlotClick({
+                              date: day.dateStr,
+                              hour,
+                              timezone,
+                            })
                         : undefined
                     }
                     onKeyDown={
@@ -279,7 +271,11 @@ export function ScheduleWeekView({
                         ? (e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
                               e.preventDefault();
-                              onSlotClick(slotDate, hour);
+                              onSlotClick({
+                                date: day.dateStr,
+                                hour,
+                                timezone,
+                              });
                             }
                           }
                         : undefined

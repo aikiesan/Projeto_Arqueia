@@ -1,6 +1,12 @@
 import type { ScheduleCapabilities } from '@arqueia/contracts';
 import React, { useMemo } from 'react';
 
+import {
+  addCalendarDays,
+  formatCalendarDate,
+  getCalendarDateInTimezone,
+  getCalendarWeekStart,
+} from './calendar-time';
 import type { CalendarViewMode } from './types';
 
 export interface ScheduleHeaderProps {
@@ -33,49 +39,29 @@ export function ScheduleHeader({
   className = '',
 }: ScheduleHeaderProps) {
   const formattedTitle = useMemo(() => {
-    try {
-      if (viewMode === 'DAY') {
-        const formatter = new Intl.DateTimeFormat('pt-BR', {
-          timeZone: timezone,
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric',
-        });
-        const formatted = formatter.format(currentDate);
-        return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-      }
-
-      // Week calculation
-      // Format using start and end of week in given timezone:
-      const datePartsFormatter = new Intl.DateTimeFormat('pt-BR', {
-        timeZone: timezone,
+    const currentCalendarDate = getCalendarDateInTimezone(currentDate, timezone);
+    if (viewMode === 'DAY') {
+      const formatted = formatCalendarDate(currentCalendarDate, {
+        weekday: 'long',
         day: 'numeric',
-        month: 'short',
+        month: 'long',
         year: 'numeric',
       });
-
-      // Calculate Monday of this week:
-      // Note: Date manipulation in timezone
-      const currentDayOfWeek = currentDate.getDay(); // 0 is Sunday, 1 is Monday...
-      const diffToMonday = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek;
-      const monday = new Date(currentDate);
-      monday.setDate(currentDate.getDate() + diffToMonday);
-
-      const sunday = new Date(monday);
-      sunday.setDate(monday.getDate() + 6);
-
-      const mondayParts = datePartsFormatter.format(monday);
-      const sundayParts = datePartsFormatter.format(sunday);
-
-      return `${mondayParts} – ${sundayParts}`;
-    } catch {
-      return currentDate.toLocaleDateString('pt-BR');
+      return formatted.charAt(0).toUpperCase() + formatted.slice(1);
     }
+
+    const monday = getCalendarWeekStart(currentCalendarDate);
+    const sunday = addCalendarDays(monday, 6);
+    const options: Intl.DateTimeFormatOptions = {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    };
+    return `${formatCalendarDate(monday, options)} – ${formatCalendarDate(sunday, options)}`;
   }, [currentDate, viewMode, timezone]);
 
   return (
-    <header className={`schedule-header ${className}`} role="banner">
+    <header className={`schedule-header ${className}`}>
       <div className="schedule-header-nav-group">
         <div aria-label="Navegação temporal da agenda" className="schedule-nav-controls" role="group">
           <button

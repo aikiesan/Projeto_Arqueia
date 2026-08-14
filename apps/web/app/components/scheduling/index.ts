@@ -1,4 +1,5 @@
 export * from './types';
+export * from './calendar-time';
 export * from './schedule-header';
 export * from './schedule-legend';
 export * from './schedule-event-card';

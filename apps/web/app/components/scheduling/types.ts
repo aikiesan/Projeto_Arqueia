@@ -10,6 +10,8 @@ import type {
 
 export type CalendarViewMode = 'DAY' | 'WEEK';
 
+export type { ScheduleSlotSelection } from './calendar-time';
+
 export type ScheduleFeedbackState = 'loading' | 'empty' | 'unavailable' | 'error' | 'ready';
 
 export interface ScheduleHourSlot {
