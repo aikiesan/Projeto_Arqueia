@@ -2,10 +2,12 @@ import 'server-only';
 
 import {
   authenticatedPrincipalSchema,
+  dashboardSummarySchema,
   equipmentPageSchema,
   laboratorySchema,
   userSchema,
   type AuthenticatedPrincipal,
+  type DashboardSummary,
   type Laboratory,
   type Equipment,
   type User,
@@ -47,6 +49,16 @@ export async function loadUsers(): Promise<readonly User[]> {
   const payload = await authorizedGet('/api/users');
   const parsed = z.array(userSchema).safeParse(payload);
   return parsed.success ? parsed.data : [];
+}
+
+export async function loadDashboardSummary(
+  laboratoryId: string,
+): Promise<DashboardSummary | null> {
+  const query = new URLSearchParams({ laboratoryId });
+  const payload = await authorizedGet(`/api/management/dashboard?${query.toString()}`);
+  if (payload === null) return null;
+  const parsed = dashboardSummarySchema.safeParse(payload);
+  return parsed.success ? parsed.data : null;
 }
 
 export async function loadLaboratoryEquipment(
