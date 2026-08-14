@@ -1,6 +1,8 @@
 import {
   CANCELLATION_MINIMUM_NOTICE_MINUTES,
+  SCHEDULE_ITEM_LIMIT,
   reservationSchema,
+  scheduleResponseSchema,
   technicalBlockSchema,
   type CreateReservationInput,
   type CreateReservationResult,
@@ -8,6 +10,7 @@ import {
   type ListScheduleQuery,
   type Reservation,
   type ScheduleItem,
+  type ScheduleItemStatus,
   type ScheduleResponse,
   type TechnicalBlock,
 } from '@arqueia/contracts';
@@ -16,13 +19,18 @@ import { inTransaction, type DatabaseClient, type DatabasePool } from '@arqueia/
 
 import {
   EquipmentUnavailableError,
+  EquipmentTrainingRequiredError,
+  InvalidReservationProjectError,
   ReservationCancellationNoticeError,
   ReservationConflictError,
   ReservationNotFoundError,
+  ReservationApprovalRequiredError,
+  ScheduleResultLimitExceededError,
   TechnicalBlockNotFoundError,
 } from '../domain/scheduling.errors.js';
 import { generateRecurrentSlots } from '../domain/recurrence.js';
 import type {
+  SchedulingAccess,
   SchedulingMutationContext,
   SchedulingRepository,
 } from '../domain/ports/scheduling-repository.port.js';
@@ -35,6 +43,16 @@ interface EquipmentRow {
   id: string;
   status: string;
   max_reservation_minutes: number;
+  requires_training: boolean;
+  requires_approval: boolean;
+}
+
+interface LaboratoryRow {
+  timezone: string;
+}
+
+interface ProjectRow {
+  id: string;
 }
 
 interface OccupationRow {
@@ -166,13 +184,6 @@ async function appendAudit(
   );
 }
 
-function handleWriteError(error: unknown): never {
-  if ((error as PgError).code === '23P01') {
-    throw new ReservationConflictError();
-  }
-  throw error;
-}
-
 export class PostgresSchedulingRepository implements SchedulingRepository {
   public constructor(private readonly pool: DatabasePool) {}
 
@@ -189,7 +200,8 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
       try {
         const reservation = await inTransaction(this.pool, async (client) => {
           const eqResult = await client.query<EquipmentRow>(
-            `SELECT id, status, max_reservation_minutes FROM equipment
+            `SELECT id, status, max_reservation_minutes, requires_training, requires_approval
+               FROM equipment
               WHERE id = $1 AND laboratory_id = $2 AND archived_at IS NULL FOR SHARE`,
             [input.equipmentId, input.laboratoryId],
           );
@@ -199,6 +211,25 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
           }
           if (eq.status !== 'AVAILABLE') {
             throw new EquipmentUnavailableError(eq.status);
+          }
+          if (eq.requires_training) {
+            throw new EquipmentTrainingRequiredError();
+          }
+          if (eq.requires_approval) {
+            throw new ReservationApprovalRequiredError();
+          }
+
+          const projectResult = await client.query<ProjectRow>(
+            `SELECT id FROM projects
+              WHERE id = $1
+                AND laboratory_id = $2
+                AND status = 'ACTIVE'
+                AND archived_at IS NULL
+              FOR SHARE`,
+            [input.projectId, input.laboratoryId],
+          );
+          if (!projectResult.rows[0]) {
+            throw new InvalidReservationProjectError();
           }
 
           const durationMinutes =
@@ -267,8 +298,8 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
 
     if (createdReservations.length === 0 && conflictingSlots.length > 0) {
       throw new ReservationConflictError(
-        conflictingSlots[0]?.startsAt,
-        conflictingSlots[0]?.endsAt,
+        conflictingSlots[0]!.startsAt,
+        conflictingSlots[0]!.endsAt,
       );
     }
 
@@ -277,13 +308,13 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
 
 
   public async cancelReservation(
+    laboratoryId: string,
     reservationId: string,
     reason: string | undefined,
     context: SchedulingMutationContext,
-    isStaffOrAdmin: boolean,
+    canManageReservations: boolean,
   ): Promise<Reservation> {
-    try {
-      return await inTransaction(this.pool, async (client) => {
+    return inTransaction(this.pool, async (client) => {
         const queryResult = await client.query<ReservationRow>(
           `SELECT r.id, r.laboratory_id, r.equipment_id, r.user_id, r.project_id, r.purpose,
                   r.sample_count, r.notes, r.cancelled_at, r.cancelled_by_user_id, r.cancellation_reason,
@@ -291,8 +322,8 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
                   o.starts_at, o.ends_at, o.status
              FROM reservations r
              JOIN equipment_occupations o ON o.id = r.id
-            WHERE r.id = $1 AND r.archived_at IS NULL FOR UPDATE`,
-          [reservationId],
+            WHERE r.id = $1 AND r.laboratory_id = $2 AND r.archived_at IS NULL FOR UPDATE`,
+          [reservationId, laboratoryId],
         );
 
         const beforeRow = queryResult.rows[0];
@@ -303,19 +334,26 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
         const now = new Date();
         const startsAt = new Date(beforeRow.starts_at);
 
-        if (!isStaffOrAdmin) {
+        if (!canManageReservations) {
           if (beforeRow.user_id !== context.actorId) {
             throw new Error('Você não tem permissão para cancelar esta reserva.');
+          }
+          if (beforeRow.status === 'CANCELLED') {
+            return mapReservation(beforeRow);
           }
           const noticeMinutes = (startsAt.getTime() - now.getTime()) / 60000;
           if (noticeMinutes < CANCELLATION_MINIMUM_NOTICE_MINUTES) {
             throw new ReservationCancellationNoticeError();
           }
+        } else if (beforeRow.status === 'CANCELLED') {
+          return mapReservation(beforeRow);
         }
 
         await client.query(
-          `UPDATE equipment_occupations SET status = 'CANCELLED', updated_at = now() WHERE id = $1`,
-          [reservationId],
+          `UPDATE equipment_occupations
+              SET status = 'CANCELLED', updated_at = now()
+            WHERE id = $1 AND laboratory_id = $2`,
+          [reservationId, laboratoryId],
         );
 
         const updateResult = await client.query<ReservationRow>(
@@ -324,9 +362,9 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
              cancelled_by_user_id = $2,
              cancellation_reason = $3,
              updated_at = now()
-           WHERE id = $1
+           WHERE id = $1 AND laboratory_id = $4
            RETURNING id, laboratory_id, equipment_id, user_id, project_id, purpose, sample_count, notes, cancelled_at, cancelled_by_user_id, cancellation_reason, created_at, updated_at, archived_at`,
-          [reservationId, context.actorId, reason ?? null],
+          [reservationId, context.actorId, reason ?? null, laboratoryId],
         );
 
         const afterRow = {
@@ -349,10 +387,7 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
         );
 
         return after;
-      });
-    } catch (error) {
-      return handleWriteError(error);
-    }
+    });
   }
 
   public async createTechnicalBlock(
@@ -361,6 +396,16 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
   ): Promise<TechnicalBlock> {
     try {
       return await inTransaction(this.pool, async (client) => {
+        const equipmentResult = await client.query<{ id: string }>(
+          `SELECT id FROM equipment
+            WHERE id = $1 AND laboratory_id = $2 AND archived_at IS NULL
+            FOR SHARE`,
+          [input.equipmentId, input.laboratoryId],
+        );
+        if (!equipmentResult.rows[0]) {
+          throw new Error('Equipamento não foi encontrado no laboratório informado.');
+        }
+
         const occResult = await client.query<OccupationRow>(
           `INSERT INTO equipment_occupations (
              laboratory_id, equipment_id, occupation_type, starts_at, ends_at, status
@@ -402,25 +447,28 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
         return block;
       });
     } catch (error) {
-      return handleWriteError(error);
+      if ((error as PgError).code === '23P01') {
+        throw new ReservationConflictError(input.startsAt, input.endsAt);
+      }
+      throw error;
     }
   }
 
   public async cancelTechnicalBlock(
+    laboratoryId: string,
     technicalBlockId: string,
     reason: string | undefined,
     context: SchedulingMutationContext,
   ): Promise<TechnicalBlock> {
-    try {
-      return await inTransaction(this.pool, async (client) => {
+    return inTransaction(this.pool, async (client) => {
         const queryResult = await client.query<TechnicalBlockRow>(
           `SELECT b.id, b.laboratory_id, b.equipment_id, b.created_by_user_id, b.reason, b.description,
                   b.cancelled_at, b.cancelled_by_user_id, b.created_at, b.updated_at, b.archived_at,
                   o.starts_at, o.ends_at, o.status
              FROM technical_blocks b
              JOIN equipment_occupations o ON o.id = b.id
-            WHERE b.id = $1 AND b.archived_at IS NULL FOR UPDATE`,
-          [technicalBlockId],
+            WHERE b.id = $1 AND b.laboratory_id = $2 AND b.archived_at IS NULL FOR UPDATE`,
+          [technicalBlockId, laboratoryId],
         );
 
         const beforeRow = queryResult.rows[0];
@@ -428,9 +476,15 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
           throw new TechnicalBlockNotFoundError(technicalBlockId);
         }
 
+        if (beforeRow.status === 'CANCELLED') {
+          return mapTechnicalBlock(beforeRow);
+        }
+
         await client.query(
-          `UPDATE equipment_occupations SET status = 'CANCELLED', updated_at = now() WHERE id = $1`,
-          [technicalBlockId],
+          `UPDATE equipment_occupations
+              SET status = 'CANCELLED', updated_at = now()
+            WHERE id = $1 AND laboratory_id = $2`,
+          [technicalBlockId, laboratoryId],
         );
 
         const updateResult = await client.query<TechnicalBlockRow>(
@@ -438,9 +492,9 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
              cancelled_at = now(),
              cancelled_by_user_id = $2,
              updated_at = now()
-           WHERE id = $1
+           WHERE id = $1 AND laboratory_id = $3
            RETURNING id, laboratory_id, equipment_id, created_by_user_id, reason, description, cancelled_at, cancelled_by_user_id, created_at, updated_at, archived_at`,
-          [technicalBlockId, context.actorId],
+          [technicalBlockId, context.actorId, laboratoryId],
         );
 
         const afterRow = {
@@ -463,17 +517,23 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
         );
 
         return after;
-      });
-    } catch (error) {
-      return handleWriteError(error);
-    }
+    });
   }
 
   public async listSchedule(
     query: ListScheduleQuery,
     requestingUserId: string,
-    isStaffOrAdmin: boolean,
+    access: SchedulingAccess,
   ): Promise<ScheduleResponse> {
+    const laboratoryResult = await this.pool.query<LaboratoryRow>(
+      `SELECT timezone FROM laboratories WHERE id = $1 AND archived_at IS NULL`,
+      [query.laboratoryId],
+    );
+    const laboratory = laboratoryResult.rows[0];
+    if (!laboratory) {
+      throw new Error('Laboratório não encontrado.');
+    }
+
     const result = await this.pool.query<CombinedScheduleRow>(
       `SELECT o.id, o.laboratory_id, o.equipment_id, e.name AS equipment_name, o.occupation_type,
               o.starts_at, o.ends_at, o.status,
@@ -492,7 +552,9 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
           AND ($4::uuid IS NULL OR o.equipment_id = $4)
           AND ($5::boolean IS FALSE OR r.user_id = $6)
           AND ($7::boolean IS TRUE OR o.status != 'CANCELLED')
-        ORDER BY o.starts_at ASC`,
+          AND ($8::varchar IS NULL OR o.status = $8)
+        ORDER BY o.starts_at ASC, o.id ASC
+        LIMIT $9`,
       [
         query.laboratoryId,
         query.startsAt,
@@ -501,12 +563,19 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
         query.onlyMine ?? false,
         requestingUserId,
         query.includeCancelled ?? false,
+        query.status ?? null,
+        SCHEDULE_ITEM_LIMIT + 1,
       ],
     );
 
+    if (result.rows.length > SCHEDULE_ITEM_LIMIT) {
+      throw new ScheduleResultLimitExceededError(SCHEDULE_ITEM_LIMIT);
+    }
+
     const items: ScheduleItem[] = result.rows.map((row) => {
       const isMine = row.user_id === requestingUserId;
-      const canSeeDetails = isStaffOrAdmin || isMine;
+      const canSeeDetails = access.canViewPrivateReservations || isMine;
+      const status = row.status as ScheduleItemStatus;
 
       if (row.occupation_type === 'RESERVATION') {
         return {
@@ -519,8 +588,11 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
           title: canSeeDetails
             ? `Reserva: ${row.purpose ?? 'Sem finalidade'}`
             : 'Equipamento Reservado',
-          status: row.status,
+          status,
           isMine,
+          canCancel:
+            status !== 'CANCELLED' &&
+            (access.canManageReservations || (isMine && access.canCancelOwn)),
           reservationDetails: canSeeDetails
             ? {
                 reservationId: row.id,
@@ -544,24 +616,32 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
         equipmentName: row.equipment_name,
         startsAt: timestamp(row.starts_at),
         endsAt: timestamp(row.ends_at),
-        title: `Bloqueio Técnico: ${row.description ?? 'Manutenção'}`,
-        status: row.status,
+        title: 'Bloqueio técnico',
+        status,
         isMine: false,
-        blockDetails: {
-          technicalBlockId: row.id,
-          reason: row.block_reason!,
-          description: row.description ?? '',
-          createdByUserId: row.created_by_user_id!,
-          status: row.status as 'ACTIVE' | 'CANCELLED',
-        },
+        canCancel: status !== 'CANCELLED' && access.canManageBlocks,
+        blockDetails: access.canManageBlocks
+          ? {
+              technicalBlockId: row.id,
+              reason: row.block_reason!,
+              description: row.description ?? '',
+              createdByUserId: row.created_by_user_id!,
+              status: row.status as 'ACTIVE' | 'CANCELLED',
+            }
+          : null,
       };
     });
 
-    return {
+    return scheduleResponseSchema.parse({
       laboratoryId: query.laboratoryId,
+      timezone: laboratory.timezone,
       startsAt: query.startsAt,
       endsAt: query.endsAt,
+      capabilities: {
+        canReserve: access.canReserve,
+        canManageBlocks: access.canManageBlocks,
+      },
       items,
-    };
+    });
   }
 }

@@ -2,10 +2,15 @@ import { Catch, HttpStatus, type ArgumentsHost, type ExceptionFilter } from '@ne
 import type { Response } from 'express';
 
 import {
+  EquipmentTrainingRequiredError,
   EquipmentUnavailableError,
+  InvalidReservationProjectError,
   ReservationCancellationNoticeError,
   ReservationConflictError,
   ReservationNotFoundError,
+  ReservationApprovalRequiredError,
+  ScheduleResultLimitExceededError,
+  SchedulingStartsInPastError,
   TechnicalBlockNotFoundError,
 } from '../domain/scheduling.errors.js';
 
@@ -15,6 +20,11 @@ import {
   ReservationCancellationNoticeError,
   TechnicalBlockNotFoundError,
   EquipmentUnavailableError,
+  EquipmentTrainingRequiredError,
+  InvalidReservationProjectError,
+  ReservationApprovalRequiredError,
+  ScheduleResultLimitExceededError,
+  SchedulingStartsInPastError,
 )
 export class SchedulingExceptionFilter implements ExceptionFilter {
   public catch(exception: Error, host: ArgumentsHost): void {
@@ -25,10 +35,9 @@ export class SchedulingExceptionFilter implements ExceptionFilter {
       response.status(HttpStatus.CONFLICT).json({
         code: exception.code,
         message: exception.message,
-        conflictingSlot: {
-          startsAt: exception.startsAt ?? null,
-          endsAt: exception.endsAt ?? null,
-          type: exception.slotType,
+        requestedSlot: {
+          startsAt: exception.startsAt,
+          endsAt: exception.endsAt,
         },
       });
       return;
@@ -47,10 +56,15 @@ export class SchedulingExceptionFilter implements ExceptionFilter {
 
     if (
       exception instanceof ReservationCancellationNoticeError ||
-      exception instanceof EquipmentUnavailableError
+      exception instanceof EquipmentUnavailableError ||
+      exception instanceof EquipmentTrainingRequiredError ||
+      exception instanceof ReservationApprovalRequiredError ||
+      exception instanceof InvalidReservationProjectError ||
+      exception instanceof ScheduleResultLimitExceededError ||
+      exception instanceof SchedulingStartsInPastError
     ) {
       response.status(HttpStatus.BAD_REQUEST).json({
-        code: 'BAD_REQUEST',
+        code: 'code' in exception ? exception.code : 'BAD_REQUEST',
         message: exception.message,
       });
       return;

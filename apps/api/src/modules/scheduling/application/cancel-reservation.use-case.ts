@@ -21,21 +21,15 @@ export class CancelReservationUseCase {
   ): Promise<Reservation> {
     this.permissions.assertCan(principal, 'scheduling.cancel', laboratoryId);
 
-    const isStaffOrAdmin =
-      principal.systemRoles.some((sr) => sr.role === 'ADMIN') ||
-      principal.memberships.some(
-        (m) => m.laboratoryId === laboratoryId && m.role === 'TECNICO',
-      );
-
-
     return this.repository.cancelReservation(
+      laboratoryId,
       reservationId,
       reason,
       {
         ...context,
         actorId: principal.user.id,
       },
-      isStaffOrAdmin,
+      this.permissions.can(principal, 'scheduling.approve', laboratoryId),
     );
   }
 }

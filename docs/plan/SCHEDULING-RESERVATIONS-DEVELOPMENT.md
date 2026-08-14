@@ -119,3 +119,100 @@ Antes de adaptadores ou UI, congelar em `packages/contracts`:
 ## Definição de pronto
 
 Usuários autorizados conseguem consultar e reservar equipamentos; técnicos conseguem bloquear períodos; conflitos são impossíveis no banco; todas as mutações são auditadas; e os fluxos críticos funcionam no Docker em desktop e mobile.
+
+---
+
+## Auditoria da implementação existente — 2026-08-14
+
+A implementação atual é uma prova funcional, mas ainda não satisfaz este plano como núcleo
+operacional. Os seguintes pontos são bloqueadores para considerar o módulo pronto:
+
+1. A página ignora `?laboratory=<uuid>` e prefere o código `CP2b` no cliente.
+2. Dia, semana, mês, campos de formulário e recorrência usam o timezone do navegador/UTC, não
+   `laboratories.timezone`.
+3. A UI decide ações privilegiadas examinando os nomes `ADMIN` e `TECNICO`; capacidades devem
+   vir prontas do servidor.
+4. Cancelamentos autorizam o `laboratoryId` não validado da query string e depois localizam o
+   registro somente pelo ID. Isso permite confusão de escopo entre laboratórios.
+5. `z.coerce.boolean()` interpreta a string `"false"` como verdadeira.
+6. A consulta de calendário não limita duração do intervalo nem quantidade de itens retornados.
+7. O filtro de exceções produz `null` onde o contrato de conflito exige timestamps válidos.
+8. A criação não confirma que o projeto está ativo e pertence ao mesmo laboratório.
+9. Recorrências usam dias UTC e uma transação independente por ocorrência, permitindo sucesso
+   parcial sem um contrato explícito de atomicidade.
+10. Não existem testes do `PostgresSchedulingRepository` contra PostgreSQL real, nem testes de
+    controller/BFF/fluxo da Agenda.
+11. O BFF encaminha payloads sem validar as respostas com os schemas compartilhados.
+12. Políticas `requiresTraining` e `requiresApproval` são exibidas, mas ainda não são aplicadas
+    pelo backend.
+
+## Decisões congeladas para o MVP endurecido
+
+### Contexto e tempo
+
+- O laboratório ativo segue `?laboratory=<uuid>` quando autorizado; nunca é selecionado por
+  código ou nome fixo.
+- O servidor retorna o identificador IANA de `laboratories.timezone` em toda resposta de agenda.
+- Todo intervalo é semiaberto: `[startsAt, endsAt)`.
+- Uma ocupação participa da consulta quando `occupation.starts_at < endsAt` e
+  `occupation.ends_at > startsAt`.
+- Dia é `[D 00:00, D+1 00:00)` no timezone do laboratório.
+- Semana começa na segunda-feira e contém sete dias civis nesse timezone.
+- Mês consulta os 42 dias visíveis da grade, incluindo dias adjacentes.
+- Uma consulta cobre no máximo 42 dias e retorna no máximo 1.000 itens. Exceder o limite gera
+  erro explícito; dados nunca são truncados silenciosamente.
+
+### RBAC e privacidade
+
+| Intenção | Permissão de servidor | Regra |
+| --- | --- | --- |
+| Ver ocupação | `equipment.read` | Pode ver horário, equipamento e estado público. |
+| Criar reserva | `scheduling.reserve` | Reserva sempre pertence ao ator autenticado. |
+| Cancelar reserva própria | `scheduling.cancel` | Exige antecedência mínima contratual. |
+| Gerenciar reservas de terceiros | `scheduling.approve` | Pode cancelar no laboratório autorizado. |
+| Criar/cancelar bloqueio | `scheduling.block.manage` | Somente no laboratório autorizado. |
+
+- O cliente recebe `capabilities` e `canCancel` calculados no servidor; nunca interpreta papéis.
+- Reserva de terceiro expõe apenas “equipamento reservado”, intervalo, equipamento e status.
+  Projeto, usuário, finalidade, amostras e observações são privados.
+- Detalhes técnicos e autor de bloqueio são expostos apenas a quem possui
+  `scheduling.block.manage`.
+- “Não encontrado” é usado também para IDs fora do laboratório autorizado, evitando enumeração.
+
+### Criação, cancelamento e estados
+
+- Equipamento e projeto devem existir, não estar arquivados e pertencer ao laboratório informado.
+- O projeto deve estar `ACTIVE`.
+- Reserva única dura no mínimo 30 minutos e no máximo
+  `equipment.max_reservation_minutes`.
+- Equipamento precisa estar `AVAILABLE`.
+- Reservas no passado são rejeitadas pelo caso de uso com relógio injetável/testável.
+- Cancelamento é escopado por `(laboratory_id, reservation_id)` ou
+  `(laboratory_id, technical_block_id)` dentro da transação.
+- Repetir um cancelamento já confirmado é idempotente e não grava auditoria duplicada.
+- Recorrência permanece fora do MVP endurecido. A UI não a oferece até existir contrato de
+  timezone, série, edição de ocorrência e atomicidade/sucesso parcial.
+- `requiresTraining` e `requiresApproval` permanecem fail-closed para usuários comuns até a
+  modelagem das habilitações e aprovações. Técnicos com permissão de aprovação não ignoram essa
+  decisão silenciosamente; qualquer exceção deverá ser auditada por contrato futuro.
+
+### Concorrência, auditoria e erros
+
+- Reserva e bloqueio usam a mesma linha temporal em `equipment_occupations`.
+- A constraint `equipment_occupations_no_overlap_excl` é a autoridade final para conflitos.
+- Criação/cancelamento e `audit_events` acontecem na mesma transação.
+- Conflito retorna HTTP `409`, código `RESERVATION_SLOT_CONFLICT` e somente o intervalo solicitado;
+  nunca revela o intervalo ou os detalhes da ocupação concorrente.
+- Códigos de domínio são estáveis e validados pelo BFF antes de chegar à UI.
+
+## Sequência revisada
+
+1. **A1.1 — Contrato endurecido:** intervalo máximo, booleanos estritos, timezone, capacidades,
+   cancelamento com laboratório e respostas limitadas.
+2. **A1.2 — Adaptação vertical:** casos de uso, controller, repositório e BFF compilando contra o
+   contrato congelado, sem inferência de papel no cliente.
+3. **A2 — PostgreSQL real:** nova migração apenas se necessária; testes com dois laboratórios,
+   projeto cruzado, reserva × reserva e reserva × bloqueio concorrentes.
+4. **A3 — UI temporal:** utilitários IANA testados, URL do laboratório, grade de 42 dias e estados
+   acessíveis mobile/desktop.
+5. **A4 — Fluxos críticos:** Playwright e QA de criar, conflitar, cancelar e bloquear.

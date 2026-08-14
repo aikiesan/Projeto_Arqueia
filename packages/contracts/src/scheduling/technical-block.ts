@@ -52,6 +52,7 @@ export const createTechnicalBlockInputSchema = z
 
 export const cancelTechnicalBlockInputSchema = z
   .object({
+    laboratoryId: uuidSchema,
     technicalBlockId: uuidSchema,
     reason: z.string().trim().min(3).max(500).optional(),
   })
