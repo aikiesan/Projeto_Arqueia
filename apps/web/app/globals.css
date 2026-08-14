@@ -305,6 +305,73 @@ a:active {
   padding: 0 1rem;
 }
 
+.schedule-item {
+  align-items: center;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  min-height: 70px;
+}
+
+.schedule-item + .schedule-item {
+  border-top: 1px solid var(--arqueia-line);
+}
+
+.schedule-item time {
+  color: var(--arqueia-ink-600);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.schedule-item > div {
+  min-width: 0;
+}
+
+.schedule-item strong,
+.schedule-item > div > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-item strong {
+  font-size: 0.78rem;
+}
+
+.schedule-item > div > span {
+  color: var(--arqueia-ink-600);
+  font-size: 0.65rem;
+  margin-top: 0.2rem;
+}
+
+.schedule-item > a {
+  color: var(--arqueia-brand-700);
+  font-size: 0.7rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.priority-badge {
+  border-radius: 999px;
+  color: var(--arqueia-ink-800);
+  font-size: 0.58rem;
+  font-weight: 850;
+  justify-self: start;
+  padding: 0.3rem 0.45rem;
+}
+
+.priority-badge--low,
+.priority-badge--medium {
+  background: var(--arqueia-surface-muted);
+}
+
+.priority-badge--high,
+.priority-badge--critical {
+  background: #fff2da;
+  color: var(--arqueia-warning);
+}
+
 .schedule-row {
   align-items: center;
   display: grid;
@@ -373,6 +440,14 @@ a:active {
 .attention-grid {
   display: grid;
   gap: 0.75rem;
+  margin-top: 0.9rem;
+}
+
+.attention-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.home-dashboard-section {
   margin-top: 0.9rem;
 }
 

@@ -24,18 +24,68 @@ describe('home workspace', () => {
 
   it('renderiza a home e oferece encerramento da sessão', () => {
     const summary = createDashboardSummary(laboratories[0]!.id, []);
-    render(<HomeDashboard equipmentDataAvailable presentation={createWorkspacePresentation(principal, laboratories)} summary={summary} />);
+    render(<HomeDashboard presentation={createWorkspacePresentation(principal, laboratories)} summary={summary} />);
     expect(screen.getByRole('heading', { name: 'Olá, Lucas.' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Reservas de hoje' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Agenda temporariamente indisponível' })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { name: 'Fonte temporariamente indisponível' })).toHaveLength(2);
     expect(screen.getByRole('button', { name: 'Sair' })).toBeInTheDocument();
+  });
+
+  it('renderiza reservas e ações reais fornecidas pelo dashboard', () => {
+    const summary = {
+      ...createDashboardSummary(laboratories[0]!.id, []),
+      todayReservations: [
+        {
+          id: '00000000-0000-4000-8000-000000000011',
+          equipmentId: '00000000-0000-4000-8000-000000000012',
+          equipmentName: 'Cromatógrafo HPLC',
+          startsAt: '2026-08-14T14:30:00.000Z',
+          endsAt: '2026-08-14T15:30:00.000Z',
+          purpose: 'Análise de pureza',
+          status: 'CONFIRMED' as const,
+          href: '/agenda?reservationId=00000000-0000-4000-8000-000000000011',
+        },
+      ],
+      quickActions: [
+        {
+          id: 'scheduling',
+          label: 'Agenda e reservas',
+          href: `/agenda?laboratory=${laboratories[0]!.id}`,
+        },
+      ],
+      availability: {
+        equipment: true,
+        scheduling: true,
+        inventory: true,
+        maintenance: true,
+        pendingActions: true,
+      },
+    };
+
+    render(
+      <HomeDashboard
+        presentation={createWorkspacePresentation(principal, laboratories)}
+        summary={summary}
+      />,
+    );
+
+    expect(screen.getByText('Cromatógrafo HPLC')).toBeInTheDocument();
+    expect(screen.getByText('11:30')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Agenda e reservas' })).toHaveAttribute(
+      'href',
+      `/agenda?laboratory=${laboratories[0]!.id}`,
+    );
+    expect(screen.getByRole('link', { name: 'Ação Agenda e reservas' })).toHaveAttribute(
+      'href',
+      `/agenda?laboratory=${laboratories[0]!.id}`,
+    );
   });
 
   it('renderiza smoke test em viewport mobile (390px)', () => {
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 390 });
     window.dispatchEvent(new Event('resize'));
     const summary = createDashboardSummary(laboratories[0]!.id, []);
-    const { container } = render(<HomeDashboard equipmentDataAvailable presentation={createWorkspacePresentation(principal, laboratories)} summary={summary} />);
+    const { container } = render(<HomeDashboard presentation={createWorkspacePresentation(principal, laboratories)} summary={summary} />);
     expect(screen.getByRole('heading', { name: 'Olá, Lucas.' })).toBeInTheDocument();
     expect(container.querySelector('.arqueia-workspace')).toBeInTheDocument();
   });
@@ -44,7 +94,7 @@ describe('home workspace', () => {
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1440 });
     window.dispatchEvent(new Event('resize'));
     const summary = createDashboardSummary(laboratories[0]!.id, []);
-    const { container } = render(<HomeDashboard equipmentDataAvailable presentation={createWorkspacePresentation(principal, laboratories)} summary={summary} />);
+    const { container } = render(<HomeDashboard presentation={createWorkspacePresentation(principal, laboratories)} summary={summary} />);
     expect(screen.getByRole('heading', { name: 'Olá, Lucas.' })).toBeInTheDocument();
     expect(container.querySelector('.arqueia-workspace')).toBeInTheDocument();
   });

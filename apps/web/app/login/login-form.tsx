@@ -87,7 +87,7 @@ export function LoginForm({
         <span className="section-kicker">Acesso seguro</span>
         <h2 id="auth-title">Entrar no Arqueia</h2>
         <p>Use as credenciais da sua conta para continuar.</p>
-        <form className="login-form" noValidate onSubmit={handleSubmit}>
+        <form className="login-form" method="post" noValidate onSubmit={handleSubmit}>
           <label htmlFor="email">
             <span>E-mail</span>
             <input
