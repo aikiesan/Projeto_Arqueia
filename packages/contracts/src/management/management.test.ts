@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   decodeAuditCursor,
+  dashboardSummarySchema,
   encodeAuditCursor,
   listAuditLogsQuerySchema,
   managementAnalyticsQuerySchema,
@@ -106,5 +107,57 @@ describe('Management Contracts Unit Tests (Canonical Plan)', () => {
 
     const parsed = listAuditLogsQuerySchema.parse(auditQuery);
     expect(parsed.limit).toBe(50);
+  });
+
+  it('accepts a bounded, connected and permission-filtered Home projection', () => {
+    const parsed = dashboardSummarySchema.parse({
+      laboratoryId: labId,
+      timezone: 'America/Sao_Paulo',
+      equipmentSummary: {
+        total: 1,
+        byStatus: { AVAILABLE: 1, UNDER_EVALUATION: 0, UNAVAILABLE: 0, MAINTENANCE: 0 },
+      },
+      todayReservations: [{
+        id: '22222222-2222-4222-a222-222222222222',
+        equipmentId: '33333333-3333-4333-a333-333333333333',
+        equipmentName: 'HPLC',
+        startsAt: '2026-08-14T12:00:00.000Z',
+        endsAt: '2026-08-14T13:00:00.000Z',
+        purpose: 'Análise cromatográfica',
+        status: 'CONFIRMED',
+        href: '/agenda?reservation=22222222-2222-4222-a222-222222222222',
+      }],
+      upcomingActions: [],
+      inventoryAlerts: [],
+      quickActions: [{ id: 'scan', label: 'Escanear item', href: '/qr' }],
+      availability: { equipment: true, scheduling: true, inventory: true, maintenance: true, pendingActions: true },
+      generatedAt: '2026-08-14T10:00:00.000Z',
+    });
+
+    expect(parsed.todayReservations).toHaveLength(1);
+    expect(parsed.quickActions[0]?.href).toBe('/qr');
+  });
+
+  it('rejects Home lists above the operational response limit', () => {
+    const action = {
+      id: 'attention',
+      kind: 'EQUIPMENT_ATTENTION' as const,
+      priority: 'HIGH' as const,
+      title: 'Equipamento indisponível',
+      detail: 'Requer avaliação técnica.',
+      href: '/equipamentos',
+    };
+
+    expect(() => dashboardSummarySchema.parse({
+      laboratoryId: labId,
+      timezone: 'America/Sao_Paulo',
+      equipmentSummary: { total: 0, byStatus: { AVAILABLE: 0, UNDER_EVALUATION: 0, UNAVAILABLE: 0, MAINTENANCE: 0 } },
+      todayReservations: [],
+      upcomingActions: Array.from({ length: 9 }, (_, index) => ({ ...action, id: `attention-${index}` })),
+      inventoryAlerts: [],
+      quickActions: [],
+      availability: { equipment: true, scheduling: true, inventory: true, maintenance: true, pendingActions: true },
+      generatedAt: '2026-08-14T10:00:00.000Z',
+    })).toThrow();
   });
 });
