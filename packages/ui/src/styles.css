@@ -66,7 +66,9 @@
 
 .arqueia-topbar {
   align-items: center;
-  background: rgb(255 255 255 / 92%);
+  background: rgb(255 255 255 / 88%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--arqueia-line);
   display: grid;
   gap: 0.6rem;
@@ -183,10 +185,11 @@
 .arqueia-user-menu summary::-webkit-details-marker { display: none; }
 .arqueia-profile-chevron { display: none; font-size: 0.75rem; }
 .arqueia-user-dropdown {
+  animation: arqueia-dropdown-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   background: var(--arqueia-surface);
   border: 1px solid var(--arqueia-line);
   border-radius: 12px;
-  box-shadow: var(--arqueia-shadow-md);
+  box-shadow: var(--arqueia-shadow-lg);
   display: grid;
   min-width: 180px;
   padding: 0.4rem;
@@ -195,6 +198,12 @@
   top: calc(100% + 0.55rem);
   z-index: 50;
 }
+
+@keyframes arqueia-dropdown-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .arqueia-user-dropdown > a,
 .arqueia-user-menu-action {
   align-items: center;
@@ -211,6 +220,7 @@
   padding: 0 0.7rem;
   text-align: left;
   text-decoration: none;
+  transition: background-color 140ms ease, color 140ms ease;
   width: 100%;
 }
 .arqueia-user-dropdown > a:hover,
@@ -252,7 +262,9 @@
 
 .arqueia-mobile-nav {
   align-items: end;
-  background: rgb(255 255 255 / 96%);
+  background: rgb(255 255 255 / 90%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid var(--arqueia-line);
   bottom: 0;
   display: grid;

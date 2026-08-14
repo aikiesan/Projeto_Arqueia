@@ -27,7 +27,7 @@ describe('home workspace', () => {
     render(<HomeDashboard equipmentDataAvailable presentation={createWorkspacePresentation(principal, laboratories)} summary={summary} />);
     expect(screen.getByRole('heading', { name: 'Olá, Lucas.' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Reservas de hoje' })).toBeInTheDocument();
-    expect(screen.getByText('A agenda será o próximo módulo')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Agenda temporariamente indisponível' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sair' })).toBeInTheDocument();
   });
 
