@@ -172,6 +172,13 @@ a:active {
   flex-direction: column;
   min-width: 0;
   padding: 0.9rem;
+  transition: transform var(--interaction-fast) var(--interaction-ease), box-shadow var(--interaction-fast) var(--interaction-ease), border-color var(--interaction-fast) var(--interaction-ease);
+}
+
+.metric-card:hover {
+  border-color: var(--arqueia-brand-500);
+  box-shadow: var(--arqueia-shadow-sm);
+  transform: translateY(-2px);
 }
 
 .metric-card > span {
