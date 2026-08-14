@@ -32,5 +32,15 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
+  if (parsed.data.laboratoryId !== validLabId) {
+    return noStoreJson(
+      {
+        code: 'UPSTREAM_SCOPE_MISMATCH',
+        message: 'Resposta upstream incompatível com o laboratório solicitado.',
+      },
+      502,
+    );
+  }
+
   return noStoreJson(parsed.data, 200);
 }

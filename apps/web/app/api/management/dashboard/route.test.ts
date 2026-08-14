@@ -113,6 +113,59 @@ describe('BFF GET /api/management/dashboard', () => {
     expect(body).toMatchObject({ code: 'UPSTREAM_INCOMPATIBLE' });
   });
 
+  it('rejects laboratory scope mismatch with 502 UPSTREAM_SCOPE_MISMATCH without leaking foreign lab data', async () => {
+    // Solicita laboratório A, mas upstream retorna dados válidos com laboratoryId = B
+    vi.mocked(apiServer.authorizedApiRequest).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ...validSummary,
+          laboratoryId: validLabB,
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    );
+
+    const request = new Request(`http://localhost:3000/api/management/dashboard?laboratoryId=${validLabA}`);
+    const response = await GET(request);
+
+    expect(response.status).toBe(502);
+    expect(response.headers.get('Cache-Control')).toBe('no-store');
+
+    const body = await response.json();
+    expect(body).toEqual({
+      code: 'UPSTREAM_SCOPE_MISMATCH',
+      message: 'Resposta upstream incompatível com o laboratório solicitado.',
+    });
+    expect(body).not.toHaveProperty('equipmentSummary');
+    expect(body).not.toHaveProperty('todayReservations');
+    expect(body).not.toHaveProperty('laboratoryId');
+  });
+
+  it('returns 200 when requested laboratory matches returned laboratory', async () => {
+    vi.mocked(apiServer.authorizedApiRequest).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ...validSummary,
+          laboratoryId: validLabB,
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    );
+
+    const request = new Request(`http://localhost:3000/api/management/dashboard?laboratoryId=${validLabB}`);
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.laboratoryId).toBe(validLabB);
+  });
+
   it('preserves upstream 401 status without modifying payload', async () => {
     vi.mocked(apiServer.authorizedApiRequest).mockResolvedValue(
       new Response(JSON.stringify({ code: 'UNAUTHENTICATED' }), {
@@ -160,26 +213,5 @@ describe('BFF GET /api/management/dashboard', () => {
     const body = await response.json();
     expect(body).toMatchObject({ code: 'API_UNAVAILABLE' });
     expect(body).not.toHaveProperty('equipmentSummary');
-  });
-
-  it('maintains strict isolation and does not substitute laboratory A by laboratory B', async () => {
-    vi.mocked(apiServer.authorizedApiRequest).mockResolvedValue(
-      new Response(JSON.stringify({ ...validSummary, laboratoryId: validLabB }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    );
-
-    const request = new Request(`http://localhost:3000/api/management/dashboard?laboratoryId=${validLabB}`);
-    const response = await GET(request);
-
-    expect(apiServer.authorizedApiRequest).toHaveBeenCalledWith(
-      request,
-      `/api/management/dashboard?laboratoryId=${validLabB}`,
-      'GET',
-    );
-    const body = await response.json();
-    expect(body.laboratoryId).toBe(validLabB);
-    expect(body.laboratoryId).not.toBe(validLabA);
   });
 });

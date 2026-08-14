@@ -88,6 +88,18 @@ describe('loadDashboardSummary loader', () => {
     expect(summary?.laboratoryId).toBe(labB);
   });
 
+  it('returns null when upstream returns a DashboardSummary for a different laboratoryId', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ...validSummary, laboratoryId: labB }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const summary = await loadDashboardSummary(labA);
+
+    expect(summary).toBeNull();
+  });
+
   it('returns null and does not produce synthetic data when upstream fails with 5xx or network error', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,

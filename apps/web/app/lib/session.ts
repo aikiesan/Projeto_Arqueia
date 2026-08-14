@@ -58,7 +58,8 @@ export async function loadDashboardSummary(
   const payload = await authorizedGet(`/api/management/dashboard?${query.toString()}`);
   if (payload === null) return null;
   const parsed = dashboardSummarySchema.safeParse(payload);
-  return parsed.success ? parsed.data : null;
+  if (!parsed.success || parsed.data.laboratoryId !== laboratoryId) return null;
+  return parsed.data;
 }
 
 export async function loadLaboratoryEquipment(
