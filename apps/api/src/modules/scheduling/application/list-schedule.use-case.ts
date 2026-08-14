@@ -19,13 +19,22 @@ export class ListScheduleUseCase {
   ): Promise<ScheduleResponse> {
     this.permissions.assertCan(principal, 'equipment.read', query.laboratoryId);
 
-    const isStaffOrAdmin =
-      principal.systemRoles.some((sr) => sr.role === 'ADMIN') ||
-      principal.memberships.some(
-        (m) => m.laboratoryId === query.laboratoryId && m.role === 'TECNICO',
-      );
+    const canManageReservations = this.permissions.can(
+      principal,
+      'scheduling.approve',
+      query.laboratoryId,
+    );
 
-
-    return this.repository.listSchedule(query, principal.user.id, isStaffOrAdmin);
+    return this.repository.listSchedule(query, principal.user.id, {
+      canCancelOwn: this.permissions.can(principal, 'scheduling.cancel', query.laboratoryId),
+      canManageBlocks: this.permissions.can(
+        principal,
+        'scheduling.block.manage',
+        query.laboratoryId,
+      ),
+      canManageReservations,
+      canReserve: this.permissions.can(principal, 'scheduling.reserve', query.laboratoryId),
+      canViewPrivateReservations: canManageReservations,
+    });
   }
 }

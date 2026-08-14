@@ -7,7 +7,7 @@ import type {
   EquipmentPage,
   Laboratory,
   Project,
-  RecurrenceFrequency,
+  ScheduleCapabilities,
   ScheduleItem,
   ScheduleResponse,
   TechnicalBlockReason,
@@ -86,6 +86,7 @@ export function AgendaPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlEquipmentId = searchParams?.get('equipmentId') ?? '';
+  const urlLaboratoryId = searchParams?.get('laboratory') ?? '';
 
   const [pageData, setPageData] = useState<PageData | null>(null);
   const [laboratoryId, setLaboratoryId] = useState<string | null>(null);
@@ -96,6 +97,10 @@ export function AgendaPageClient() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [onlyMine, setOnlyMine] = useState(false);
   const [scheduleItems, setScheduleItems] = useState<readonly ScheduleItem[]>([]);
+  const [capabilities, setCapabilities] = useState<ScheduleCapabilities>({
+    canReserve: false,
+    canManageBlocks: false,
+  });
 
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
@@ -114,19 +119,6 @@ export function AgendaPageClient() {
     endTime: '11:00',
   });
 
-  // Recurrence Form State
-  const [frequency, setFrequency] = useState<RecurrenceFrequency>('NONE');
-  const [customWeekdays, setCustomWeekdays] = useState<number[]>([1, 3, 5]);
-
-  const isStaffOrAdmin = useMemo(() => {
-    if (!pageData) return false;
-    const isSysAdmin = pageData.principal.systemRoles.some((sr) => sr.role === 'ADMIN');
-    const isLabTech = pageData.principal.memberships.some(
-      (m) => m.laboratoryId === laboratoryId && m.role === 'TECNICO',
-    );
-    return isSysAdmin || isLabTech;
-  }, [pageData, laboratoryId]);
-
   const loadSchedule = useCallback(
     async (labId: string, eqId: string, date: Date, mode: ViewMode, mine: boolean) => {
       setLoading(true);
@@ -144,6 +136,7 @@ export function AgendaPageClient() {
         }
         const scheduleRes = await readJson<ScheduleResponse>(`/api/scheduling?${query.toString()}`);
         setScheduleItems(scheduleRes.items);
+        setCapabilities(scheduleRes.capabilities);
       } catch (loadErr) {
         if (loadErr instanceof Error && loadErr.message === 'UNAUTHENTICATED') {
           router.replace('/login');
@@ -164,7 +157,7 @@ export function AgendaPageClient() {
           readJson<{ principal: AuthenticatedPrincipal }>('/api/session'),
           readJson<readonly Laboratory[]>('/api/laboratories'),
         ]);
-        const preferred = laboratories.find((lab) => lab.code === 'CP2b') ?? laboratories[0];
+        const preferred = laboratories.find((lab) => lab.id === urlLaboratoryId) ?? laboratories[0];
         if (!preferred) throw new Error('Nenhum laboratório disponível.');
 
         setPageData({ principal: session.principal, laboratories });
@@ -176,7 +169,11 @@ export function AgendaPageClient() {
         ]);
 
         setEquipments(eqPage.items);
-        setProjects(projList);
+        setProjects(
+          projList.filter(
+            (project) => project.laboratoryId === preferred.id && project.status === 'ACTIVE',
+          ),
+        );
 
         const activeEqId = urlEquipmentId || '';
         setSelectedEquipmentId(activeEqId);
@@ -204,8 +201,15 @@ export function AgendaPageClient() {
   );
 
   const presentation = useMemo(
-    () => (pageData === null ? null : createWorkspacePresentation(pageData.principal, pageData.laboratories)),
-    [pageData],
+    () =>
+      pageData === null || laboratoryId === null
+        ? null
+        : createWorkspacePresentation(
+            pageData.principal,
+            pageData.laboratories,
+            laboratoryId,
+          ),
+    [laboratoryId, pageData],
   );
 
   const handleEquipmentChange = (eqId: string) => {
@@ -235,6 +239,7 @@ export function AgendaPageClient() {
   };
 
   const handleSlotClick = (date: Date, hour: number) => {
+    if (!capabilities.canReserve) return;
     const dateStr = date.toISOString().split('T')[0] ?? '';
     const startStr = `${String(hour).padStart(2, '0')}:00`;
     const endStr = `${String(hour + 1).padStart(2, '0')}:00`;
@@ -259,14 +264,6 @@ export function AgendaPageClient() {
     const endsAt = new Date(`${dateStr}T${endStr}:00`).toISOString();
 
     const sampleCountVal = String(form.get('sampleCount') ?? '').trim();
-    const untilDateVal = String(form.get('untilDate') ?? '').trim();
-
-    const recurrence = {
-      frequency,
-      weekdays: customWeekdays,
-      untilDate: untilDateVal ? new Date(`${untilDateVal}T23:59:59`).toISOString() : null,
-    };
-
     try {
       const result = await readJson<CreateReservationResult>('/api/scheduling/reservations', {
         method: 'POST',
@@ -280,7 +277,7 @@ export function AgendaPageClient() {
           purpose: form.get('purpose'),
           sampleCount: sampleCountVal ? Number(sampleCountVal) : null,
           notes: String(form.get('notes') ?? '').trim() || null,
-          recurrence,
+          recurrence: { frequency: 'NONE', weekdays: [], untilDate: null },
         }),
       });
 
@@ -349,16 +346,19 @@ export function AgendaPageClient() {
     setError(null);
     try {
       if (item.type === 'RESERVATION') {
-        await readJson(`/api/scheduling/reservations/${item.id}/cancel?laboratoryId=${laboratoryId}`, {
+        await readJson(`/api/scheduling/reservations/${item.id}/cancel`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reason: 'Cancelado pelo usuário na interface de agenda.' }),
+          body: JSON.stringify({
+            laboratoryId,
+            reason: 'Cancelado pelo usuário na interface de agenda.',
+          }),
         });
       } else {
-        await readJson(`/api/scheduling/blocks/${item.id}/cancel?laboratoryId=${laboratoryId}`, {
+        await readJson(`/api/scheduling/blocks/${item.id}/cancel`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reason: 'Bloqueio técnico liberado.' }),
+          body: JSON.stringify({ laboratoryId, reason: 'Bloqueio técnico liberado.' }),
         });
       }
 
@@ -423,10 +423,12 @@ export function AgendaPageClient() {
           <p>Consulte a ocupação em tempo real, selecione horários na grade e gerencie bloqueios técnicos.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button className="primary-button" onClick={() => setResModalOpen(true)} type="button">
-            <ArqueiaIcon name="mais" size={18} /> Nova Reserva
-          </button>
-          {isStaffOrAdmin && (
+          {capabilities.canReserve ? (
+            <button className="primary-button" onClick={() => setResModalOpen(true)} type="button">
+              <ArqueiaIcon name="mais" size={18} /> Nova Reserva
+            </button>
+          ) : null}
+          {capabilities.canManageBlocks && (
             <button className="secondary-button" onClick={() => setBlockModalOpen(true)} type="button">
               <ArqueiaIcon name="mais" size={18} /> Bloqueio Técnico
             </button>
@@ -581,58 +583,6 @@ export function AgendaPageClient() {
 
               <details className="reservation-more field-wide">
                 <summary>Mais opções</summary>
-              <fieldset className="reservation-recurrence">
-                <legend style={{ fontWeight: 600, fontSize: '0.85rem' }}>Repetição / Recorrência</legend>
-                <label style={{ marginBottom: '0.5rem', display: 'block' }}>
-                  <span>Frequência</span>
-                  <select value={frequency} onChange={(e) => setFrequency(e.target.value as RecurrenceFrequency)}>
-                    <option value="NONE">Não repetir</option>
-                    <option value="DAILY">Diariamente</option>
-                    <option value="WEEKLY">Semanalmente</option>
-                    <option value="FORTNIGHTLY">Quinzenalmente</option>
-                    <option value="MONTHLY">Mensalmente</option>
-                    <option value="CUSTOM">Personalizado (Dias da semana)</option>
-                  </select>
-                </label>
-
-                {frequency !== 'NONE' && (
-                  <>
-                    {frequency === 'CUSTOM' && (
-                      <div style={{ margin: '0.5rem 0' }}>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block' }}>Dias da Semana:</span>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
-                          {[
-                            { day: 1, label: 'Seg' },
-                            { day: 2, label: 'Ter' },
-                            { day: 3, label: 'Qua' },
-                            { day: 4, label: 'Qui' },
-                            { day: 5, label: 'Sex' },
-                            { day: 6, label: 'Sáb' },
-                            { day: 0, label: 'Dom' },
-                          ].map(({ day, label }) => (
-                            <label key={day} style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.8rem' }}>
-                              <input
-                                type="checkbox"
-                                checked={customWeekdays.includes(day)}
-                                onChange={(e) => {
-                                  if (e.target.checked) setCustomWeekdays([...customWeekdays, day]);
-                                  else setCustomWeekdays(customWeekdays.filter((d) => d !== day));
-                                }}
-                              />
-                              {label}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <label style={{ display: 'block', marginTop: '0.5rem' }}>
-                      <span>Repetir até *</span>
-                      <input type="date" name="untilDate" required />
-                    </label>
-                  </>
-                )}
-              </fieldset>
               <div className="reservation-optional-grid">
                 <label><span>Quantidade de amostras</span>
                 <input type="number" name="sampleCount" min={1} max={10000} placeholder="Opcional" />
@@ -794,7 +744,7 @@ export function AgendaPageClient() {
                 <button className="secondary-button" onClick={() => setSelectedItem(null)} type="button">
                   Fechar
                 </button>
-                {(selectedItem.isMine || isStaffOrAdmin) && selectedItem.status !== 'CANCELLED' && (
+                {selectedItem.canCancel && (
                   <button
                     className="primary-button"
                     style={{ background: '#e53e3e' }}

@@ -14,6 +14,14 @@ export interface SchedulingMutationContext {
   requestId: string | null;
 }
 
+export interface SchedulingAccess {
+  canCancelOwn: boolean;
+  canManageBlocks: boolean;
+  canManageReservations: boolean;
+  canReserve: boolean;
+  canViewPrivateReservations: boolean;
+}
+
 export interface SchedulingRepository {
   createReservation(
     input: CreateReservationInput,
@@ -22,10 +30,11 @@ export interface SchedulingRepository {
 
 
   cancelReservation(
+    laboratoryId: string,
     reservationId: string,
     reason: string | undefined,
     context: SchedulingMutationContext,
-    isStaffOrAdmin: boolean,
+    canManageReservations: boolean,
   ): Promise<Reservation>;
 
   createTechnicalBlock(
@@ -34,6 +43,7 @@ export interface SchedulingRepository {
   ): Promise<TechnicalBlock>;
 
   cancelTechnicalBlock(
+    laboratoryId: string,
     technicalBlockId: string,
     reason: string | undefined,
     context: SchedulingMutationContext,
@@ -42,7 +52,7 @@ export interface SchedulingRepository {
   listSchedule(
     query: ListScheduleQuery,
     requestingUserId: string,
-    isStaffOrAdmin: boolean,
+    access: SchedulingAccess,
   ): Promise<ScheduleResponse>;
 }
 

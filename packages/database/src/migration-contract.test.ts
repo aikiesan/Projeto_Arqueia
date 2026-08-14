@@ -15,6 +15,9 @@ const equipmentMigrationPath = fileURLToPath(
 const schedulingMigrationPath = fileURLToPath(
   new URL('../migrations/004_scheduling.cjs', import.meta.url),
 );
+const schedulingScopeMigrationPath = fileURLToPath(
+  new URL('../migrations/007_scheduling_scope_constraints.cjs', import.meta.url),
+);
 const inventoryMigrationPath = fileURLToPath(
   new URL('../migrations/005_inventory.cjs', import.meta.url),
 );
@@ -133,6 +136,18 @@ describe('scheduling migration invariants', () => {
 
     expect(migration).toContain('project_id');
     expect(migration).toContain("references: 'projects'");
+  });
+
+  it('enforces laboratory consistency across occupations, reservations and projects', () => {
+    const sql = renderMigrationSql(schedulingScopeMigrationPath);
+
+    expect(sql).toContain('equipment_occupations_equipment_scope_fk');
+    expect(sql).toContain('reservations_occupation_scope_fk');
+    expect(sql).toContain('reservations_project_scope_fk');
+    expect(sql).toContain('technical_blocks_occupation_scope_fk');
+    expect(sql).toContain('equipment(laboratory_id, id)');
+    expect(sql).toContain('projects(laboratory_id, id)');
+    expect(sql).toContain('equipment_occupations(laboratory_id, equipment_id, id)');
   });
 });
 

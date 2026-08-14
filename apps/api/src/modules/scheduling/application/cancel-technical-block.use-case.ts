@@ -20,7 +20,7 @@ export class CancelTechnicalBlockUseCase {
     context: Omit<SchedulingMutationContext, 'actorId'>,
   ): Promise<TechnicalBlock> {
     this.permissions.assertCan(principal, 'scheduling.block.manage', laboratoryId);
-    return this.repository.cancelTechnicalBlock(technicalBlockId, reason, {
+    return this.repository.cancelTechnicalBlock(laboratoryId, technicalBlockId, reason, {
       ...context,
       actorId: principal.user.id,
     });

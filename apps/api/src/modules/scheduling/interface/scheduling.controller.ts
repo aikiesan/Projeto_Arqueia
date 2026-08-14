@@ -7,8 +7,6 @@ import {
   reservationParamsSchema,
   technicalBlockParamsSchema,
   type AuthenticatedPrincipal,
-  type CancelReservationInput,
-  type CancelTechnicalBlockInput,
   type CreateReservationInput,
   type CreateReservationResult,
   type CreateTechnicalBlockInput,
@@ -42,6 +40,12 @@ import { SchedulingExceptionFilter } from './scheduling-exception.filter.js';
 
 type ReservationParams = z.output<typeof reservationParamsSchema>;
 type TechnicalBlockParams = z.output<typeof technicalBlockParamsSchema>;
+const cancelReservationBodySchema = cancelReservationInputSchema.omit({ reservationId: true });
+const cancelTechnicalBlockBodySchema = cancelTechnicalBlockInputSchema.omit({
+  technicalBlockId: true,
+});
+type CancelReservationBody = z.output<typeof cancelReservationBodySchema>;
+type CancelTechnicalBlockBody = z.output<typeof cancelTechnicalBlockBodySchema>;
 
 function requestContext(requestId?: string): { origin: string; requestId: string | null } {
   return {
@@ -87,14 +91,12 @@ export class SchedulingController {
   public cancelRes(
     @CurrentPrincipal() principal: AuthenticatedPrincipal,
     @Param(new ZodValidationPipe(reservationParamsSchema)) params: ReservationParams,
-    @Body(new ZodValidationPipe(cancelReservationInputSchema.omit({ reservationId: true }).partial()))
-    input: Partial<CancelReservationInput>,
-    @Query('laboratoryId') laboratoryId: string,
+    @Body(new ZodValidationPipe(cancelReservationBodySchema)) input: CancelReservationBody,
     @Headers('x-request-id') requestId?: string,
   ): Promise<Reservation> {
     return this.cancelReservation.execute(
       principal,
-      laboratoryId,
+      input.laboratoryId,
       params.reservationId,
       input.reason,
       requestContext(requestId),
@@ -114,14 +116,12 @@ export class SchedulingController {
   public cancelBlock(
     @CurrentPrincipal() principal: AuthenticatedPrincipal,
     @Param(new ZodValidationPipe(technicalBlockParamsSchema)) params: TechnicalBlockParams,
-    @Body(new ZodValidationPipe(cancelTechnicalBlockInputSchema.omit({ technicalBlockId: true }).partial()))
-    input: Partial<CancelTechnicalBlockInput>,
-    @Query('laboratoryId') laboratoryId: string,
+    @Body(new ZodValidationPipe(cancelTechnicalBlockBodySchema)) input: CancelTechnicalBlockBody,
     @Headers('x-request-id') requestId?: string,
   ): Promise<TechnicalBlock> {
     return this.cancelTechnicalBlock.execute(
       principal,
-      laboratoryId,
+      input.laboratoryId,
       params.technicalBlockId,
       input.reason,
       requestContext(requestId),

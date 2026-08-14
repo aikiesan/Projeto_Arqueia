@@ -7,6 +7,7 @@ export const reservationStatuses = ['CONFIRMED', 'CANCELLED', 'COMPLETED'] as co
 export const reservationStatusSchema = z.enum(reservationStatuses);
 
 export const CANCELLATION_MINIMUM_NOTICE_MINUTES = 30;
+export const RESERVATION_MINIMUM_DURATION_MINUTES = 30;
 
 export const recurrenceFrequencies = [
   'NONE',
@@ -77,6 +78,16 @@ export const createReservationInputSchema = z
   .refine(
     (data) => new Date(data.startsAt).getTime() < new Date(data.endsAt).getTime(),
     'A data/hora de início deve ser anterior à data/hora de término.',
+  )
+  .refine(
+    (data) =>
+      new Date(data.endsAt).getTime() - new Date(data.startsAt).getTime() >=
+      RESERVATION_MINIMUM_DURATION_MINUTES * 60_000,
+    `A reserva deve durar no mínimo ${RESERVATION_MINIMUM_DURATION_MINUTES} minutos.`,
+  )
+  .refine(
+    (data) => data.recurrence.frequency === 'NONE',
+    'Recorrência estará disponível após o endurecimento do fluxo de reserva única.',
   );
 
 export const conflictingSlotSchema = z.object({
@@ -92,6 +103,7 @@ export const createReservationResultSchema = z.object({
 
 export const cancelReservationInputSchema = z
   .object({
+    laboratoryId: uuidSchema,
     reservationId: uuidSchema,
     reason: z.string().trim().min(3).max(500).optional(),
   })

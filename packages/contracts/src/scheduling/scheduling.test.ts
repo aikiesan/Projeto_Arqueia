@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  cancelReservationInputSchema,
   conflictErrorResponseSchema,
   createReservationInputSchema,
   createTechnicalBlockInputSchema,
   listScheduleQuerySchema,
+  scheduleResponseSchema,
 } from './index.js';
 
 describe('Scheduling Contracts (Checkpoint A1)', () => {
@@ -83,7 +85,7 @@ describe('Scheduling Contracts (Checkpoint A1)', () => {
     expect(parsed.onlyMine).toBe(true);
   });
 
-  it('validates recurrence rule in reservation input', () => {
+  it('rejects recurrence until series and laboratory timezone semantics are frozen', () => {
     const recurrentPayload = {
       laboratoryId: labId,
       equipmentId,
@@ -98,19 +100,105 @@ describe('Scheduling Contracts (Checkpoint A1)', () => {
       },
     };
 
-    const parsed = createReservationInputSchema.parse(recurrentPayload);
-    expect(parsed.recurrence?.frequency).toBe('CUSTOM');
-    expect(parsed.recurrence?.weekdays).toEqual([1, 3, 5]);
+    expect(() => createReservationInputSchema.parse(recurrentPayload)).toThrow(
+      'Recorrência estará disponível após o endurecimento do fluxo de reserva única.',
+    );
+  });
+
+  it('rejects reservations shorter than thirty minutes', () => {
+    expect(() =>
+      createReservationInputSchema.parse({
+        laboratoryId: labId,
+        equipmentId,
+        projectId,
+        startsAt: '2026-08-20T10:00:00.000Z',
+        endsAt: '2026-08-20T10:29:59.000Z',
+        purpose: 'Intervalo muito curto',
+      }),
+    ).toThrow('A reserva deve durar no mínimo 30 minutos.');
+  });
+
+  it('parses false query flags without coercing them to true', () => {
+    const parsed = listScheduleQuerySchema.parse({
+      laboratoryId: labId,
+      startsAt: '2026-08-01T00:00:00.000Z',
+      endsAt: '2026-08-02T00:00:00.000Z',
+      onlyMine: 'false',
+      includeCancelled: 'false',
+    });
+
+    expect(parsed.onlyMine).toBe(false);
+    expect(parsed.includeCancelled).toBe(false);
+  });
+
+  it('rejects schedule queries longer than forty-two days', () => {
+    expect(() =>
+      listScheduleQuerySchema.parse({
+        laboratoryId: labId,
+        startsAt: '2026-08-01T00:00:00.000Z',
+        endsAt: '2026-09-13T00:00:00.001Z',
+      }),
+    ).toThrow('A consulta de agenda não pode exceder 42 dias.');
+  });
+
+  it('requires laboratory scope in cancellation inputs', () => {
+    expect(() =>
+      cancelReservationInputSchema.parse({
+        reservationId: '44444444-4444-4444-a444-444444444444',
+        reason: 'Mudança de planejamento',
+      }),
+    ).toThrow();
+
+    expect(
+      cancelReservationInputSchema.parse({
+        laboratoryId: labId,
+        reservationId: '44444444-4444-4444-a444-444444444444',
+        reason: 'Mudança de planejamento',
+      }).laboratoryId,
+    ).toBe(labId);
+  });
+
+  it('requires timezone, server capabilities and per-item cancellation capability', () => {
+    const parsed = scheduleResponseSchema.parse({
+      laboratoryId: labId,
+      timezone: 'America/Sao_Paulo',
+      startsAt: '2026-08-20T03:00:00.000Z',
+      endsAt: '2026-08-21T03:00:00.000Z',
+      capabilities: { canReserve: true, canManageBlocks: false },
+      items: [
+        {
+          id: '44444444-4444-4444-a444-444444444444',
+          type: 'RESERVATION',
+          equipmentId,
+          equipmentName: 'Cromatógrafo HPLC',
+          startsAt: '2026-08-20T10:00:00.000Z',
+          endsAt: '2026-08-20T12:00:00.000Z',
+          title: 'Minha reserva',
+          status: 'CONFIRMED',
+          isMine: true,
+          canCancel: true,
+          reservationDetails: {
+            reservationId: '44444444-4444-4444-a444-444444444444',
+            userId: '55555555-5555-4555-a555-555555555555',
+            projectId,
+            purpose: 'Análise instrumental',
+            status: 'CONFIRMED',
+          },
+        },
+      ],
+    });
+
+    expect(parsed.timezone).toBe('America/Sao_Paulo');
+    expect(parsed.items[0]?.canCancel).toBe(true);
   });
 
   it('formats stable conflict error response', () => {
     const conflictPayload = {
       code: 'RESERVATION_SLOT_CONFLICT' as const,
       message: 'O equipamento já está ocupado no horário selecionado.',
-      conflictingSlot: {
+      requestedSlot: {
         startsAt: '2026-08-20T10:00:00.000Z',
         endsAt: '2026-08-20T12:00:00.000Z',
-        type: 'RESERVATION' as const,
       },
     };
 
