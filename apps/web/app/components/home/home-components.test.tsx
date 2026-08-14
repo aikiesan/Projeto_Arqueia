@@ -5,7 +5,7 @@ import type {
   DashboardReservation,
   DashboardSummary,
 } from '@arqueia/contracts';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -20,7 +20,7 @@ import {
 describe('Home Presentational Components', () => {
   const timezone = 'America/Sao_Paulo';
 
-  it('renders a real reservation correctly with time formatted in America/Sao_Paulo', () => {
+  it('renders a real reservation correctly with time formatted in America/Sao_Paulo and without fixed header links', () => {
     const reservations: readonly DashboardReservation[] = [
       {
         id: '11111111-1111-4111-a111-111111111111',
@@ -45,18 +45,21 @@ describe('Home Presentational Components', () => {
       '/agenda?reservationId=11111111-1111-4111-a111-111111111111',
     );
     expect(screen.getByText('11:30')).toBeInTheDocument(); // 14:30 UTC = 11:30 em Sao Paulo (UTC-3)
+    // Garante que não há link fixo presumido /agenda no cabeçalho da seção
+    expect(screen.queryByRole('link', { name: 'Abrir agenda' })).not.toBeInTheDocument();
   });
 
-  it('renders empty state when agenda is available but has no reservations', () => {
+  it('renders empty state when agenda is available but has no reservations without presumed navigation', () => {
     render(<TodayReservationsCard available={true} reservations={[]} timezone={timezone} />);
 
     expect(screen.getByRole('heading', { name: 'Nenhuma reserva para hoje' })).toBeInTheDocument();
     expect(
       screen.getByText('O laboratório não possui compromissos registrados para o dia.'),
     ).toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
-  it('renders unavailable state when agenda is not available', () => {
+  it('renders unavailable state when agenda is not available without presumed navigation', () => {
     render(<TodayReservationsCard available={false} reservations={[]} timezone={timezone} />);
 
     expect(
@@ -65,6 +68,7 @@ describe('Home Presentational Components', () => {
     expect(
       screen.getByText('Não foi possível carregar os compromissos da agenda neste momento.'),
     ).toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
   it('renders LOW_STOCK inventory alert with contract href', () => {
@@ -130,6 +134,23 @@ describe('Home Presentational Components', () => {
     expect(screen.getByText('Lote expirado em 01/08/2026.')).toBeInTheDocument();
   });
 
+  it('does not render invented links in InventoryAlertsCard during loading, unavailable, or empty states', () => {
+    // 1. Loading state
+    const { rerender } = render(<InventoryAlertsCard alerts={[]} available={true} loading={true} />);
+    expect(screen.getByText('Carregando estoque...')).toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+
+    // 2. Unavailable state
+    rerender(<InventoryAlertsCard alerts={[]} available={false} loading={false} />);
+    expect(screen.getByText('Atualização indisponível')).toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+
+    // 3. Empty state
+    rerender(<InventoryAlertsCard alerts={[]} available={true} loading={false} />);
+    expect(screen.getByText('Estoque sem alertas')).toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
   it('renders equipment summary with available and maintenance equipment', () => {
     const summary: DashboardSummary['equipmentSummary'] = {
       total: 10,
@@ -148,10 +169,10 @@ describe('Home Presentational Components', () => {
     expect(screen.getByText('3')).toBeInTheDocument(); // 2 manutenção + 1 avaliação + 0 indisponível
   });
 
-  it('renders pending actions ordered as received by props', () => {
+  it('preserves the server-provided order of pending actions strictly without client sorting', () => {
     const actions: readonly DashboardPendingAction[] = [
       {
-        id: 'act-1',
+        id: 'act-first',
         kind: 'EQUIPMENT_ATTENTION',
         priority: 'CRITICAL',
         title: 'Calibração Urgente',
@@ -159,30 +180,46 @@ describe('Home Presentational Components', () => {
         href: '/equipamentos/auto-01',
       },
       {
-        id: 'act-2',
+        id: 'act-second',
         kind: 'INVENTORY_ATTENTION',
         priority: 'MEDIUM',
         title: 'Revisão de Validade',
         detail: 'Conferir reagentes do armário 3.',
         href: '/estoque/armario-3',
       },
+      {
+        id: 'act-third',
+        kind: 'RESERVATION_ATTENTION',
+        priority: 'HIGH',
+        title: 'Aprovação de Horário Especial',
+        detail: 'Reserva fora do horário padrão requer validação.',
+        href: '/agenda/reserva-99',
+      },
     ];
 
-    render(<PendingActionsCard actions={actions} available={true} />);
+    const { container } = render(<PendingActionsCard actions={actions} available={true} />);
 
-    expect(screen.getByText('CRITICAL')).toBeInTheDocument();
-    expect(screen.getByText('Calibração Urgente')).toBeInTheDocument();
-    expect(screen.getByText('MEDIUM')).toBeInTheDocument();
-    expect(screen.getByText('Revisão de Validade')).toBeInTheDocument();
+    const renderedItems = container.querySelectorAll('.schedule-item');
+    expect(renderedItems).toHaveLength(3);
+
+    // Valida a ordem exata dos elementos no DOM preservando a ordem do array do servidor
+    expect(within(renderedItems[0] as HTMLElement).getByText('Calibração Urgente')).toBeInTheDocument();
+    expect(within(renderedItems[0] as HTMLElement).getByText('CRITICAL')).toBeInTheDocument();
+
+    expect(within(renderedItems[1] as HTMLElement).getByText('Revisão de Validade')).toBeInTheDocument();
+    expect(within(renderedItems[1] as HTMLElement).getByText('MEDIUM')).toBeInTheDocument();
+
+    expect(within(renderedItems[2] as HTMLElement).getByText('Aprovação de Horário Especial')).toBeInTheDocument();
+    expect(within(renderedItems[2] as HTMLElement).getByText('HIGH')).toBeInTheDocument();
   });
 
-  it('renders quick actions using contract hrefs', () => {
+  it('renders quick actions using contract hrefs and produces no links when actions is empty', () => {
     const actions: readonly DashboardQuickAction[] = [
       { id: 'qa-1', label: 'Nova Reserva', href: '/agenda/nova' },
       { id: 'qa-2', label: 'Dar Baixa em Estoque', href: '/estoque/retirada' },
     ];
 
-    render(<QuickActions actions={actions} />);
+    const { rerender } = render(<QuickActions actions={actions} />);
 
     expect(screen.getByRole('link', { name: 'Ação Nova Reserva' })).toHaveAttribute(
       'href',
@@ -192,41 +229,77 @@ describe('Home Presentational Components', () => {
       'href',
       '/estoque/retirada',
     );
+
+    // Quando actions está vazio, nenhum link inventado deve ser renderizado
+    rerender(<QuickActions actions={[]} />);
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
-  it('renders DashboardSectionState loading and empty states', () => {
-    const { rerender } = render(
-      <DashboardSectionState loading={true} title="Seção de Teste" />,
-    );
-    expect(screen.getByText('Carregando...')).toBeInTheDocument();
-
-    rerender(
+  it('renders DashboardSectionState with aria-busy and suppresses actionHref during loading and unavailable states', () => {
+    // 1. Loading: deve ter aria-busy="true" e suprimir actionHref
+    const { container, rerender } = render(
       <DashboardSectionState
-        empty={true}
-        emptyMessage="Nenhum dado cadastrado."
-        emptyTitle="Vazio"
+        actionHref="/agenda"
+        actionLabel="Abrir agenda"
+        loading={true}
         title="Seção de Teste"
       />,
     );
-    expect(screen.getByText('Vazio')).toBeInTheDocument();
-    expect(screen.getByText('Nenhum dado cadastrado.')).toBeInTheDocument();
+    expect(container.querySelector('section')).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByText('Carregando...')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Abrir agenda' })).not.toBeInTheDocument();
+
+    // 2. Unavailable: deve suprimir actionHref
+    rerender(
+      <DashboardSectionState
+        actionHref="/agenda"
+        actionLabel="Abrir agenda"
+        available={false}
+        loading={false}
+        title="Seção de Teste"
+      />,
+    );
+    expect(container.querySelector('section')).not.toHaveAttribute('aria-busy');
+    expect(screen.getByText('Fonte temporariamente indisponível')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Abrir agenda' })).not.toBeInTheDocument();
+
+    // 3. Normal / Disponível: deve renderizar actionHref
+    rerender(
+      <DashboardSectionState
+        actionHref="/agenda"
+        actionLabel="Abrir agenda"
+        available={true}
+        loading={false}
+        title="Seção de Teste"
+      >
+        <p>Conteúdo da seção</p>
+      </DashboardSectionState>,
+    );
+    expect(screen.getByRole('link', { name: 'Abrir agenda' })).toHaveAttribute('href', '/agenda');
+    expect(screen.getByText('Conteúdo da seção')).toBeInTheDocument();
   });
 
-  it('renders responsive viewports 390px and 1440px without breakage', () => {
-    // 390px Mobile Viewport
+  it('viewport smoke test: renders presence and structure across 390px and 1440px viewports', () => {
+    // 390px Mobile Viewport Smoke Test
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 390 });
     window.dispatchEvent(new Event('resize'));
     const { container: mobileContainer } = render(
       <TodayReservationsCard available={true} reservations={[]} timezone={timezone} />,
     );
-    expect(mobileContainer.querySelector('.dashboard-section')).toBeInTheDocument();
+    const mobileSection = mobileContainer.querySelector('.dashboard-section');
+    expect(mobileSection).toBeInTheDocument();
+    expect(within(mobileSection as HTMLElement).getByRole('heading', { name: 'Reservas de hoje' })).toBeInTheDocument();
+    expect(within(mobileSection as HTMLElement).getByRole('heading', { name: 'Nenhuma reserva para hoje' })).toBeInTheDocument();
 
-    // 1440px Desktop Viewport
+    // 1440px Desktop Viewport Smoke Test
     Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1440 });
     window.dispatchEvent(new Event('resize'));
     const { container: desktopContainer } = render(
       <TodayReservationsCard available={true} reservations={[]} timezone={timezone} />,
     );
-    expect(desktopContainer.querySelector('.dashboard-section')).toBeInTheDocument();
+    const desktopSection = desktopContainer.querySelector('.dashboard-section');
+    expect(desktopSection).toBeInTheDocument();
+    expect(within(desktopSection as HTMLElement).getByRole('heading', { name: 'Reservas de hoje' })).toBeInTheDocument();
+    expect(within(desktopSection as HTMLElement).getByRole('heading', { name: 'Nenhuma reserva para hoje' })).toBeInTheDocument();
   });
 });

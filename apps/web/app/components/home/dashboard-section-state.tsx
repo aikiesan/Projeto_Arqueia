@@ -30,18 +30,25 @@ export function DashboardSectionState({
   iconName = 'agenda',
   children,
 }: DashboardSectionStateProps) {
+  const showAction = !loading && available && Boolean(actionHref && actionLabel);
+
   return (
-    <section className="dashboard-section">
+    <section
+      aria-busy={loading ? 'true' : undefined}
+      className="dashboard-section"
+    >
       <div className="section-heading">
         <div>
           {kicker ? <span className="section-kicker">{kicker}</span> : null}
           <h2>{title}</h2>
         </div>
-        {actionHref && actionLabel ? <a href={actionHref}>{actionLabel}</a> : null}
+        {showAction && actionHref && actionLabel ? (
+          <a href={actionHref}>{actionLabel}</a>
+        ) : null}
       </div>
 
       {loading ? (
-        <div className="dashboard-empty" role="status" aria-label="Carregando seções">
+        <div aria-live="polite" className="dashboard-empty" role="status">
           <span className="dashboard-empty-icon">
             <ArqueiaIcon name={iconName} size={25} />
           </span>
@@ -51,7 +58,7 @@ export function DashboardSectionState({
           </div>
         </div>
       ) : !available ? (
-        <div className="dashboard-empty" role="status">
+        <div aria-live="polite" className="dashboard-empty" role="status">
           <span className="dashboard-empty-icon">
             <ArqueiaIcon name={iconName} size={25} />
           </span>

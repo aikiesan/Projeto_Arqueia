@@ -12,7 +12,8 @@ export function InventoryAlertsCard({
   available,
   loading = false,
 }: InventoryAlertsCardProps) {
-  const hasAlerts = available && alerts.length > 0;
+  const hasAlerts = !loading && available && alerts.length > 0;
+  const firstHref = hasAlerts ? alerts[0]?.href : undefined;
   const cardClass = hasAlerts ? 'attention-card attention-card--warning' : 'attention-card';
 
   return (
@@ -39,7 +40,7 @@ export function InventoryAlertsCard({
               : alerts[0]?.detail ?? 'Saldos e validades calculados a partir do ledger.'}
         </p>
       </div>
-      <a href={alerts[0]?.href ?? '/estoque'}>Abrir</a>
+      {firstHref ? <a href={firstHref}>Abrir</a> : null}
     </article>
   );
 }

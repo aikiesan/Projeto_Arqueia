@@ -23,8 +23,6 @@ export function TodayReservationsCard({
 
   return (
     <DashboardSectionState
-      actionHref="/agenda"
-      actionLabel="Abrir agenda"
       available={available}
       empty={reservations.length === 0}
       emptyMessage="O laboratório não possui compromissos registrados para o dia."
