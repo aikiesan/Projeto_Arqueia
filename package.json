@@ -1,0 +1,35 @@
+{
+  "name": "arqueia",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Plataforma integrada de gestão, rastreabilidade e compartilhamento de infraestrutura laboratorial.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20 <21"
+  },
+  "scripts": {
+    "build": "npm run build:packages && npm run build:apps",
+    "build:packages": "npm run build --workspace @arqueia/config && npm run build --workspace @arqueia/contracts && npm run build --workspace @arqueia/database && npm run build --workspace @arqueia/ui",
+    "build:apps": "npm run build --workspace @arqueia/api && npm run build --workspace @arqueia/web && npm run build --workspace @arqueia/worker",
+    "dev": "echo \"Use os scripts dev de cada app (apps/web, apps/api, apps/worker)\"",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run build:packages && npm run test --workspaces --if-present",
+    "typecheck": "npm run build:packages && npm run typecheck --workspaces --if-present",
+    "dev:up": "docker compose --file docker-compose.dev.yml up --build --detach --renew-anon-volumes",
+    "dev:down": "docker compose --file docker-compose.dev.yml down",
+    "dev:logs": "docker compose --file docker-compose.dev.yml logs --follow",
+    "dev:config": "docker compose --file docker-compose.dev.yml config",
+    "db:migrate": "npm run migrate --workspace @arqueia/database --if-present",
+    "db:seed": "npm run seed --workspace @arqueia/database --if-present"
+  },
+  "packageManager": "npm@10",
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "globals": "^16.0.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}

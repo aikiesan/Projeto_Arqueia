@@ -1,0 +1,570 @@
+:root {
+  --arqueia-ink-950: #10221d;
+  --arqueia-ink-800: #283d36;
+  --arqueia-ink-600: #5f716a;
+  --arqueia-ink-400: #97a49f;
+  --arqueia-canvas: #f4f6f3;
+  --arqueia-surface: #ffffff;
+  --arqueia-surface-muted: #edf1ed;
+  --arqueia-line: #dfe6e1;
+  --arqueia-brand-900: #123f34;
+  --arqueia-brand-700: #176b55;
+  --arqueia-brand-500: #2da77d;
+  --arqueia-brand-100: #dff4ea;
+  --arqueia-accent: #d6f265;
+  --arqueia-warning: #c97a18;
+  --arqueia-danger: #c54b4b;
+  --arqueia-shadow-sm: 0 1px 2px rgb(16 34 29 / 6%), 0 7px 18px rgb(16 34 29 / 4%);
+  --arqueia-shadow-lg: 0 16px 34px rgb(16 34 29 / 18%);
+  --arqueia-radius-sm: 8px;
+  --arqueia-radius-md: 14px;
+  --arqueia-radius-lg: 20px;
+}
+
+.arqueia-workspace,
+.arqueia-workspace * {
+  box-sizing: border-box;
+}
+
+.arqueia-workspace {
+  background: var(--arqueia-canvas);
+  color: var(--arqueia-ink-950);
+  min-height: 100dvh;
+}
+
+.arqueia-icon {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.arqueia-skip-link {
+  background: var(--arqueia-ink-950);
+  border-radius: 0 0 var(--arqueia-radius-sm) 0;
+  color: white;
+  left: 0;
+  padding: 0.7rem 1rem;
+  position: fixed;
+  top: 0;
+  transform: translateY(-110%);
+  transition: transform 150ms ease;
+  z-index: 100;
+}
+
+.arqueia-skip-link:focus {
+  transform: translateY(0);
+}
+
+.arqueia-lab-rail,
+.arqueia-module-sidebar,
+.arqueia-context-panel {
+  display: none;
+}
+
+.arqueia-main-column {
+  min-width: 0;
+}
+
+.arqueia-topbar {
+  align-items: center;
+  background: rgb(255 255 255 / 92%);
+  border-bottom: 1px solid var(--arqueia-line);
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  min-height: 64px;
+  padding: 0.6rem 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.arqueia-mobile-brand {
+  align-items: center;
+  display: flex;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.arqueia-mobile-brand-mark {
+  align-items: center;
+  background: var(--arqueia-brand-900);
+  border-radius: 10px;
+  color: var(--arqueia-accent);
+  display: flex;
+  flex: 0 0 auto;
+  height: 38px;
+  justify-content: center;
+  overflow: hidden;
+  width: 38px;
+}
+
+.arqueia-lab-logo,
+.arqueia-brand-logo {
+  display: block;
+  height: 100%;
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.arqueia-lab-logo {
+  padding: 0.28rem;
+}
+
+.arqueia-brand-logo {
+  padding: 0.4rem;
+}
+
+.arqueia-mobile-brand strong,
+.arqueia-mobile-brand small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arqueia-mobile-brand strong {
+  font-size: 0.88rem;
+}
+
+.arqueia-mobile-brand small {
+  color: var(--arqueia-muted);
+  font-size: 0.7rem;
+}
+
+
+.arqueia-alert-button,
+.arqueia-profile,
+.arqueia-rail-button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+}
+
+.arqueia-alert-button {
+  height: 40px;
+  position: relative;
+  width: 32px;
+}
+
+.arqueia-notification-dot {
+  background: var(--arqueia-danger);
+  border: 2px solid white;
+  border-radius: 50%;
+  height: 8px;
+  position: absolute;
+  right: 3px;
+  top: 7px;
+  width: 8px;
+}
+
+.arqueia-profile {
+  background: var(--arqueia-brand-100);
+  border-radius: 50%;
+  color: var(--arqueia-brand-900);
+  font-size: 0.72rem;
+  font-weight: 800;
+  height: 38px;
+  letter-spacing: 0.03em;
+  width: 38px;
+}
+
+.arqueia-profile-name {
+  display: none;
+}
+
+.arqueia-user-menu { position: relative; }
+.arqueia-user-menu summary { list-style: none; }
+.arqueia-user-menu summary::-webkit-details-marker { display: none; }
+.arqueia-profile-chevron { display: none; font-size: 0.75rem; }
+.arqueia-user-dropdown {
+  background: var(--arqueia-surface);
+  border: 1px solid var(--arqueia-line);
+  border-radius: 12px;
+  box-shadow: var(--arqueia-shadow-md);
+  display: grid;
+  min-width: 180px;
+  padding: 0.4rem;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.55rem);
+  z-index: 50;
+}
+.arqueia-user-dropdown > a,
+.arqueia-user-menu-action {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--arqueia-ink-800);
+  cursor: pointer;
+  display: flex;
+  font-size: 0.74rem;
+  font-weight: 700;
+  gap: 0.55rem;
+  min-height: 38px;
+  padding: 0 0.7rem;
+  text-align: left;
+  text-decoration: none;
+  width: 100%;
+}
+.arqueia-user-dropdown > a:hover,
+.arqueia-user-menu-action:hover { background: var(--arqueia-surface-muted); }
+.arqueia-user-menu-action { border-top: 1px solid var(--arqueia-line); color: var(--arqueia-danger); margin-top: 0.2rem; padding-top: 0.2rem; }
+.arqueia-user-menu-action:disabled { cursor: wait; opacity: 0.6; }
+
+.arqueia-content-grid {
+  min-width: 0;
+}
+
+.arqueia-main {
+  margin: 0 auto;
+  max-width: 1000px;
+  min-width: 0;
+  padding: 1.15rem 1rem 7rem;
+}
+
+.arqueia-page-heading {
+  margin-bottom: 1.3rem;
+}
+
+.arqueia-overline {
+  color: var(--arqueia-brand-700);
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+}
+
+.arqueia-page-heading h1 {
+  font-size: clamp(1.5rem, 5vw, 2.2rem);
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+  margin: 0;
+}
+
+.arqueia-mobile-nav {
+  align-items: end;
+  background: rgb(255 255 255 / 96%);
+  border-top: 1px solid var(--arqueia-line);
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  left: 0;
+  min-height: calc(70px + env(safe-area-inset-bottom));
+  padding: 0.35rem 0.35rem calc(0.35rem + env(safe-area-inset-bottom));
+  position: fixed;
+  right: 0;
+  z-index: 30;
+}
+
+.arqueia-mobile-link {
+  align-items: center;
+  border-radius: 10px;
+  color: var(--arqueia-ink-600);
+  display: flex;
+  flex-direction: column;
+  font-size: 0.66rem;
+  font-weight: 650;
+  gap: 0.25rem;
+  justify-content: center;
+  min-width: 0;
+  padding: 0.45rem 0.15rem;
+  text-decoration: none;
+}
+
+.arqueia-mobile-link[aria-current='page'] {
+  color: var(--arqueia-brand-700);
+}
+
+.arqueia-mobile-link .arqueia-nav-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.arqueia-qr-action {
+  align-items: center;
+  align-self: start;
+  background: var(--arqueia-brand-900);
+  border: 5px solid var(--arqueia-canvas);
+  border-radius: 50%;
+  box-shadow: var(--arqueia-shadow-lg);
+  color: var(--arqueia-accent);
+  display: flex;
+  flex-direction: column;
+  font-size: 0.58rem;
+  font-weight: 800;
+  gap: 0.1rem;
+  height: 64px;
+  justify-content: center;
+  margin: -1.5rem auto 0;
+  text-decoration: none;
+  width: 64px;
+}
+
+.arqueia-workspace a:focus-visible,
+.arqueia-workspace button:focus-visible {
+  outline: 3px solid var(--arqueia-accent);
+  outline-offset: 2px;
+}
+
+@media (min-width: 960px) {
+  .arqueia-workspace {
+    display: grid;
+    grid-template-columns: 72px 248px minmax(0, 1fr);
+    min-height: 100vh;
+  }
+
+  .arqueia-lab-rail {
+    align-items: center;
+    background: var(--arqueia-brand-900);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 0.9rem 0.65rem;
+    position: sticky;
+    top: 0;
+  }
+
+  .arqueia-brand-mark {
+    align-items: center;
+    background: var(--arqueia-accent);
+    border-radius: var(--arqueia-radius-md);
+    color: var(--arqueia-brand-900);
+    display: flex;
+    height: 46px;
+    justify-content: center;
+    text-decoration: none;
+    width: 46px;
+  }
+
+  .arqueia-lab-list {
+    align-items: center;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: 1.3rem 0;
+    width: 100%;
+  }
+
+  .arqueia-lab-link {
+    align-items: center;
+    background: rgb(255 255 255 / 9%);
+    border-radius: 13px;
+    color: rgb(255 255 255 / 74%);
+    display: flex;
+    font-size: 0.68rem;
+    font-weight: 800;
+    height: 42px;
+    justify-content: center;
+    letter-spacing: 0.03em;
+    text-decoration: none;
+    transition: border-radius 120ms ease, background 120ms ease, color 120ms ease;
+    width: 42px;
+  }
+
+  .arqueia-lab-link:hover,
+  .arqueia-lab-link[aria-current='page'] {
+    background: var(--arqueia-brand-500);
+    border-radius: 10px;
+    color: white;
+  }
+
+  .arqueia-lab-link .arqueia-lab-logo {
+    padding: 0.18rem;
+  }
+
+  .arqueia-rail-button {
+    color: rgb(255 255 255 / 70%);
+    height: 42px;
+    width: 42px;
+  }
+
+  .arqueia-module-sidebar {
+    background: #f8faf8;
+    border-right: 1px solid var(--arqueia-line);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    min-width: 0;
+    position: sticky;
+    top: 0;
+  }
+
+  .arqueia-sidebar-heading {
+    border-bottom: 1px solid var(--arqueia-line);
+    padding: 1.25rem 1.15rem 1.1rem;
+  }
+
+  .arqueia-sidebar-heading strong {
+    display: block;
+    font-size: 1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .arqueia-module-list {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.25rem;
+    overflow-y: auto;
+    padding: 0.85rem 0.7rem;
+  }
+
+  .arqueia-module-link {
+    align-items: center;
+    border-radius: 9px;
+    color: var(--arqueia-ink-600);
+    display: flex;
+    gap: 0.7rem;
+    min-height: 44px;
+    padding: 0.55rem 0.65rem;
+    text-decoration: none;
+  }
+
+  .arqueia-module-link:hover {
+    background: var(--arqueia-surface-muted);
+    color: var(--arqueia-ink-950);
+  }
+
+  .arqueia-module-link[aria-current='page'] {
+    background: var(--arqueia-brand-100);
+    color: var(--arqueia-brand-900);
+  }
+
+  .arqueia-nav-copy {
+    min-width: 0;
+  }
+
+  .arqueia-nav-label,
+  .arqueia-nav-description {
+    display: block;
+  }
+
+  .arqueia-nav-label {
+    font-size: 0.84rem;
+    font-weight: 700;
+  }
+
+  .arqueia-nav-description {
+    color: var(--arqueia-ink-600);
+    font-size: 0.66rem;
+    margin-top: 0.08rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .arqueia-nav-badge {
+    background: var(--arqueia-brand-900);
+    border-radius: 999px;
+    color: white;
+    font-size: 0.62rem;
+    font-weight: 800;
+    margin-left: auto;
+    min-width: 1.25rem;
+    padding: 0.18rem 0.38rem;
+    text-align: center;
+  }
+
+  .arqueia-sidebar-footer {
+    align-items: center;
+    border-top: 1px solid var(--arqueia-line);
+    color: var(--arqueia-ink-600);
+    display: flex;
+    font-size: 0.68rem;
+    gap: 0.45rem;
+    padding: 0.9rem 1rem;
+  }
+
+  .arqueia-online-dot {
+    background: var(--arqueia-brand-500);
+    border-radius: 50%;
+    height: 8px;
+    width: 8px;
+  }
+
+  .arqueia-main-column {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  .arqueia-topbar {
+    justify-content: end;
+    min-height: 65px;
+    padding: 0.65rem 1.25rem;
+  }
+
+
+  .arqueia-profile {
+    border-radius: 10px;
+    gap: 0.5rem;
+    padding: 0 0.65rem;
+    width: auto;
+  }
+
+  .arqueia-profile-chevron { display: inline; }
+
+  .arqueia-profile-name {
+    display: inline;
+    font-size: 0.72rem;
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .arqueia-content-grid {
+    display: grid;
+    flex: 1;
+    grid-template-columns: minmax(0, 1fr) 296px;
+  }
+
+  .arqueia-main {
+    max-width: 1120px;
+    padding: 2rem clamp(1.5rem, 3vw, 3.2rem) 3rem;
+    width: 100%;
+  }
+
+  .arqueia-context-panel {
+    background: var(--arqueia-surface);
+    border-left: 1px solid var(--arqueia-line);
+    display: block;
+    min-width: 0;
+    padding: 1.5rem 1.2rem;
+  }
+
+  .arqueia-mobile-nav {
+    display: none;
+  }
+}
+
+@media (min-width: 1280px) {
+  .arqueia-content-grid {
+    grid-template-columns: minmax(0, 1fr) 324px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arqueia-workspace *,
+  .arqueia-workspace *::before,
+  .arqueia-workspace *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

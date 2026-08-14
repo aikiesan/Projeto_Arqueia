@@ -1,0 +1,44 @@
+{
+  "name": "@arqueia/api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "API modular (NestJS) — camadas SOLID por bounded context.",
+  "type": "module",
+  "scripts": {
+    "predev": "npm run build --workspace @arqueia/config && npm run build --workspace @arqueia/contracts && npm run build --workspace @arqueia/database",
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "lint": "eslint src --max-warnings=0",
+    "start": "node dist/main.js",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@arqueia/contracts": "*",
+    "@arqueia/config": "*",
+    "@arqueia/database": "*",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "@node-rs/argon2": "^2.0.0",
+    "pg": "^8.16.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/testing": "^11.0.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.15.0",
+    "@types/supertest": "^6.0.0",
+    "@vitest/coverage-v8": "^3.2.0",
+    "eslint": "^9.0.0",
+    "supertest": "^7.0.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}

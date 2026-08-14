@@ -1,0 +1,39 @@
+{
+  "name": "@arqueia/database",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Schema, migrações, seeds e implementações de repositório (adaptadores Postgres das portas do domínio).",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src --max-warnings=0",
+    "migrate": "node-pg-migrate up --migrations-dir migrations --migrations-table arqueia_migrations",
+    "migrate:down": "node-pg-migrate down --migrations-dir migrations --migrations-table arqueia_migrations --count 1",
+    "seed": "tsx src/seed.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@arqueia/contracts": "*",
+    "@node-rs/argon2": "^2.0.0",
+    "pg": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/pg": "^8.15.0",
+    "eslint": "^9.0.0",
+    "node-pg-migrate": "^9.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}
