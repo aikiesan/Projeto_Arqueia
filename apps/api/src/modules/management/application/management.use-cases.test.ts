@@ -2,6 +2,7 @@ import type { AuthenticatedPrincipal } from '@arqueia/contracts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GetAuditLogDetailUseCase } from './get-audit-log-detail.use-case.js';
+import { GetDashboardSummaryUseCase } from './get-dashboard-summary.use-case.js';
 import { GetManagementAnalyticsUseCase } from './get-management-analytics.use-case.js';
 import { GetProjectUsageUseCase } from './get-project-usage.use-case.js';
 import { ListAuditLogsUseCase } from './list-audit-logs.use-case.js';
@@ -75,12 +76,46 @@ describe('Management Use Cases Unit Tests (Canonical Plan)', () => {
 
   beforeEach(() => {
     mockRepository = {
+      getDashboardSummary: vi.fn(),
       getAnalytics: vi.fn(),
       getProjectUsage: vi.fn(),
       listAuditLogs: vi.fn(),
       getAuditLogDetail: vi.fn(),
     };
     permissions = new PermissionEvaluator();
+  });
+
+  it('loads the Home with section access derived from permissions in the selected laboratory', async () => {
+    const useCase = new GetDashboardSummaryUseCase(mockRepository, permissions);
+    const summary = {
+      laboratoryId: labId,
+      timezone: 'America/Sao_Paulo',
+      equipmentSummary: { total: 0, byStatus: { AVAILABLE: 0, UNDER_EVALUATION: 0, UNAVAILABLE: 0, MAINTENANCE: 0 } },
+      todayReservations: [],
+      upcomingActions: [],
+      inventoryAlerts: [],
+      quickActions: [],
+      availability: { equipment: true, scheduling: true, inventory: true, maintenance: false, pendingActions: false },
+      generatedAt: '2026-08-14T00:00:00.000Z',
+    } as const;
+    vi.mocked(mockRepository.getDashboardSummary).mockResolvedValue(summary);
+
+    const result = await useCase.execute(usuarioPrincipal, labId);
+
+    expect(mockRepository.getDashboardSummary).toHaveBeenCalledWith(labId, {
+      equipment: true,
+      scheduling: true,
+      inventory: true,
+      maintenance: false,
+    });
+    expect(result.quickActions.map(({ id }) => id)).toEqual(['scheduling', 'inventory', 'equipment']);
+  });
+
+  it('does not query the Home for a laboratory outside the membership scope', async () => {
+    const useCase = new GetDashboardSummaryUseCase(mockRepository, permissions);
+
+    await expect(useCase.execute(usuarioPrincipal, auditId)).rejects.toThrow();
+    expect(mockRepository.getDashboardSummary).not.toHaveBeenCalled();
   });
 
   it('allows TECNICO to get management analytics for their laboratory', async () => {

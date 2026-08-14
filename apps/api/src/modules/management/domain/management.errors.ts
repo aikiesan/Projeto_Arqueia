@@ -11,3 +11,10 @@ export class InvalidPeriodError extends Error {
     this.name = 'InvalidPeriodError';
   }
 }
+
+export class ManagementLaboratoryNotFoundError extends Error {
+  public constructor(public readonly laboratoryId: string) {
+    super(`Laboratório ${laboratoryId} não foi encontrado.`);
+    this.name = 'ManagementLaboratoryNotFoundError';
+  }
+}

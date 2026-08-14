@@ -6,6 +6,7 @@ import {
   type AuditLogDetail,
   type AuditLogPage,
   type AuthenticatedPrincipal,
+  type DashboardSummary,
   type ListAuditLogsQuery,
   type ManagementAnalytics,
   type ManagementAnalyticsQuery,
@@ -26,6 +27,7 @@ import { ManagementExceptionFilter } from './management-exception.filter.js';
 import { CurrentPrincipal } from '../../identity/interface/current-principal.decorator.js';
 import { JwtAuthGuard } from '../../identity/interface/jwt-auth.guard.js';
 import { GetAuditLogDetailUseCase } from '../application/get-audit-log-detail.use-case.js';
+import { GetDashboardSummaryUseCase } from '../application/get-dashboard-summary.use-case.js';
 import { GetManagementAnalyticsUseCase } from '../application/get-management-analytics.use-case.js';
 import { GetProjectUsageUseCase } from '../application/get-project-usage.use-case.js';
 import { ListAuditLogsUseCase } from '../application/list-audit-logs.use-case.js';
@@ -35,6 +37,8 @@ import { ListAuditLogsUseCase } from '../application/list-audit-logs.use-case.js
 @UseFilters(ManagementExceptionFilter)
 export class ManagementController {
   public constructor(
+    @Inject(GetDashboardSummaryUseCase)
+    private readonly getDashboardSummaryUseCase: GetDashboardSummaryUseCase,
     @Inject(GetManagementAnalyticsUseCase)
     private readonly getAnalyticsUseCase: GetManagementAnalyticsUseCase,
     @Inject(GetProjectUsageUseCase)
@@ -44,6 +48,14 @@ export class ManagementController {
     @Inject(GetAuditLogDetailUseCase)
     private readonly getAuditLogDetailUseCase: GetAuditLogDetailUseCase,
   ) {}
+
+  @Get('dashboard')
+  public getDashboardSummary(
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Query('laboratoryId') laboratoryId: string,
+  ): Promise<DashboardSummary> {
+    return this.getDashboardSummaryUseCase.execute(principal, uuidSchema.parse(laboratoryId));
+  }
 
   @Get('analytics')
   public getAnalytics(
