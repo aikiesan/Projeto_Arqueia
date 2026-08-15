@@ -13,9 +13,9 @@ import type {
   TechnicalBlockReason,
 } from '@arqueia/contracts';
 
-import { ArqueiaIcon, WorkspaceShell } from '@arqueia/ui';
+import { WorkspaceShell } from '@arqueia/ui';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import {
   ScheduleDayView,
@@ -24,6 +24,10 @@ import {
   ScheduleLegend,
   ScheduleStateFeedback,
   ScheduleWeekView,
+  getCalendarDateInTimezone,
+  getScheduleRangeInTimezone,
+  shiftCalendarDate,
+  zonedDateTimeToIso,
   type ScheduleSlotSelection,
 } from '../components/scheduling';
 import { createWorkspacePresentation } from '../presentation';
@@ -55,36 +59,6 @@ async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-function formatDateIso(date: Date): string {
-  return date.toISOString();
-}
-
-function startOfDay(d: Date): Date {
-  const c = new Date(d);
-  c.setHours(0, 0, 0, 0);
-  return c;
-}
-
-function endOfDay(d: Date): Date {
-  const c = new Date(d);
-  c.setHours(23, 59, 59, 999);
-  return c;
-}
-
-function getRangeForView(date: Date, mode: ViewMode): { startsAt: Date; endsAt: Date } {
-  if (mode === 'DAY') {
-    return { startsAt: startOfDay(date), endsAt: endOfDay(date) };
-  }
-  // WEEK
-  const day = date.getDay();
-  const diffToMonday = date.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(date);
-  monday.setDate(diffToMonday);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  return { startsAt: startOfDay(monday), endsAt: endOfDay(sunday) };
-}
-
 export function AgendaPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -100,7 +74,7 @@ export function AgendaPageClient() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [onlyMine, setOnlyMine] = useState(false);
   const [scheduleItems, setScheduleItems] = useState<readonly ScheduleItem[]>([]);
-  const [timezone, setTimezone] = useState<string>('America/Sao_Paulo');
+  const [scheduleTimezone, setScheduleTimezone] = useState<string | null>(null);
   const [capabilities, setCapabilities] = useState<ScheduleCapabilities>({
     canReserve: false,
     canManageBlocks: false,
@@ -108,8 +82,11 @@ export function AgendaPageClient() {
 
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [operationError, setOperationError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const initializationRequestId = useRef(0);
+  const scheduleRequestId = useRef(0);
 
   // Modais
   const [resModalOpen, setResModalOpen] = useState(false);
@@ -118,62 +95,80 @@ export function AgendaPageClient() {
 
   // Form Defaults for Click-to-Reserve
   const [slotDefaults, setSlotDefaults] = useState<{ date: string; startTime: string; endTime: string }>({
-    date: new Date().toISOString().split('T')[0] ?? '',
+    date: '',
     startTime: '09:00',
     endTime: '11:00',
   });
 
   const loadSchedule = useCallback(
-    async (labId: string, eqId: string, date: Date, mode: ViewMode, mine: boolean) => {
+    async (
+      labId: string,
+      eqId: string,
+      date: Date,
+      mode: ViewMode,
+      mine: boolean,
+      labTimezone: string,
+    ) => {
+      const requestId = ++scheduleRequestId.current;
       setLoading(true);
-      setError(null);
+      setLoadError(null);
       try {
-        const { startsAt, endsAt } = getRangeForView(date, mode);
+        const { startsAt, endsAt } = getScheduleRangeInTimezone(date, mode, labTimezone);
         const query = new URLSearchParams({
           laboratoryId: labId,
-          startsAt: formatDateIso(startsAt),
-          endsAt: formatDateIso(endsAt),
+          startsAt,
+          endsAt,
           onlyMine: mine ? 'true' : 'false',
         });
         if (eqId) {
           query.set('equipmentId', eqId);
         }
         const scheduleRes = await readJson<ScheduleResponse>(`/api/scheduling?${query.toString()}`);
+        if (requestId !== scheduleRequestId.current) return;
         setScheduleItems(scheduleRes.items);
         setCapabilities(scheduleRes.capabilities);
-        if (scheduleRes.timezone) {
-          setTimezone(scheduleRes.timezone);
-        }
+        setScheduleTimezone(scheduleRes.timezone);
       } catch (loadErr) {
+        if (requestId !== scheduleRequestId.current) return;
         if (loadErr instanceof Error && loadErr.message === 'UNAUTHENTICATED') {
           router.replace('/login');
           return;
         }
-        setError(loadErr instanceof Error ? loadErr.message : 'Falha ao carregar a agenda.');
+        setLoadError(loadErr instanceof Error ? loadErr.message : 'Falha ao carregar a agenda.');
       } finally {
-        setLoading(false);
+        if (requestId === scheduleRequestId.current) {
+          setLoading(false);
+        }
       }
     },
     [router],
   );
 
   useEffect(() => {
+    const initializationId = ++initializationRequestId.current;
+    scheduleRequestId.current += 1;
+
     void (async () => {
       try {
         const [session, laboratories] = await Promise.all([
           readJson<{ principal: AuthenticatedPrincipal }>('/api/session'),
           readJson<readonly Laboratory[]>('/api/laboratories'),
         ]);
+        if (initializationId !== initializationRequestId.current) return;
         const preferred = laboratories.find((lab) => lab.id === urlLaboratoryId) ?? laboratories[0];
         if (!preferred) throw new Error('Nenhum laboratório disponível.');
 
         setPageData({ principal: session.principal, laboratories });
         setLaboratoryId(preferred.id);
+        setScheduleTimezone(preferred.timezone);
+        setScheduleItems([]);
+        setCapabilities({ canReserve: false, canManageBlocks: false });
 
         const [eqPage, projList] = await Promise.all([
           readJson<EquipmentPage>(`/api/equipment?${new URLSearchParams({ laboratoryId: preferred.id, limit: '50' })}`),
           readJson<readonly Project[]>('/api/projects'),
         ]);
+        if (initializationId !== initializationRequestId.current) return;
 
         setEquipments(eqPage.items);
         setProjects(
@@ -185,17 +180,25 @@ export function AgendaPageClient() {
         const activeEqId = urlEquipmentId || '';
         setSelectedEquipmentId(activeEqId);
 
-        await loadSchedule(preferred.id, activeEqId, currentDate, viewMode, onlyMine);
+        await loadSchedule(
+          preferred.id,
+          activeEqId,
+          currentDate,
+          viewMode,
+          onlyMine,
+          preferred.timezone,
+        );
       } catch (initErr) {
+        if (initializationId !== initializationRequestId.current) return;
         if (initErr instanceof Error && initErr.message === 'UNAUTHENTICATED') {
           router.replace('/login');
           return;
         }
-        setError(initErr instanceof Error ? initErr.message : 'Falha ao inicializar agenda.');
+        setLoadError(initErr instanceof Error ? initErr.message : 'Falha ao inicializar agenda.');
         setLoading(false);
       }
     })();
-  }, [router]);
+  }, [loadSchedule, router, urlEquipmentId, urlLaboratoryId]);
 
   const activeLaboratory = useMemo(
     () => pageData?.laboratories.find((lab) => lab.id === laboratoryId) ?? null,
@@ -214,31 +217,32 @@ export function AgendaPageClient() {
     [laboratoryId, pageData],
   );
 
+  const timezone = scheduleTimezone ?? activeLaboratory?.timezone ?? 'UTC';
+
   const handleEquipmentChange = (eqId: string) => {
     setSelectedEquipmentId(eqId);
     if (laboratoryId) {
-      void loadSchedule(laboratoryId, eqId, currentDate, viewMode, onlyMine);
+      void loadSchedule(laboratoryId, eqId, currentDate, viewMode, onlyMine, timezone);
     }
   };
 
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode(mode);
     if (laboratoryId) {
-      void loadSchedule(laboratoryId, selectedEquipmentId, currentDate, mode, onlyMine);
+      void loadSchedule(laboratoryId, selectedEquipmentId, currentDate, mode, onlyMine, timezone);
     }
   };
 
   const handleDateNavigate = (delta: number) => {
-    const nextDate = new Date(currentDate);
-    if (viewMode === 'DAY') {
-      nextDate.setDate(nextDate.getDate() + delta);
-    } else {
-      nextDate.setDate(nextDate.getDate() + delta * 7);
-    }
+    const nextDate = shiftCalendarDate(
+      currentDate,
+      viewMode === 'DAY' ? delta : delta * 7,
+      timezone,
+    );
 
     setCurrentDate(nextDate);
     if (laboratoryId) {
-      void loadSchedule(laboratoryId, selectedEquipmentId, nextDate, viewMode, onlyMine);
+      void loadSchedule(laboratoryId, selectedEquipmentId, nextDate, viewMode, onlyMine, timezone);
     }
   };
 
@@ -246,8 +250,44 @@ export function AgendaPageClient() {
     const today = new Date();
     setCurrentDate(today);
     if (laboratoryId) {
-      void loadSchedule(laboratoryId, selectedEquipmentId, today, viewMode, onlyMine);
+      void loadSchedule(laboratoryId, selectedEquipmentId, today, viewMode, onlyMine, timezone);
     }
+  };
+
+  const openReservationModal = (defaults?: typeof slotDefaults) => {
+    setOperationError(null);
+    setSlotDefaults(
+      defaults ?? {
+        date: getCalendarDateInTimezone(new Date(), timezone),
+        startTime: '09:00',
+        endTime: '11:00',
+      },
+    );
+    setResModalOpen(true);
+  };
+
+  const openBlockModal = () => {
+    setOperationError(null);
+    setSlotDefaults((current) => ({
+      ...current,
+      date: getCalendarDateInTimezone(new Date(), timezone),
+    }));
+    setBlockModalOpen(true);
+  };
+
+  const closeReservationModal = () => {
+    setOperationError(null);
+    setResModalOpen(false);
+  };
+
+  const closeBlockModal = () => {
+    setOperationError(null);
+    setBlockModalOpen(false);
+  };
+
+  const openScheduleItem = (item: ScheduleItem) => {
+    setOperationError(null);
+    setSelectedItem(item);
   };
 
   const handleSlotClick = (selection: ScheduleSlotSelection) => {
@@ -256,16 +296,14 @@ export function AgendaPageClient() {
     const startStr = `${String(selection.hour).padStart(2, '0')}:00`;
     const endStr = `${String(selection.hour + 1).padStart(2, '0')}:00`;
 
-    setSlotDefaults({ date: dateStr, startTime: startStr, endTime: endStr });
-    setResModalOpen(true);
+    openReservationModal({ date: dateStr, startTime: startStr, endTime: endStr });
   };
 
-  // TODO: A conversão civil -> UTC no timezone do laboratório para criação/edição será tratada na revisão especializada.
   const handleCreateReservation = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!laboratoryId) return;
     setPending(true);
-    setError(null);
+    setOperationError(null);
     setNotice(null);
 
     const form = new FormData(event.currentTarget);
@@ -273,11 +311,13 @@ export function AgendaPageClient() {
     const startStr = String(form.get('startTime'));
     const endStr = String(form.get('endTime'));
 
-    const startsAt = new Date(`${dateStr}T${startStr}:00`).toISOString();
-    const endsAt = new Date(`${dateStr}T${endStr}:00`).toISOString();
-
     const sampleCountVal = String(form.get('sampleCount') ?? '').trim();
     try {
+      const startsAt = zonedDateTimeToIso(dateStr, startStr, timezone);
+      const endsAt = zonedDateTimeToIso(dateStr, endStr, timezone);
+      if (Date.parse(startsAt) >= Date.parse(endsAt)) {
+        throw new RangeError('O horário final deve ser posterior ao horário inicial.');
+      }
       const result = await readJson<CreateReservationResult>('/api/scheduling/reservations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -294,6 +334,7 @@ export function AgendaPageClient() {
         }),
       });
 
+      setOperationError(null);
       setResModalOpen(false);
 
       if (result.conflictingSlots.length > 0) {
@@ -304,20 +345,26 @@ export function AgendaPageClient() {
         setNotice(`✅ Reserva(s) confirmada(s) com sucesso (${result.createdReservations.length} ocorrência(s))!`);
       }
 
-      await loadSchedule(laboratoryId, selectedEquipmentId, currentDate, viewMode, onlyMine);
+      await loadSchedule(
+        laboratoryId,
+        selectedEquipmentId,
+        currentDate,
+        viewMode,
+        onlyMine,
+        timezone,
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falha ao criar reserva.');
+      setOperationError(err instanceof Error ? err.message : 'Falha ao criar reserva.');
     } finally {
       setPending(false);
     }
   };
 
-  // TODO: A conversão civil -> UTC no timezone do laboratório para criação/edição será tratada na revisão especializada.
   const handleCreateBlock = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!laboratoryId) return;
     setPending(true);
-    setError(null);
+    setOperationError(null);
     setNotice(null);
 
     const form = new FormData(event.currentTarget);
@@ -325,10 +372,12 @@ export function AgendaPageClient() {
     const startStr = String(form.get('startTime'));
     const endStr = String(form.get('endTime'));
 
-    const startsAt = new Date(`${dateStr}T${startStr}:00`).toISOString();
-    const endsAt = new Date(`${dateStr}T${endStr}:00`).toISOString();
-
     try {
+      const startsAt = zonedDateTimeToIso(dateStr, startStr, timezone);
+      const endsAt = zonedDateTimeToIso(dateStr, endStr, timezone);
+      if (Date.parse(startsAt) >= Date.parse(endsAt)) {
+        throw new RangeError('O horário final deve ser posterior ao horário inicial.');
+      }
       await readJson('/api/scheduling/blocks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -342,11 +391,19 @@ export function AgendaPageClient() {
         }),
       });
 
+      setOperationError(null);
       setBlockModalOpen(false);
       setNotice('✅ Bloqueio técnico criado com sucesso!');
-      await loadSchedule(laboratoryId, selectedEquipmentId, currentDate, viewMode, onlyMine);
+      await loadSchedule(
+        laboratoryId,
+        selectedEquipmentId,
+        currentDate,
+        viewMode,
+        onlyMine,
+        timezone,
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falha ao criar bloqueio técnico.');
+      setOperationError(err instanceof Error ? err.message : 'Falha ao criar bloqueio técnico.');
     } finally {
       setPending(false);
     }
@@ -357,7 +414,7 @@ export function AgendaPageClient() {
     if (!confirm('Deseja realmente cancelar este agendamento?')) return;
 
     setPending(true);
-    setError(null);
+    setOperationError(null);
     try {
       if (item.type === 'RESERVATION') {
         await readJson(`/api/scheduling/reservations/${item.id}/cancel`, {
@@ -378,9 +435,16 @@ export function AgendaPageClient() {
 
       setSelectedItem(null);
       setNotice('✅ Agendamento cancelado com sucesso.');
-      await loadSchedule(laboratoryId, selectedEquipmentId, currentDate, viewMode, onlyMine);
+      await loadSchedule(
+        laboratoryId,
+        selectedEquipmentId,
+        currentDate,
+        viewMode,
+        onlyMine,
+        timezone,
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falha ao cancelar item.');
+      setOperationError(err instanceof Error ? err.message : 'Falha ao cancelar item.');
     } finally {
       setPending(false);
     }
@@ -390,7 +454,7 @@ export function AgendaPageClient() {
     return (
       <main className="standalone-loading">
         <span className="loading-pulse" />
-        {error ?? 'Carregando agenda operacional...'}
+        {loadError ?? 'Carregando agenda operacional...'}
       </main>
     );
   }
@@ -430,22 +494,10 @@ export function AgendaPageClient() {
           <h2>Agenda de Equipamentos</h2>
           <p>Consulte a ocupação em tempo real, selecione horários na grade e gerencie bloqueios técnicos.</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {capabilities.canReserve ? (
-            <button className="primary-button" onClick={() => setResModalOpen(true)} type="button">
-              <ArqueiaIcon name="mais" size={18} /> Nova Reserva
-            </button>
-          ) : null}
-          {capabilities.canManageBlocks ? (
-            <button className="secondary-button" onClick={() => setBlockModalOpen(true)} type="button">
-              <ArqueiaIcon name="mais" size={18} /> Bloqueio Técnico
-            </button>
-          ) : null}
-        </div>
       </section>
 
       {notice && (
-        <div style={{ background: '#e6fffa', border: '1px solid #38b2ac', color: '#234e52', padding: '0.75rem 1rem', borderRadius: '6px', margin: '0.5rem 0' }}>
+        <div aria-live="polite" role="status" style={{ background: '#e6fffa', border: '1px solid #38b2ac', color: '#234e52', padding: '0.75rem 1rem', borderRadius: '6px', margin: '0.5rem 0' }}>
           {notice}
         </div>
       )}
@@ -476,7 +528,14 @@ export function AgendaPageClient() {
               onChange={(e) => {
                 setOnlyMine(e.target.checked);
                 if (laboratoryId) {
-                  void loadSchedule(laboratoryId, selectedEquipmentId, currentDate, viewMode, e.target.checked);
+                  void loadSchedule(
+                    laboratoryId,
+                    selectedEquipmentId,
+                    currentDate,
+                    viewMode,
+                    e.target.checked,
+                    timezone,
+                  );
                 }
               }}
             />
@@ -490,8 +549,8 @@ export function AgendaPageClient() {
         capabilities={capabilities}
         currentDate={currentDate}
         isLoading={loading}
-        onNewBlock={() => setBlockModalOpen(true)}
-        onNewReservation={() => setResModalOpen(true)}
+        onNewBlock={openBlockModal}
+        onNewReservation={() => openReservationModal()}
         onNext={() => handleDateNavigate(1)}
         onPrevious={() => handleDateNavigate(-1)}
         onToday={handleDateToday}
@@ -506,12 +565,19 @@ export function AgendaPageClient() {
       {/* Conteúdo da Agenda e Estados */}
       {loading ? (
         <ScheduleStateFeedback state="loading" />
-      ) : error ? (
+      ) : loadError ? (
         <ScheduleStateFeedback
-          message={error}
+          message={loadError}
           onRetry={() => {
             if (laboratoryId) {
-              void loadSchedule(laboratoryId, selectedEquipmentId, currentDate, viewMode, onlyMine);
+              void loadSchedule(
+                laboratoryId,
+                selectedEquipmentId,
+                currentDate,
+                viewMode,
+                onlyMine,
+                timezone,
+              );
             }
           }}
           state="error"
@@ -521,7 +587,7 @@ export function AgendaPageClient() {
           capabilities={capabilities}
           currentDate={currentDate}
           items={scheduleItems}
-          onItemClick={(item) => setSelectedItem(item)}
+          onItemClick={openScheduleItem}
           onSlotClick={handleSlotClick}
           timezone={timezone}
         />
@@ -530,7 +596,7 @@ export function AgendaPageClient() {
           capabilities={capabilities}
           currentDate={currentDate}
           items={scheduleItems}
-          onItemClick={(item) => setSelectedItem(item)}
+          onItemClick={openScheduleItem}
           onSlotClick={handleSlotClick}
           timezone={timezone}
         />
@@ -541,8 +607,12 @@ export function AgendaPageClient() {
         isCancelling={pending}
         isOpen={Boolean(selectedItem)}
         item={selectedItem}
+        errorMessage={selectedItem ? operationError : null}
         onCancelItem={handleCancelItem}
-        onClose={() => setSelectedItem(null)}
+        onClose={() => {
+          setOperationError(null);
+          setSelectedItem(null);
+        }}
         timezone={timezone}
       />
 
@@ -555,11 +625,16 @@ export function AgendaPageClient() {
                 <span className="section-kicker">Reserva Operacional</span>
                 <h2 id="res-title">Nova Reserva de Equipamento</h2>
               </div>
-              <button aria-label="Fechar" onClick={() => setResModalOpen(false)} type="button">
+              <button aria-label="Fechar" onClick={closeReservationModal} type="button">
                 ×
               </button>
             </div>
             <form className="equipment-form reservation-quick-form" onSubmit={handleCreateReservation}>
+              {operationError ? (
+                <p className="form-error equipment-error field-wide" role="alert">
+                  {operationError}
+                </p>
+              ) : null}
               <label className="field-wide">
                 <span>Equipamento *</span>
                 <select name="equipmentId" defaultValue={selectedEquipmentId} required>
@@ -617,7 +692,7 @@ export function AgendaPageClient() {
               </details>
 
               <div className="equipment-form-actions">
-                <button className="secondary-button" onClick={() => setResModalOpen(false)} type="button">
+                <button className="secondary-button" onClick={closeReservationModal} type="button">
                   Cancelar
                 </button>
                 <button className="primary-button" disabled={pending} type="submit">
@@ -638,11 +713,16 @@ export function AgendaPageClient() {
                 <span className="section-kicker">Manutenção & Calibração</span>
                 <h2 id="block-title">Criar Bloqueio Técnico</h2>
               </div>
-              <button aria-label="Fechar" onClick={() => setBlockModalOpen(false)} type="button">
+              <button aria-label="Fechar" onClick={closeBlockModal} type="button">
                 ×
               </button>
             </div>
             <form className="equipment-form" onSubmit={handleCreateBlock}>
+              {operationError ? (
+                <p className="form-error equipment-error field-wide" role="alert">
+                  {operationError}
+                </p>
+              ) : null}
               <label className="field-wide">
                 <span>Equipamento *</span>
                 <select name="equipmentId" defaultValue={selectedEquipmentId} required>
@@ -698,7 +778,7 @@ export function AgendaPageClient() {
               </label>
 
               <div className="equipment-form-actions">
-                <button className="secondary-button" onClick={() => setBlockModalOpen(false)} type="button">
+                <button className="secondary-button" onClick={closeBlockModal} type="button">
                   Cancelar
                 </button>
                 <button className="primary-button" disabled={pending} type="submit">
