@@ -17,10 +17,18 @@ import { ArqueiaIcon, WorkspaceShell } from '@arqueia/ui';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 
-import { CalendarTimeGrid } from '../components/scheduling/calendar-time-grid';
+import {
+  ScheduleDayView,
+  ScheduleDetailsDrawer,
+  ScheduleHeader,
+  ScheduleLegend,
+  ScheduleStateFeedback,
+  ScheduleWeekView,
+  type ScheduleSlotSelection,
+} from '../components/scheduling';
 import { createWorkspacePresentation } from '../presentation';
 
-type ViewMode = 'DAY' | 'WEEK' | 'MONTH';
+type ViewMode = 'DAY' | 'WEEK';
 
 interface PageData {
   principal: AuthenticatedPrincipal;
@@ -67,19 +75,14 @@ function getRangeForView(date: Date, mode: ViewMode): { startsAt: Date; endsAt: 
   if (mode === 'DAY') {
     return { startsAt: startOfDay(date), endsAt: endOfDay(date) };
   }
-  if (mode === 'WEEK') {
-    const day = date.getDay();
-    const diffToMonday = date.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(date);
-    monday.setDate(diffToMonday);
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    return { startsAt: startOfDay(monday), endsAt: endOfDay(sunday) };
-  }
-  // MONTH
-  const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
-  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-  return { startsAt: startOfDay(firstDay), endsAt: endOfDay(lastDay) };
+  // WEEK
+  const day = date.getDay();
+  const diffToMonday = date.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(date);
+  monday.setDate(diffToMonday);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return { startsAt: startOfDay(monday), endsAt: endOfDay(sunday) };
 }
 
 export function AgendaPageClient() {
@@ -97,6 +100,7 @@ export function AgendaPageClient() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [onlyMine, setOnlyMine] = useState(false);
   const [scheduleItems, setScheduleItems] = useState<readonly ScheduleItem[]>([]);
+  const [timezone, setTimezone] = useState<string>('America/Sao_Paulo');
   const [capabilities, setCapabilities] = useState<ScheduleCapabilities>({
     canReserve: false,
     canManageBlocks: false,
@@ -107,7 +111,7 @@ export function AgendaPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // Modals
+  // Modais
   const [resModalOpen, setResModalOpen] = useState(false);
   const [blockModalOpen, setBlockModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ScheduleItem | null>(null);
@@ -137,6 +141,9 @@ export function AgendaPageClient() {
         const scheduleRes = await readJson<ScheduleResponse>(`/api/scheduling?${query.toString()}`);
         setScheduleItems(scheduleRes.items);
         setCapabilities(scheduleRes.capabilities);
+        if (scheduleRes.timezone) {
+          setTimezone(scheduleRes.timezone);
+        }
       } catch (loadErr) {
         if (loadErr instanceof Error && loadErr.message === 'UNAUTHENTICATED') {
           router.replace('/login');
@@ -195,11 +202,6 @@ export function AgendaPageClient() {
     [laboratoryId, pageData],
   );
 
-  const activeEquipment = useMemo(
-    () => equipments.find((e) => e.id === selectedEquipmentId) ?? null,
-    [equipments, selectedEquipmentId],
-  );
-
   const presentation = useMemo(
     () =>
       pageData === null || laboratoryId === null
@@ -228,9 +230,11 @@ export function AgendaPageClient() {
 
   const handleDateNavigate = (delta: number) => {
     const nextDate = new Date(currentDate);
-    if (viewMode === 'DAY') nextDate.setDate(nextDate.getDate() + delta);
-    else if (viewMode === 'WEEK') nextDate.setDate(nextDate.getDate() + delta * 7);
-    else nextDate.setMonth(nextDate.getMonth() + delta);
+    if (viewMode === 'DAY') {
+      nextDate.setDate(nextDate.getDate() + delta);
+    } else {
+      nextDate.setDate(nextDate.getDate() + delta * 7);
+    }
 
     setCurrentDate(nextDate);
     if (laboratoryId) {
@@ -238,16 +242,25 @@ export function AgendaPageClient() {
     }
   };
 
-  const handleSlotClick = (date: Date, hour: number) => {
+  const handleDateToday = () => {
+    const today = new Date();
+    setCurrentDate(today);
+    if (laboratoryId) {
+      void loadSchedule(laboratoryId, selectedEquipmentId, today, viewMode, onlyMine);
+    }
+  };
+
+  const handleSlotClick = (selection: ScheduleSlotSelection) => {
     if (!capabilities.canReserve) return;
-    const dateStr = date.toISOString().split('T')[0] ?? '';
-    const startStr = `${String(hour).padStart(2, '0')}:00`;
-    const endStr = `${String(hour + 1).padStart(2, '0')}:00`;
+    const dateStr = selection.date;
+    const startStr = `${String(selection.hour).padStart(2, '0')}:00`;
+    const endStr = `${String(selection.hour + 1).padStart(2, '0')}:00`;
 
     setSlotDefaults({ date: dateStr, startTime: startStr, endTime: endStr });
     setResModalOpen(true);
   };
 
+  // TODO: A conversão civil -> UTC no timezone do laboratório para criação/edição será tratada na revisão especializada.
   const handleCreateReservation = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!laboratoryId) return;
@@ -299,6 +312,7 @@ export function AgendaPageClient() {
     }
   };
 
+  // TODO: A conversão civil -> UTC no timezone do laboratório para criação/edição será tratada na revisão especializada.
   const handleCreateBlock = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!laboratoryId) return;
@@ -396,12 +410,6 @@ export function AgendaPageClient() {
     shortName: lab.code.slice(0, 2),
   }));
 
-  const formattedDateHeader = new Intl.DateTimeFormat('pt-BR', {
-    month: 'long',
-    year: 'numeric',
-    day: viewMode === 'DAY' ? 'numeric' : undefined,
-  }).format(currentDate);
-
   return (
     <WorkspaceShell
       activeLaboratoryId={activeLaboratory.id}
@@ -428,11 +436,11 @@ export function AgendaPageClient() {
               <ArqueiaIcon name="mais" size={18} /> Nova Reserva
             </button>
           ) : null}
-          {capabilities.canManageBlocks && (
+          {capabilities.canManageBlocks ? (
             <button className="secondary-button" onClick={() => setBlockModalOpen(true)} type="button">
               <ArqueiaIcon name="mais" size={18} /> Bloqueio Técnico
             </button>
-          )}
+          ) : null}
         </div>
       </section>
 
@@ -442,12 +450,13 @@ export function AgendaPageClient() {
         </div>
       )}
 
-      {error && <p aria-live="polite" className="form-error equipment-error">{error}</p>}
 
-      {/* Control Bar: Filter & View Mode */}
+
+      {/* Control Bar: Filter & Equipment Selection */}
       <section className="agenda-control-bar" style={{ display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'space-between', margin: '1rem 0', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <select
+            aria-label="Filtrar por equipamento"
             value={selectedEquipmentId}
             onChange={(e) => handleEquipmentChange(e.target.value)}
             style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #ccc' }}
@@ -474,54 +483,68 @@ export function AgendaPageClient() {
             <span>Minhas reservas</span>
           </label>
         </div>
-
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            <button className="secondary-button" onClick={() => handleDateNavigate(-1)} type="button">‹</button>
-            <span style={{ fontWeight: 600, minWidth: '140px', textAlign: 'center', textTransform: 'capitalize' }}>
-              {formattedDateHeader}
-            </span>
-            <button className="secondary-button" onClick={() => handleDateNavigate(1)} type="button">›</button>
-          </div>
-
-          <div style={{ display: 'flex', border: '1px solid #ccc', borderRadius: '6px', overflow: 'hidden' }}>
-            {(['DAY', 'WEEK', 'MONTH'] as const).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => handleViewModeChange(mode)}
-                type="button"
-                style={{
-                  padding: '0.4rem 0.8rem',
-                  border: 'none',
-                  background: viewMode === mode ? 'var(--brand-primary, #0052cc)' : 'transparent',
-                  color: viewMode === mode ? '#fff' : 'inherit',
-                  cursor: 'pointer',
-                  fontWeight: viewMode === mode ? 600 : 400,
-                }}
-              >
-                {mode === 'DAY' ? 'Dia' : mode === 'WEEK' ? 'Semana' : 'Mês'}
-              </button>
-            ))}
-          </div>
-        </div>
       </section>
 
-      {/* Visual Calendar Time Grid */}
+      {/* Schedule Header com Navegação e Ações por Capability */}
+      <ScheduleHeader
+        capabilities={capabilities}
+        currentDate={currentDate}
+        isLoading={loading}
+        onNewBlock={() => setBlockModalOpen(true)}
+        onNewReservation={() => setResModalOpen(true)}
+        onNext={() => handleDateNavigate(1)}
+        onPrevious={() => handleDateNavigate(-1)}
+        onToday={handleDateToday}
+        onViewModeChange={handleViewModeChange}
+        timezone={timezone}
+        viewMode={viewMode}
+      />
+
+      {/* Legenda Visual de Reservas e Bloqueios */}
+      <ScheduleLegend showCancelled={true} />
+
+      {/* Conteúdo da Agenda e Estados */}
       {loading ? (
-        <div className="equipment-empty">
-          <span className="loading-pulse" />
-          <h3>Carregando horários da agenda...</h3>
-        </div>
-      ) : (
-        <CalendarTimeGrid
+        <ScheduleStateFeedback state="loading" />
+      ) : error ? (
+        <ScheduleStateFeedback
+          message={error}
+          onRetry={() => {
+            if (laboratoryId) {
+              void loadSchedule(laboratoryId, selectedEquipmentId, currentDate, viewMode, onlyMine);
+            }
+          }}
+          state="error"
+        />
+      ) : viewMode === 'DAY' ? (
+        <ScheduleDayView
+          capabilities={capabilities}
           currentDate={currentDate}
+          items={scheduleItems}
           onItemClick={(item) => setSelectedItem(item)}
           onSlotClick={handleSlotClick}
-          scheduleItems={scheduleItems}
-          selectedEquipment={activeEquipment}
-          viewMode={viewMode}
+          timezone={timezone}
+        />
+      ) : (
+        <ScheduleWeekView
+          capabilities={capabilities}
+          currentDate={currentDate}
+          items={scheduleItems}
+          onItemClick={(item) => setSelectedItem(item)}
+          onSlotClick={handleSlotClick}
+          timezone={timezone}
         />
       )}
+
+      {/* Drawer / Modal de Detalhes da Reserva ou Bloqueio */}
+      <ScheduleDetailsDrawer
+        isCancelling={pending}
+        isOpen={Boolean(selectedItem)}
+        item={selectedItem}
+        onCancelItem={handleCancelItem}
+        onClose={() => setSelectedItem(null)}
+        timezone={timezone}
+      />
 
       {/* Modal Nova Reserva */}
       {resModalOpen && (
@@ -683,80 +706,6 @@ export function AgendaPageClient() {
                 </button>
               </div>
             </form>
-          </section>
-        </div>
-      )}
-
-      {/* Modal Detalhes / Ação de Cancelamento */}
-      {selectedItem && (
-        <div className="equipment-dialog-backdrop" role="presentation">
-          <section aria-labelledby="detail-title" aria-modal="true" className="equipment-dialog" role="dialog">
-            <div className="equipment-dialog-heading">
-              <div>
-                <span className="section-kicker">Detalhes do Agendamento</span>
-                <h2 id="detail-title">{selectedItem.title}</h2>
-              </div>
-              <button aria-label="Fechar" onClick={() => setSelectedItem(null)} type="button">
-                ×
-              </button>
-            </div>
-            <div className="equipment-form">
-              <p>
-                <strong>Equipamento:</strong> {selectedItem.equipmentName}
-              </p>
-              <p>
-                <strong>Início:</strong> {new Date(selectedItem.startsAt).toLocaleString('pt-BR')}
-              </p>
-              <p>
-                <strong>Término:</strong> {new Date(selectedItem.endsAt).toLocaleString('pt-BR')}
-              </p>
-
-              {selectedItem.reservationDetails && (
-                <>
-                  <p>
-                    <strong>Finalidade:</strong> {selectedItem.reservationDetails.purpose}
-                  </p>
-                  {selectedItem.reservationDetails.sampleCount && (
-                    <p>
-                      <strong>Amostras:</strong> {selectedItem.reservationDetails.sampleCount}
-                    </p>
-                  )}
-                  {selectedItem.reservationDetails.notes && (
-                    <p>
-                      <strong>Observações:</strong> {selectedItem.reservationDetails.notes}
-                    </p>
-                  )}
-                </>
-              )}
-
-              {selectedItem.blockDetails && (
-                <>
-                  <p>
-                    <strong>Motivo:</strong> {blockReasonLabels[selectedItem.blockDetails.reason]}
-                  </p>
-                  <p>
-                    <strong>Descrição:</strong> {selectedItem.blockDetails.description}
-                  </p>
-                </>
-              )}
-
-              <div className="equipment-form-actions">
-                <button className="secondary-button" onClick={() => setSelectedItem(null)} type="button">
-                  Fechar
-                </button>
-                {selectedItem.canCancel && (
-                  <button
-                    className="primary-button"
-                    style={{ background: '#e53e3e' }}
-                    onClick={() => handleCancelItem(selectedItem)}
-                    disabled={pending}
-                    type="button"
-                  >
-                    {pending ? 'Cancelando...' : 'Cancelar Agendamento'}
-                  </button>
-                )}
-              </div>
-            </div>
           </section>
         </div>
       )}
