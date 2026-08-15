@@ -6,6 +6,7 @@ export interface ScheduleDetailsDrawerProps {
   readonly isOpen: boolean;
   readonly onClose: () => void;
   readonly timezone: string;
+  readonly errorMessage?: string | null;
   readonly onCancelItem?: ((item: ScheduleItem) => void) | undefined;
   readonly isCancelling?: boolean | undefined;
   readonly className?: string | undefined;
@@ -30,6 +31,7 @@ export function ScheduleDetailsDrawer({
   isOpen,
   onClose,
   timezone,
+  errorMessage = null,
   onCancelItem,
   isCancelling = false,
   className = '',
@@ -265,6 +267,12 @@ export function ScheduleDetailsDrawer({
             </section>
           )}
         </div>
+
+        {errorMessage ? (
+          <p className="form-error equipment-error" role="alert">
+            {errorMessage}
+          </p>
+        ) : null}
 
         <footer className="schedule-drawer-footer">
           {/* Cancel button is ONLY shown if item.canCancel is true */}

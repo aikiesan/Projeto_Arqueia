@@ -7,7 +7,7 @@ import type {
   ScheduleItem,
   ScheduleResponse,
 } from '@arqueia/contracts';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AgendaPageClient } from './agenda-page-client';
@@ -220,6 +220,9 @@ describe('AgendaPageClient Integration', () => {
   function setupDefaultFetch(overrides?: {
     scheduleResponse?: Partial<ScheduleResponse>;
     scheduleError?: Error;
+    reservationResponse?: Response;
+    blockResponse?: Response;
+    cancelResponse?: Response;
   }) {
     const defaultScheduleRes: ScheduleResponse = {
       laboratoryId: lab1.id,
@@ -253,6 +256,15 @@ describe('AgendaPageClient Integration', () => {
           throw overrides.scheduleError;
         }
         return json(defaultScheduleRes);
+      }
+      if (url === '/api/scheduling/reservations') {
+        return overrides?.reservationResponse ?? json({ createdReservations: [], conflictingSlots: [] });
+      }
+      if (url === '/api/scheduling/blocks') {
+        return overrides?.blockResponse ?? json({});
+      }
+      if (url.endsWith('/cancel')) {
+        return overrides?.cancelResponse ?? json({});
       }
       throw new Error(`URL não mapeada no teste: ${url}`);
     });
@@ -309,7 +321,7 @@ describe('AgendaPageClient Integration', () => {
     render(<AgendaPageClient />);
 
     // 13:00 UTC em America/Sao_Paulo (UTC-3) deve ser formatado como 10:00 – 12:00
-    expect(await screen.findByText('10:00 – 12:00')).toBeInTheDocument();
+    expect((await screen.findAllByText('10:00 – 12:00')).length).toBeGreaterThanOrEqual(1);
   });
 
   // 4. loading
@@ -401,7 +413,7 @@ describe('AgendaPageClient Integration', () => {
     shouldFail = false;
     fireEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }));
 
-    expect(await screen.findByText('Análise de Frações HPLC')).toBeInTheDocument();
+    expect((await screen.findAllByText('Análise de Frações HPLC')).length).toBeGreaterThanOrEqual(1);
   });
 
   // 7. visualização DAY
@@ -457,7 +469,7 @@ describe('AgendaPageClient Integration', () => {
     });
 
     render(<AgendaPageClient />);
-    await screen.findByText('Análise de Frações HPLC');
+    await screen.findAllByText('Análise de Frações HPLC');
     expect(screen.queryByRole('button', { name: /Criar nova reserva/i })).not.toBeInTheDocument();
   });
 
@@ -541,8 +553,9 @@ describe('AgendaPageClient Integration', () => {
 
     render(<AgendaPageClient />);
 
-    const eventCard = await screen.findByText('Análise de Frações HPLC');
-    fireEvent.click(eventCard);
+    const [eventCard] = await screen.findAllByText('Análise de Frações HPLC');
+    expect(eventCard).toBeDefined();
+    fireEvent.click(eventCard!);
 
     expect(await screen.findByRole('dialog', { name: /Análise de Frações HPLC/i })).toBeInTheDocument();
     expect(screen.getByText('Cromatografia líquida')).toBeInTheDocument();
@@ -555,8 +568,9 @@ describe('AgendaPageClient Integration', () => {
 
     render(<AgendaPageClient />);
 
-    const myEvent = await screen.findByText('Análise de Frações HPLC');
-    fireEvent.click(myEvent);
+    const [myEvent] = await screen.findAllByText('Análise de Frações HPLC');
+    expect(myEvent).toBeDefined();
+    fireEvent.click(myEvent!);
 
     const dialog = await screen.findByRole('dialog', { name: /Análise de Frações HPLC/i });
     expect(dialog).toBeInTheDocument();
@@ -564,8 +578,9 @@ describe('AgendaPageClient Integration', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Fechar detalhes' }));
 
-    const otherEvent = await screen.findByText('Equipamento Reservado');
-    fireEvent.click(otherEvent);
+    const [otherEvent] = await screen.findAllByText('Equipamento Reservado');
+    expect(otherEvent).toBeDefined();
+    fireEvent.click(otherEvent!);
 
     const dialogOther = await screen.findByRole('dialog', { name: /Equipamento Reservado/i });
     expect(dialogOther).toBeInTheDocument();
@@ -612,7 +627,7 @@ describe('AgendaPageClient Integration', () => {
 
     const { container } = render(<AgendaPageClient />);
 
-    await screen.findByText('Análise de Frações HPLC');
+    await screen.findAllByText('Análise de Frações HPLC');
     expect(container.querySelector('.schedule-week-mobile-strip')).toBeInTheDocument();
     expect(container.querySelector('.schedule-week-mobile-day-content')).toBeInTheDocument();
   });
@@ -625,7 +640,7 @@ describe('AgendaPageClient Integration', () => {
 
     const { container } = render(<AgendaPageClient />);
 
-    await screen.findByText('Análise de Frações HPLC');
+    await screen.findAllByText('Análise de Frações HPLC');
     expect(container.querySelector('.schedule-week-grid-container')).toBeInTheDocument();
   });
 
@@ -653,5 +668,238 @@ describe('AgendaPageClient Integration', () => {
     await screen.findByText('Nenhum compromisso marcado para este dia.');
     expect(screen.queryByText('HPLC Shimadzu LC-2030')).not.toBeInTheDocument();
     expect(screen.queryByText('Reserva de Teste')).not.toBeInTheDocument();
+  });
+
+  it('23. envia reserva com horários UTC calculados no timezone do laboratório', async () => {
+    const fetchSpy = setupDefaultFetch();
+    render(<AgendaPageClient />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Criar nova reserva/i }));
+    const dialog = await screen.findByRole('dialog', { name: /Nova Reserva de Equipamento/i });
+    fireEvent.change(dialog.querySelector('select[name="equipmentId"]')!, {
+      target: { value: sampleEquipment1.id },
+    });
+    fireEvent.change(dialog.querySelector('input[name="date"]')!, {
+      target: { value: '2026-08-20' },
+    });
+    fireEvent.change(dialog.querySelector('input[name="startTime"]')!, {
+      target: { value: '09:00' },
+    });
+    fireEvent.change(dialog.querySelector('input[name="endTime"]')!, {
+      target: { value: '10:30' },
+    });
+    fireEvent.change(dialog.querySelector('select[name="projectId"]')!, {
+      target: { value: sampleProject.id },
+    });
+    fireEvent.change(dialog.querySelector('input[name="purpose"]')!, {
+      target: { value: 'Análise de estabilidade' },
+    });
+    fireEvent.submit(dialog.querySelector('form')!);
+
+    await waitFor(() => {
+      const call = fetchSpy.mock.calls.find(
+        ([url, init]) => String(url) === '/api/scheduling/reservations' && init?.method === 'POST',
+      );
+      expect(call).toBeDefined();
+      expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({
+        startsAt: '2026-08-20T12:00:00.000Z',
+        endsAt: '2026-08-20T13:30:00.000Z',
+      });
+    });
+  });
+
+  it('24. envia bloqueio com horários UTC calculados no timezone do laboratório', async () => {
+    const fetchSpy = setupDefaultFetch();
+    render(<AgendaPageClient />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Criar novo bloqueio/i }));
+    const dialog = await screen.findByRole('dialog', { name: /Criar Bloqueio Técnico/i });
+    fireEvent.change(dialog.querySelector('select[name="equipmentId"]')!, {
+      target: { value: sampleEquipment1.id },
+    });
+    fireEvent.change(dialog.querySelector('input[name="date"]')!, {
+      target: { value: '2026-08-20' },
+    });
+    fireEvent.change(dialog.querySelector('input[name="startTime"]')!, {
+      target: { value: '08:00' },
+    });
+    fireEvent.change(dialog.querySelector('input[name="endTime"]')!, {
+      target: { value: '17:00' },
+    });
+    fireEvent.change(dialog.querySelector('textarea[name="description"]')!, {
+      target: { value: 'Calibração preventiva anual' },
+    });
+    fireEvent.submit(dialog.querySelector('form')!);
+
+    await waitFor(() => {
+      const call = fetchSpy.mock.calls.find(
+        ([url, init]) => String(url) === '/api/scheduling/blocks' && init?.method === 'POST',
+      );
+      expect(call).toBeDefined();
+      expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({
+        startsAt: '2026-08-20T11:00:00.000Z',
+        endsAt: '2026-08-20T20:00:00.000Z',
+      });
+    });
+  });
+
+  it('25. preserva formulário e agenda quando a reserva recebe conflito 409', async () => {
+    setupDefaultFetch({
+      reservationResponse: json(
+        {
+          code: 'RESERVATION_SLOT_CONFLICT',
+          message: 'O equipamento já está ocupado no horário selecionado.',
+        },
+        409,
+      ),
+    });
+    render(<AgendaPageClient />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Criar nova reserva/i }));
+    const dialog = await screen.findByRole('dialog', { name: /Nova Reserva de Equipamento/i });
+    fireEvent.change(dialog.querySelector('select[name="equipmentId"]')!, {
+      target: { value: sampleEquipment1.id },
+    });
+    fireEvent.change(dialog.querySelector('input[name="date"]')!, {
+      target: { value: '2026-08-20' },
+    });
+    fireEvent.change(dialog.querySelector('input[name="startTime"]')!, {
+      target: { value: '09:00' },
+    });
+    fireEvent.change(dialog.querySelector('input[name="endTime"]')!, {
+      target: { value: '10:30' },
+    });
+    fireEvent.change(dialog.querySelector('select[name="projectId"]')!, {
+      target: { value: sampleProject.id },
+    });
+    fireEvent.change(dialog.querySelector('input[name="purpose"]')!, {
+      target: { value: 'Finalidade preservada' },
+    });
+    fireEvent.submit(dialog.querySelector('form')!);
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('CONFLITO');
+    expect(dialog.querySelector('input[name="purpose"]')).toHaveValue('Finalidade preservada');
+    expect(dialog.querySelector('select[name="projectId"]')).toHaveValue(sampleProject.id);
+    expect(dialog.querySelector('input[name="startTime"]')).toHaveValue('09:00');
+    expect(dialog.querySelector('input[name="endTime"]')).toHaveValue('10:30');
+    expect(screen.getAllByText('Análise de Frações HPLC').length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByRole('button', { name: 'Tentar novamente' })).not.toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
+    fireEvent.click(screen.getByRole('button', { name: /Criar nova reserva/i }));
+    expect(
+      within(await screen.findByRole('dialog', { name: /Nova Reserva de Equipamento/i })).queryByRole(
+        'alert',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it('26. mantém drawer aberto e mostra erro nele quando o cancelamento falha', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    setupDefaultFetch({
+      cancelResponse: json({ message: 'Não foi possível cancelar a reserva.' }, 500),
+    });
+    render(<AgendaPageClient />);
+
+    const [reservationCard] = await screen.findAllByText('Análise de Frações HPLC');
+    expect(reservationCard).toBeDefined();
+    fireEvent.click(reservationCard!);
+    const dialog = await screen.findByRole('dialog', { name: /Análise de Frações HPLC/i });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar reserva' }));
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Não foi possível cancelar a reserva.',
+    );
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Cancelar reserva' })).toBeInTheDocument();
+  });
+
+  it('27. envia cancelamento autorizado ao endpoint e laboratório corretos', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const fetchSpy = setupDefaultFetch();
+    render(<AgendaPageClient />);
+
+    const [reservationCard] = await screen.findAllByText('Análise de Frações HPLC');
+    expect(reservationCard).toBeDefined();
+    fireEvent.click(reservationCard!);
+    fireEvent.click(
+      within(await screen.findByRole('dialog', { name: /Análise de Frações HPLC/i })).getByRole(
+        'button',
+        { name: 'Cancelar reserva' },
+      ),
+    );
+
+    await waitFor(() => {
+      const call = fetchSpy.mock.calls.find(
+        ([url, init]) =>
+          String(url) === `/api/scheduling/reservations/res-mine-1/cancel` &&
+          init?.method === 'POST',
+      );
+      expect(call).toBeDefined();
+      expect(JSON.parse(String(call?.[1]?.body))).toMatchObject({ laboratoryId: lab1.id });
+    });
+  });
+
+  it('28. renderiza somente uma ação para reserva e uma para bloqueio', async () => {
+    setupDefaultFetch();
+    render(<AgendaPageClient />);
+
+    expect(await screen.findAllByRole('button', { name: /Criar nova reserva/i })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /Criar novo bloqueio/i })).toHaveLength(1);
+  });
+
+  it('29. ignora resposta antiga de agenda após uma consulta mais recente', async () => {
+    let resolveOldSchedule: (response: Response) => void;
+    const oldSchedule = new Promise<Response>((resolve) => {
+      resolveOldSchedule = resolve;
+    });
+    let scheduleCalls = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input);
+      if (url === '/api/session') return json({ principal });
+      if (url === '/api/laboratories') return json([lab1]);
+      if (url.startsWith('/api/equipment?')) {
+        return json({
+          items: [sampleEquipment1, sampleEquipment2],
+          pageInfo: { hasNextPage: false, nextCursor: null },
+        });
+      }
+      if (url === '/api/projects') return json([sampleProject]);
+      if (url.startsWith('/api/scheduling?')) {
+        scheduleCalls += 1;
+        if (scheduleCalls === 1) return oldSchedule;
+        return json({
+          laboratoryId: lab1.id,
+          timezone: lab1.timezone,
+          startsAt: getTodayIso(0),
+          endsAt: getTodayIso(23),
+          capabilities: { canReserve: true, canManageBlocks: true },
+          items: [{ ...createSampleItems()[0]!, id: 'recent', title: 'Resposta recente' }],
+        } satisfies ScheduleResponse);
+      }
+      throw new Error(`URL inesperada: ${url}`);
+    });
+
+    render(<AgendaPageClient />);
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Filtrar por equipamento' }), {
+      target: { value: sampleEquipment2.id },
+    });
+    expect((await screen.findAllByText('Resposta recente')).length).toBeGreaterThanOrEqual(1);
+
+    resolveOldSchedule!(
+      json({
+        laboratoryId: lab1.id,
+        timezone: lab1.timezone,
+        startsAt: getTodayIso(0),
+        endsAt: getTodayIso(23),
+        capabilities: { canReserve: true, canManageBlocks: true },
+        items: createSampleItems(),
+      } satisfies ScheduleResponse),
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Resposta recente').length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryAllByText('Análise de Frações HPLC')).toHaveLength(0);
+    });
   });
 });

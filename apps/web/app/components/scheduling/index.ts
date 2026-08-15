@@ -7,4 +7,3 @@ export * from './schedule-day-view';
 export * from './schedule-week-view';
 export * from './schedule-state-feedback';
 export * from './schedule-details-drawer';
-
