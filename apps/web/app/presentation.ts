@@ -19,6 +19,14 @@ export interface WorkspacePresentation {
 
 const CP2B_LOGO = '/brand/cp2b-avatar.svg';
 
+function withLaboratoryContext(href: string, laboratoryId: string | undefined): string {
+  if (!laboratoryId) return href;
+  const [pathname = '/', queryString = ''] = href.split('?');
+  const query = new URLSearchParams(queryString);
+  query.set('laboratory', laboratoryId);
+  return `${pathname}?${query.toString()}`;
+}
+
 function initials(name: string): string {
   const derived = name
     .split(' ')
@@ -40,6 +48,7 @@ export function createWorkspacePresentation(
   laboratories: readonly Laboratory[],
   activeLaboratoryId?: string,
 ): WorkspacePresentation {
+  const activeLaboratory = laboratories.find(({ id }) => id === activeLaboratoryId) ?? laboratories[0];
   const railItems: readonly LaboratoryRailItem[] = laboratories.map((laboratory) => ({
     href: `/?laboratory=${laboratory.id}`,
     id: laboratory.id,
@@ -47,8 +56,6 @@ export function createWorkspacePresentation(
     name: laboratory.name,
     shortName: laboratory.code.slice(0, 2).toUpperCase(),
   }));
-  const activeLaboratory = laboratories.find(({ id }) => id === activeLaboratoryId) ?? laboratories[0];
-
   const moduleNavigation: NavigationItem[] = [
     { description: 'Resumo do laboratório', href: '/', icon: 'inicio', label: 'Visão geral' },
     { description: 'Reservas e bloqueios', href: '/agenda', icon: 'agenda', label: 'Agenda' },
@@ -88,7 +95,13 @@ export function createWorkspacePresentation(
     label: 'Guia de Uso',
   });
 
-
+  const laboratoryId = activeLaboratory?.id;
+  const mobileNavigation: NavigationItem[] = [
+    { href: '/', icon: 'inicio', label: 'Início' },
+    { href: '/agenda', icon: 'agenda', label: 'Agenda' },
+    { href: '/estoque', icon: 'estoque', label: 'Estoque' },
+    { href: '/mais', icon: 'mais', label: 'Mais' },
+  ];
 
   return {
     activeLaboratoryId: activeLaboratory?.id ?? '',
@@ -99,13 +112,14 @@ export function createWorkspacePresentation(
       email: principal.user.email,
     },
     laboratories: railItems,
-    mobileNavigation: [
-      { href: '/', icon: 'inicio', label: 'Início' },
-      { href: '/agenda', icon: 'agenda', label: 'Agenda' },
-      { href: '/estoque', icon: 'estoque', label: 'Estoque' },
-      { href: '/mais', icon: 'mais', label: 'Mais' },
-    ],
-    moduleNavigation,
+    mobileNavigation: mobileNavigation.map((item) => ({
+      ...item,
+      href: withLaboratoryContext(item.href, laboratoryId),
+    })),
+    moduleNavigation: moduleNavigation.map((item) => ({
+      ...item,
+      href: withLaboratoryContext(item.href, laboratoryId),
+    })),
     userInitials: initials(principal.user.name),
   };
 }

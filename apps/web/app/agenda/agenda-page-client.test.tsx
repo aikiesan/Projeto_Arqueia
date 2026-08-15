@@ -469,7 +469,7 @@ describe('AgendaPageClient Integration', () => {
     });
 
     render(<AgendaPageClient />);
-    await screen.findAllByText('Análise de Frações HPLC');
+    expect((await screen.findAllByText('Análise de Frações HPLC')).length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByRole('button', { name: /Criar nova reserva/i })).not.toBeInTheDocument();
   });
 
@@ -627,7 +627,7 @@ describe('AgendaPageClient Integration', () => {
 
     const { container } = render(<AgendaPageClient />);
 
-    await screen.findAllByText('Análise de Frações HPLC');
+    expect((await screen.findAllByText('Análise de Frações HPLC')).length).toBeGreaterThanOrEqual(1);
     expect(container.querySelector('.schedule-week-mobile-strip')).toBeInTheDocument();
     expect(container.querySelector('.schedule-week-mobile-day-content')).toBeInTheDocument();
   });
@@ -640,7 +640,7 @@ describe('AgendaPageClient Integration', () => {
 
     const { container } = render(<AgendaPageClient />);
 
-    await screen.findAllByText('Análise de Frações HPLC');
+    expect((await screen.findAllByText('Análise de Frações HPLC')).length).toBeGreaterThanOrEqual(1);
     expect(container.querySelector('.schedule-week-grid-container')).toBeInTheDocument();
   });
 
