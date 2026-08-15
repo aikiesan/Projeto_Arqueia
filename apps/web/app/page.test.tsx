@@ -20,6 +20,12 @@ describe('home workspace', () => {
     expect(presentation.currentUser.name).toBe('Lucas Nakamura');
     expect(presentation.currentContext).toBe('Laboratório CP2b');
     expect(presentation.mobileNavigation.map(({ label }) => label)).toEqual(['Início', 'Agenda', 'Estoque', 'Mais']);
+    expect(presentation.mobileNavigation.find(({ label }) => label === 'Mais')?.href).toBe(
+      `/mais?laboratory=${laboratories[0]!.id}`,
+    );
+    expect(presentation.moduleNavigation.find(({ label }) => label === 'Agenda')?.href).toBe(
+      `/agenda?laboratory=${laboratories[0]!.id}`,
+    );
   });
 
   it('renderiza a home e oferece encerramento da sessão', () => {

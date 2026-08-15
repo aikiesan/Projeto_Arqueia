@@ -40,7 +40,8 @@ function NavigationLink({ activeHref, compact = false, item }: {
   readonly compact?: boolean;
   readonly item: NavigationItem;
 }) {
-  const isActive = item.href === activeHref;
+  const navigationPath = (href: string) => href.split(/[?#]/, 1)[0] || '/';
+  const isActive = navigationPath(item.href) === navigationPath(activeHref);
 
   return (
     <a

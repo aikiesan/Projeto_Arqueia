@@ -67,4 +67,23 @@ describe('WorkspaceShell', () => {
     expect(mobileLogo).toHaveAttribute('width', '38');
     expect(mobileLogo).toHaveAttribute('height', '38');
   });
+
+  it('mantém o item atual quando os links preservam query de laboratório', () => {
+    render(
+      <WorkspaceShell
+        {...props}
+        activeModuleHref="/mais"
+        mobileNavigation={props.mobileNavigation.map((item) => ({
+          ...item,
+          href: `${item.href}?laboratory=lab-cp2b`,
+        }))}
+      />,
+    );
+
+    const mobileNavigation = screen.getByRole('navigation', { name: 'Navegação principal' });
+    expect(within(mobileNavigation).getByRole('link', { name: 'Mais' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
 });
