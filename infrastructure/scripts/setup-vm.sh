@@ -41,7 +41,7 @@ cat <<'NEXT'
 
 >> Passos manuais restantes:
    1. Apache2:
-      sudo a2enmod proxy proxy_http proxy_wstunnel headers ssl rewrite
+      sudo a2enmod proxy proxy_http proxy_wstunnel headers ssl rewrite remoteip
       sudo cp infrastructure/proxy/arqueia.cp2b.unicamp.br.apache.conf /etc/apache2/sites-available/
       sudo a2ensite arqueia.cp2b.unicamp.br.apache.conf
       sudo apache2ctl configtest && sudo systemctl reload apache2
