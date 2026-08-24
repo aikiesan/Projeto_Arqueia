@@ -8,8 +8,10 @@ import {
   createSystemRoleAssignmentInputSchema,
   createUserInputSchema,
   bffPublicLoginResponseSchema,
+  changePasswordInputSchema,
   localLoginInputSchema,
   refreshSessionInputSchema,
+  resetUserPasswordInputSchema,
   revokeAccessRequestSchema,
   sessionMetadataSchema,
   userAccessQuerySchema,
@@ -94,6 +96,27 @@ describe('identity contract', () => {
       localLoginInputSchema.parse({ email: 'ADMIN@UNICAMP.BR', password: 'valid-password' }),
     ).toEqual({ email: 'admin@unicamp.br', password: 'valid-password' });
     expect(() => localLoginInputSchema.parse({ email: 'admin@unicamp.br', password: '' })).toThrow();
+  });
+
+  it('validates password management inputs without accepting password reuse', () => {
+    expect(
+      changePasswordInputSchema.parse({
+        currentPassword: 'current-password',
+        newPassword: 'new-password-strong',
+      }),
+    ).toEqual({ currentPassword: 'current-password', newPassword: 'new-password-strong' });
+    expect(() =>
+      changePasswordInputSchema.parse({
+        currentPassword: 'same-password',
+        newPassword: 'same-password',
+      }),
+    ).toThrow();
+    expect(() =>
+      resetUserPasswordInputSchema.parse({
+        newPassword: 'short',
+        confirmationPassword: 'admin-password',
+      }),
+    ).toThrow();
   });
 
   it('requires reauthentication for access-assignment requests', () => {

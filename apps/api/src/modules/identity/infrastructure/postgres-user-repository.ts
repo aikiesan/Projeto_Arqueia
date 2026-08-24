@@ -3,6 +3,7 @@ import { inTransaction, type DatabasePool } from '@arqueia/database';
 
 import { IdentityEntityNotFoundError } from '../domain/errors/identity-entity-not-found.error.js';
 import type { IdentityMutationContext } from '../domain/ports/identity-mutation-context.js';
+import type { UserCredentialWriter } from '../domain/ports/user-credential-writer.port.js';
 import type {
   CreateUserRecord,
   UserReader,
@@ -18,7 +19,7 @@ import {
 const USER_COLUMNS = `id, institution_id, supervisor_user_id, name, email, status,
   identity_provider, created_at, updated_at, archived_at`;
 
-export class PostgresUserRepository implements UserReader, UserWriter {
+export class PostgresUserRepository implements UserReader, UserWriter, UserCredentialWriter {
   public constructor(private readonly pool: DatabasePool) {}
 
   public async listVisibleTo(laboratoryIds: readonly string[] | null): Promise<readonly User[]> {
@@ -127,6 +128,54 @@ export class PostgresUserRepository implements UserReader, UserWriter {
           after,
         });
         return after;
+      });
+    } catch (error) {
+      if (error instanceof IdentityEntityNotFoundError) throw error;
+      return translateIdentityWriteError(error);
+    }
+  }
+
+  public async setPasswordHash(
+    userId: string,
+    passwordHash: string,
+    context: IdentityMutationContext,
+    action: 'identity.user.password_changed' | 'identity.user.password_reset_by_admin',
+  ): Promise<void> {
+    try {
+      await inTransaction(this.pool, async (client) => {
+        const userResult = await client.query<{ id: string }>(
+          `SELECT id
+             FROM users
+            WHERE id = $1
+              AND status = 'ACTIVE'
+              AND identity_provider = 'LOCAL'
+              AND archived_at IS NULL
+            FOR UPDATE`,
+          [userId],
+        );
+        if (userResult.rows[0] === undefined) {
+          throw new IdentityEntityNotFoundError('User', userId);
+        }
+
+        await client.query(
+          `INSERT INTO local_credentials (user_id, password_hash)
+           VALUES ($1, $2)
+           ON CONFLICT (user_id) DO UPDATE SET
+             password_hash = EXCLUDED.password_hash,
+             failed_attempts = 0,
+             locked_until = NULL,
+             updated_at = now()`,
+          [userId, passwordHash],
+        );
+
+        await appendMutationAudit(client, context, {
+          laboratoryId: null,
+          action,
+          entity: 'User',
+          entityId: userId,
+          before: null,
+          after: { credentialUpdated: true, userId },
+        });
       });
     } catch (error) {
       if (error instanceof IdentityEntityNotFoundError) throw error;

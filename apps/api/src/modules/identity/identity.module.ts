@@ -4,12 +4,14 @@ import { JwtService } from '@nestjs/jwt';
 
 import { AssignMembershipUseCase } from './application/assign-membership.use-case.js';
 import { AssignSystemRoleUseCase } from './application/assign-system-role.use-case.js';
+import { ChangePasswordUseCase } from './application/change-password.use-case.js';
 import { CreateLaboratoryUseCase } from './application/create-laboratory.use-case.js';
 import { CreateProjectUseCase } from './application/create-project.use-case.js';
 import { CreateUserUseCase } from './application/create-user.use-case.js';
 import { GetUserAccessUseCase } from './application/get-user-access.use-case.js';
 import { RevokeMembershipUseCase } from './application/revoke-membership.use-case.js';
 import { RevokeSystemRoleUseCase } from './application/revoke-system-role.use-case.js';
+import { ResetUserPasswordUseCase } from './application/reset-user-password.use-case.js';
 import { ListLaboratoriesUseCase } from './application/list-laboratories.use-case.js';
 import { ListProjectsUseCase } from './application/list-projects.use-case.js';
 import { ListUsersUseCase } from './application/list-users.use-case.js';
@@ -20,6 +22,7 @@ import { UpdateUserUseCase } from './application/update-user.use-case.js';
 import { ACCESS_TOKEN_ISSUER } from './domain/ports/access-token-issuer.port.js';
 import { ACCESS_TOKEN_VERIFIER } from './domain/ports/access-token-verifier.port.js';
 import { AUDIT_EVENT_WRITER } from './domain/ports/audit-event-writer.port.js';
+import { CURRENT_CREDENTIAL_READER } from './domain/ports/current-credential-reader.port.js';
 import { LOCAL_IDENTITY_READER } from './domain/ports/local-identity-reader.port.js';
 import {
   LABORATORY_READER,
@@ -37,6 +40,7 @@ import { PASSWORD_VERIFIER } from './domain/ports/password-verifier.port.js';
 import { PRINCIPAL_READER } from './domain/ports/principal-reader.port.js';
 import { PROJECT_READER, PROJECT_WRITER } from './domain/ports/project-repository.port.js';
 import { USER_READER, USER_WRITER } from './domain/ports/user-repository.port.js';
+import { USER_CREDENTIAL_WRITER } from './domain/ports/user-credential-writer.port.js';
 import { PermissionEvaluator } from './domain/services/permission-evaluator.js';
 import { ReauthenticationService } from './domain/services/reauthentication.js';
 import {
@@ -93,6 +97,11 @@ const POSTGRES_SYSTEM_ROLE_REPOSITORY = Symbol('POSTGRES_SYSTEM_ROLE_REPOSITORY'
     },
     {
       provide: PRINCIPAL_READER,
+      inject: [POSTGRES_IDENTITY_READER],
+      useFactory: (reader: PostgresLocalIdentityReader) => reader,
+    },
+    {
+      provide: CURRENT_CREDENTIAL_READER,
       inject: [POSTGRES_IDENTITY_READER],
       useFactory: (reader: PostgresLocalIdentityReader) => reader,
     },
@@ -170,6 +179,11 @@ const POSTGRES_SYSTEM_ROLE_REPOSITORY = Symbol('POSTGRES_SYSTEM_ROLE_REPOSITORY'
       useFactory: (repository: PostgresUserRepository) => repository,
     },
     {
+      provide: USER_CREDENTIAL_WRITER,
+      inject: [POSTGRES_USER_REPOSITORY],
+      useFactory: (repository: PostgresUserRepository) => repository,
+    },
+    {
       provide: POSTGRES_LABORATORY_REPOSITORY,
       inject: [DATABASE_POOL],
       useFactory: (pool: DatabasePool) => new PostgresLaboratoryRepository(pool),
@@ -216,6 +230,28 @@ const POSTGRES_SYSTEM_ROLE_REPOSITORY = Symbol('POSTGRES_SYSTEM_ROLE_REPOSITORY'
       inject: [USER_WRITER, PermissionEvaluator],
       useFactory: (...dependencies: ConstructorParameters<typeof UpdateUserUseCase>) =>
         new UpdateUserUseCase(...dependencies),
+    },
+    {
+      provide: ChangePasswordUseCase,
+      inject: [
+        CURRENT_CREDENTIAL_READER,
+        USER_CREDENTIAL_WRITER,
+        PASSWORD_VERIFIER,
+        PASSWORD_HASHER,
+      ],
+      useFactory: (...dependencies: ConstructorParameters<typeof ChangePasswordUseCase>) =>
+        new ChangePasswordUseCase(...dependencies),
+    },
+    {
+      provide: ResetUserPasswordUseCase,
+      inject: [
+        USER_CREDENTIAL_WRITER,
+        PermissionEvaluator,
+        ReauthenticationService,
+        PASSWORD_HASHER,
+      ],
+      useFactory: (...dependencies: ConstructorParameters<typeof ResetUserPasswordUseCase>) =>
+        new ResetUserPasswordUseCase(...dependencies),
     },
     {
       provide: ListLaboratoriesUseCase,

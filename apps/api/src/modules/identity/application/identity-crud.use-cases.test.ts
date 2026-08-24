@@ -16,11 +16,14 @@ import type {
 } from '../domain/ports/project-repository.port.js';
 import type { UserReader, UserWriter } from '../domain/ports/user-repository.port.js';
 import { PermissionEvaluator } from '../domain/services/permission-evaluator.js';
+import type { ReauthenticationService } from '../domain/services/reauthentication.js';
+import { ChangePasswordUseCase } from './change-password.use-case.js';
 import { CreateLaboratoryUseCase } from './create-laboratory.use-case.js';
 import { CreateProjectUseCase } from './create-project.use-case.js';
 import { CreateUserUseCase } from './create-user.use-case.js';
 import { ListLaboratoriesUseCase } from './list-laboratories.use-case.js';
 import { ListUsersUseCase } from './list-users.use-case.js';
+import { ResetUserPasswordUseCase } from './reset-user-password.use-case.js';
 import { UpdateProjectUseCase } from './update-project.use-case.js';
 
 const now = '2026-08-14T00:00:00.000Z';
@@ -233,5 +236,92 @@ describe('Identity CRUD authorization and scope', () => {
       context,
     );
     expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it('changes the authenticated user password using the verifier port contract', async () => {
+    const findActiveByUserId = vi.fn(async () => ({ passwordHash: '$argon2id$stored' }));
+    const setPasswordHash = vi.fn(async () => {});
+    const verify = vi.fn(
+      async (password: string, passwordHash: string | null) =>
+        password === 'current-password' && passwordHash === '$argon2id$stored',
+    );
+    const hash = vi.fn(async () => '$argon2id$new-hash');
+    const useCase = new ChangePasswordUseCase(
+      { findActiveByUserId },
+      { setPasswordHash },
+      { verify },
+      { hash },
+    );
+
+    await expect(
+      useCase.execute(
+        principal('USUARIO'),
+        { currentPassword: 'current-password', newPassword: 'new-password-strong' },
+        context,
+      ),
+    ).resolves.toEqual({ success: true });
+
+    expect(verify).toHaveBeenCalledWith('current-password', '$argon2id$stored');
+    expect(hash).toHaveBeenCalledWith('new-password-strong');
+    expect(setPasswordHash).toHaveBeenCalledWith(
+      userId,
+      '$argon2id$new-hash',
+      expect.objectContaining({ actorId: userId }),
+      'identity.user.password_changed',
+    );
+  });
+
+  it('does not hash or persist when the current password is invalid', async () => {
+    const hash = vi.fn(async () => '$argon2id$new-hash');
+    const setPasswordHash = vi.fn(async () => {});
+    const useCase = new ChangePasswordUseCase(
+      { findActiveByUserId: vi.fn(async () => ({ passwordHash: '$argon2id$stored' })) },
+      { setPasswordHash },
+      { verify: vi.fn(async () => false) },
+      { hash },
+    );
+
+    await expect(
+      useCase.execute(
+        principal('USUARIO'),
+        { currentPassword: 'wrong-password', newPassword: 'new-password-strong' },
+        context,
+      ),
+    ).rejects.toThrow('E-mail ou senha inválidos.');
+    expect(hash).not.toHaveBeenCalled();
+    expect(setPasswordHash).not.toHaveBeenCalled();
+  });
+
+  it('requires admin permission and reauthentication before resetting another password', async () => {
+    const setPasswordHash = vi.fn(async () => {});
+    const assertPassword = vi.fn(async () => {});
+    const reauthentication = { assertPassword } as unknown as ReauthenticationService;
+    const hash = vi.fn(async () => '$argon2id$reset-hash');
+    const useCase = new ResetUserPasswordUseCase(
+      { setPasswordHash },
+      permissions,
+      reauthentication,
+      { hash },
+    );
+    const input = {
+      newPassword: 'reset-password-strong',
+      confirmationPassword: 'admin-password',
+    };
+
+    await expect(
+      useCase.execute(principal('TECNICO'), userId, input, context),
+    ).rejects.toBeInstanceOf(AuthorizationDeniedError);
+    expect(assertPassword).not.toHaveBeenCalled();
+
+    await expect(
+      useCase.execute(principal('USUARIO', true), userId, input, context),
+    ).resolves.toEqual({ success: true });
+    expect(assertPassword).toHaveBeenCalledWith(expect.anything(), 'admin-password');
+    expect(setPasswordHash).toHaveBeenCalledWith(
+      userId,
+      '$argon2id$reset-hash',
+      expect.objectContaining({ actorId: userId }),
+      'identity.user.password_reset_by_admin',
+    );
   });
 });
