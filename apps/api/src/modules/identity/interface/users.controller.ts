@@ -1,7 +1,9 @@
 import {
   createUserInputSchema,
+  resetUserPasswordInputSchema,
   type AuthenticatedPrincipal,
   type CreateUserInput,
+  type ResetUserPasswordInput,
   type UpdateUserInput,
   type User,
   updateUserInputSchema,
@@ -24,6 +26,7 @@ import type { z } from 'zod';
 import { ZodValidationPipe } from '../../../shared/interface/zod-validation.pipe.js';
 import { CreateUserUseCase } from '../application/create-user.use-case.js';
 import { ListUsersUseCase } from '../application/list-users.use-case.js';
+import { ResetUserPasswordUseCase } from '../application/reset-user-password.use-case.js';
 import { UpdateUserUseCase } from '../application/update-user.use-case.js';
 import { CurrentPrincipal } from './current-principal.decorator.js';
 import { IdentityExceptionFilter } from './identity-exception.filter.js';
@@ -40,6 +43,7 @@ export class UsersController {
     @Inject(ListUsersUseCase) private readonly listUsers: ListUsersUseCase,
     @Inject(CreateUserUseCase) private readonly createUser: CreateUserUseCase,
     @Inject(UpdateUserUseCase) private readonly updateUser: UpdateUserUseCase,
+    @Inject(ResetUserPasswordUseCase) private readonly resetUserPassword: ResetUserPasswordUseCase,
   ) {}
 
   @Get()
@@ -64,6 +68,21 @@ export class UsersController {
     @Headers('x-request-id') requestId?: string,
   ): Promise<User> {
     return this.updateUser.execute(
+      principal,
+      params.userId,
+      input,
+      identityRequestContext(requestId),
+    );
+  }
+
+  @Post(':userId/password-reset')
+  public resetPassword(
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Param(new ZodValidationPipe(userParamsSchema)) params: UserParams,
+    @Body(new ZodValidationPipe(resetUserPasswordInputSchema)) input: ResetUserPasswordInput,
+    @Headers('x-request-id') requestId?: string,
+  ): Promise<{ success: true }> {
+    return this.resetUserPassword.execute(
       principal,
       params.userId,
       input,

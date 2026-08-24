@@ -7,6 +7,10 @@ import type {
 import type { DatabasePool } from '@arqueia/database';
 
 import type {
+  CurrentCredential,
+  CurrentCredentialReader,
+} from '../domain/ports/current-credential-reader.port.js';
+import type {
   LocalIdentityAccount,
   LocalIdentityReader,
 } from '../domain/ports/local-identity-reader.port.js';
@@ -52,7 +56,9 @@ function timestamp(value: Date): string {
   return value.toISOString();
 }
 
-export class PostgresLocalIdentityReader implements LocalIdentityReader, PrincipalReader {
+export class PostgresLocalIdentityReader
+  implements LocalIdentityReader, CurrentCredentialReader, PrincipalReader
+{
   public constructor(private readonly pool: DatabasePool) {}
 
   public async findActiveByEmail(email: string): Promise<LocalIdentityAccount | null> {
@@ -77,6 +83,21 @@ export class PostgresLocalIdentityReader implements LocalIdentityReader, Princip
       principal: await this.loadPrincipal(row),
       passwordHash: row.password_hash,
     };
+  }
+
+  public async findActiveByUserId(userId: string): Promise<CurrentCredential | null> {
+    const result = await this.pool.query<{ password_hash: string }>(
+      `SELECT c.password_hash
+         FROM users u
+         JOIN local_credentials c ON c.user_id = u.id
+        WHERE u.id = $1
+          AND u.status = 'ACTIVE'
+          AND u.archived_at IS NULL
+        LIMIT 1`,
+      [userId],
+    );
+    const row = result.rows[0];
+    return row === undefined ? null : { passwordHash: row.password_hash };
   }
 
   public async findByUserId(userId: string): Promise<AuthenticatedPrincipal | null> {
