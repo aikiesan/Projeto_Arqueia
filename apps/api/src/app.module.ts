@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 
-import { HealthController } from './health/health.controller.js';
+import { HealthModule } from './health/health.module.js';
 import { CatalogModule } from './modules/catalog/catalog.module.js';
 import { EquipmentModule } from './modules/equipment/equipment.module.js';
 import { IdentityModule } from './modules/identity/identity.module.js';
@@ -10,6 +10,7 @@ import { SchedulingModule } from './modules/scheduling/scheduling.module.js';
 
 @Module({
   imports: [
+    HealthModule,
     IdentityModule,
     CatalogModule,
     EquipmentModule,
@@ -17,6 +18,5 @@ import { SchedulingModule } from './modules/scheduling/scheduling.module.js';
     InventoryModule,
     ManagementModule,
   ],
-  controllers: [HealthController],
 })
 export class AppModule {}
