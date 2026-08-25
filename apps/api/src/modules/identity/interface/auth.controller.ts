@@ -1,6 +1,8 @@
 import {
+  changePasswordInputSchema,
   localLoginInputSchema,
   type AuthenticatedPrincipal,
+  type ChangePasswordInput,
   type LocalLoginInput,
   type LoginResponse,
 } from '@arqueia/contracts';
@@ -17,11 +19,14 @@ import {
 import { z } from 'zod';
 
 import { ZodValidationPipe } from '../../../shared/interface/zod-validation.pipe.js';
+import { ChangePasswordUseCase } from '../application/change-password.use-case.js';
 import { LoginLocalUseCase } from '../application/login-local.use-case.js';
 import { InvalidCredentialsError } from '../domain/errors/invalid-credentials.error.js';
 import { OIDC_PROVIDER, type OidcProvider } from '../domain/ports/oidc-provider.port.js';
 import { CurrentPrincipal } from './current-principal.decorator.js';
+import { identityRequestContext } from './identity-request-context.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
+import { AuthRateLimitGuard } from './auth-rate-limit.guard.js';
 
 const requestIdSchema = z.string().uuid();
 
@@ -29,10 +34,12 @@ const requestIdSchema = z.string().uuid();
 export class AuthController {
   public constructor(
     @Inject(LoginLocalUseCase) private readonly loginLocal: LoginLocalUseCase,
+    @Inject(ChangePasswordUseCase) private readonly changePasswordUseCase: ChangePasswordUseCase,
     @Inject(OIDC_PROVIDER) private readonly oidcProvider: OidcProvider,
   ) {}
 
   @Post('login')
+  @UseGuards(AuthRateLimitGuard)
   public async login(
     @Body(new ZodValidationPipe(localLoginInputSchema)) input: LocalLoginInput,
     @Headers('x-request-id') requestId?: string,
@@ -50,6 +57,30 @@ export class AuthController {
         });
       }
 
+      throw error;
+    }
+  }
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard, AuthRateLimitGuard)
+  public async changePassword(
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Body(new ZodValidationPipe(changePasswordInputSchema)) input: ChangePasswordInput,
+    @Headers('x-request-id') requestId?: string,
+  ): Promise<{ success: boolean }> {
+    try {
+      return await this.changePasswordUseCase.execute(
+        principal,
+        input,
+        identityRequestContext(requestId),
+      );
+    } catch (error) {
+      if (error instanceof InvalidCredentialsError) {
+        throw new UnauthorizedException({
+          code: 'INVALID_CREDENTIALS',
+          message: error.message,
+        });
+      }
       throw error;
     }
   }

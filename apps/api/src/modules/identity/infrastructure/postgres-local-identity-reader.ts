@@ -27,6 +27,8 @@ interface UserRow {
 
 interface UserCredentialRow extends UserRow {
   password_hash: string;
+  failed_attempts: number;
+  locked_until: Date | null;
 }
 
 interface MembershipRow {
@@ -59,7 +61,7 @@ export class PostgresLocalIdentityReader implements LocalIdentityReader, Princip
     const userResult = await this.pool.query<UserCredentialRow>(
       `SELECT u.id, u.institution_id, u.supervisor_user_id, u.name, u.email,
               u.status, u.identity_provider, u.created_at, u.updated_at, u.archived_at,
-              c.password_hash
+              c.password_hash, c.failed_attempts, c.locked_until
          FROM users u
          JOIN local_credentials c ON c.user_id = u.id
         WHERE lower(u.email) = lower($1)
@@ -76,6 +78,71 @@ export class PostgresLocalIdentityReader implements LocalIdentityReader, Princip
     return {
       principal: await this.loadPrincipal(row),
       passwordHash: row.password_hash,
+      failedAttempts: row.failed_attempts ?? 0,
+      lockedUntil: row.locked_until ? row.locked_until.toISOString() : null,
+    };
+  }
+
+  public async findActiveById(userId: string): Promise<LocalIdentityAccount | null> {
+    const userResult = await this.pool.query<UserCredentialRow>(
+      `SELECT u.id, u.institution_id, u.supervisor_user_id, u.name, u.email,
+              u.status, u.identity_provider, u.created_at, u.updated_at, u.archived_at,
+              c.password_hash, c.failed_attempts, c.locked_until
+         FROM users u
+         JOIN local_credentials c ON c.user_id = u.id
+        WHERE u.id = $1
+          AND u.archived_at IS NULL
+        LIMIT 1`,
+      [userId],
+    );
+    const row = userResult.rows[0];
+
+    if (row === undefined) {
+      return null;
+    }
+
+    return {
+      principal: await this.loadPrincipal(row),
+      passwordHash: row.password_hash,
+      failedAttempts: row.failed_attempts ?? 0,
+      lockedUntil: row.locked_until ? row.locked_until.toISOString() : null,
+    };
+  }
+
+  public async recordLoginSuccess(userId: string): Promise<void> {
+    await this.pool.query(
+      `UPDATE local_credentials
+          SET failed_attempts = 0,
+              locked_until = NULL,
+              updated_at = now()
+        WHERE user_id = $1`,
+      [userId],
+    );
+  }
+
+  public async recordLoginFailure(
+    userId: string,
+    maxFailedAttempts: number,
+    lockoutDurationSeconds: number,
+  ): Promise<{ failedAttempts: number; isLocked: boolean; lockedUntil: string | null }> {
+    const result = await this.pool.query<{ failed_attempts: number; locked_until: Date | null }>(
+      `UPDATE local_credentials
+          SET failed_attempts = failed_attempts + 1,
+              locked_until = CASE
+                WHEN failed_attempts + 1 >= $2 THEN now() + ($3 || ' seconds')::interval
+                ELSE locked_until
+              END,
+              updated_at = now()
+        WHERE user_id = $1
+        RETURNING failed_attempts, locked_until`,
+      [userId, maxFailedAttempts, lockoutDurationSeconds],
+    );
+    const updated = result.rows[0];
+    const isLocked = updated?.locked_until !== null && updated?.locked_until !== undefined;
+    return {
+      failedAttempts: updated?.failed_attempts ?? 1,
+      isLocked,
+      lockedUntil: updated?.locked_until ? updated.locked_until.toISOString() : null,
     };
   }
 

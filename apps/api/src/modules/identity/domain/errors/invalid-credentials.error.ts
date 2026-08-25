@@ -1,6 +1,6 @@
 export class InvalidCredentialsError extends Error {
-  public constructor() {
-    super('E-mail ou senha inválidos.');
+  public constructor(message: string = 'E-mail ou senha inválidos.') {
+    super(message);
     this.name = 'InvalidCredentialsError';
   }
 }

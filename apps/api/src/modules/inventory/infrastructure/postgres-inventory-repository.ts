@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   batchSchema,
   productSchema,
@@ -86,8 +87,8 @@ interface StockMovementRow {
   archived_at?: Date | null;
 }
 
-function timestamp(value: Date): string {
-  return value.toISOString();
+function timestamp(value: Date | string): string {
+  return typeof value === 'string' ? new Date(value).toISOString() : value.toISOString();
 }
 
 function mapProduct(row: ProductRow): Product {
@@ -188,17 +189,7 @@ async function calculateBatchBalance(
          CASE
            WHEN movement_type = 'ENTRY' THEN quantity
            WHEN movement_type IN ('WITHDRAWAL', 'DISCARD') THEN -quantity
-           WHEN movement_type = 'ADJUSTMENT' THEN balance_after - (
-             SELECT COALESCE(SUM(
-               CASE
-                 WHEN m2.movement_type = 'ENTRY' THEN m2.quantity
-                 WHEN m2.movement_type IN ('WITHDRAWAL', 'DISCARD') THEN -m2.quantity
-                 ELSE 0
-               END
-             ), 0)
-               FROM stock_movements m2
-              WHERE m2.batch_id = $1 AND m2.created_at < stock_movements.created_at
-           )
+           WHEN movement_type = 'ADJUSTMENT' THEN quantity
            ELSE 0
          END
        ), 0
@@ -207,7 +198,7 @@ async function calculateBatchBalance(
     WHERE batch_id = $1`,
     [batchId],
   );
-  return Math.max(0, Number(result.rows[0]?.balance ?? 0));
+  return Number(result.rows[0]?.balance ?? 0);
 }
 
 export class PostgresInventoryRepository implements InventoryRepository {
@@ -262,16 +253,23 @@ export class PostgresInventoryRepository implements InventoryRepository {
 
     const searchPattern = query.search ? `%${query.search.replace(/[\\%_]/g, '\\$&')}%` : null;
     const result = await this.pool.query<ProductRow>(
-      `SELECT id, laboratory_id, code, name, cas_number, category, unit_of_measure,
-              minimum_stock_threshold, description, created_at, updated_at, archived_at
-         FROM products
-        WHERE laboratory_id = $1
-          AND archived_at IS NULL
-          AND ($2::text IS NULL OR category = $2)
-          AND ($3::text IS NULL OR name ILIKE $3 ESCAPE '\\' OR code ILIKE $3 ESCAPE '\\' OR cas_number ILIKE $3 ESCAPE '\\')
-        ORDER BY lower(name) ASC, id ASC
-        LIMIT $4`,
-      [query.laboratoryId, query.category ?? null, searchPattern, limit + 1],
+      `SELECT p.id, p.laboratory_id, p.code, p.name, p.cas_number, p.category, p.unit_of_measure,
+              p.minimum_stock_threshold, p.description, p.created_at, p.updated_at, p.archived_at
+         FROM products p
+        WHERE p.laboratory_id = $1
+          AND p.archived_at IS NULL
+          AND ($2::text IS NULL OR p.category = $2)
+          AND ($3::text IS NULL OR p.name ILIKE $3 ESCAPE '\\' OR p.code ILIKE $3 ESCAPE '\\' OR p.cas_number ILIKE $3 ESCAPE '\\')
+          AND ($4::uuid IS NULL OR (lower(p.name), p.id) > (
+            SELECT lower(cursor_product.name), cursor_product.id
+              FROM products cursor_product
+             WHERE cursor_product.id = $4
+               AND cursor_product.laboratory_id = $1
+               AND cursor_product.archived_at IS NULL
+          ))
+        ORDER BY lower(p.name) ASC, p.id ASC
+        LIMIT $5`,
+      [query.laboratoryId, query.category ?? null, searchPattern, query.cursor ?? null, limit + 1],
     );
 
     const hasNextPage = result.rows.length > limit;
@@ -298,7 +296,7 @@ export class PostgresInventoryRepository implements InventoryRepository {
         throw new ProductNotFoundError(input.productId);
       }
 
-      const batchId = crypto.randomUUID();
+      const batchId = randomUUID();
       const qrCode = `ARQ-LOT-${batchId}`;
 
       const batchResult = await client.query<BatchRow>(
@@ -367,6 +365,7 @@ export class PostgresInventoryRepository implements InventoryRepository {
                   CASE
                     WHEN sm.movement_type = 'ENTRY' THEN sm.quantity
                     WHEN sm.movement_type IN ('WITHDRAWAL', 'DISCARD') THEN -sm.quantity
+                    WHEN sm.movement_type = 'ADJUSTMENT' THEN sm.quantity
                     ELSE 0
                   END
                 ), 0
@@ -379,15 +378,25 @@ export class PostgresInventoryRepository implements InventoryRepository {
           AND ($3::uuid IS NULL OR b.space_option_id = $3)
           AND ($4::text IS NULL OR b.status = $4)
           AND ($5::text IS NULL OR b.batch_number ILIKE $5 ESCAPE '\\' OR b.qr_code ILIKE $5 ESCAPE '\\')
+          AND ($6::int IS NULL OR (b.expiration_date IS NOT NULL AND b.expiration_date <= now() + ($6 || ' days')::interval))
+          AND ($7::uuid IS NULL OR (b.received_date, b.id) < (
+            SELECT cursor_batch.received_date, cursor_batch.id
+              FROM batches cursor_batch
+             WHERE cursor_batch.id = $7
+               AND cursor_batch.laboratory_id = $1
+               AND cursor_batch.archived_at IS NULL
+          ))
         GROUP BY b.id
-        ORDER BY b.received_date DESC, b.id ASC
-        LIMIT $6`,
+        ORDER BY b.received_date DESC, b.id DESC
+        LIMIT $8`,
       [
         query.laboratoryId,
         query.productId ?? null,
         query.spaceOptionId ?? null,
         query.status ?? null,
         searchPattern,
+        query.expiringDays ?? null,
+        query.cursor ?? null,
         limit + 1,
       ],
     );
@@ -573,22 +582,29 @@ export class PostgresInventoryRepository implements InventoryRepository {
     const limit = Number(query.limit ?? 25);
 
     const result = await this.pool.query<StockMovementRow>(
-      `SELECT id, laboratory_id, batch_id, product_id, user_id, project_id,
-              movement_type, quantity, balance_after, purpose, reason, performed_at, created_at
-         FROM stock_movements
-        WHERE laboratory_id = $1
-          AND ($2::uuid IS NULL OR batch_id = $2)
-          AND ($3::uuid IS NULL OR product_id = $3)
-          AND ($4::uuid IS NULL OR project_id = $4)
-          AND ($5::text IS NULL OR movement_type = $5)
-        ORDER BY performed_at DESC, id DESC
-        LIMIT $6`,
+      `SELECT sm.id, sm.laboratory_id, sm.batch_id, sm.product_id, sm.user_id, sm.project_id,
+              sm.movement_type, sm.quantity, sm.balance_after, sm.purpose, sm.reason, sm.performed_at, sm.created_at
+         FROM stock_movements sm
+        WHERE sm.laboratory_id = $1
+          AND ($2::uuid IS NULL OR sm.batch_id = $2)
+          AND ($3::uuid IS NULL OR sm.product_id = $3)
+          AND ($4::uuid IS NULL OR sm.project_id = $4)
+          AND ($5::text IS NULL OR sm.movement_type = $5)
+          AND ($6::uuid IS NULL OR (sm.performed_at, sm.id) < (
+            SELECT cursor_sm.performed_at, cursor_sm.id
+              FROM stock_movements cursor_sm
+             WHERE cursor_sm.id = $6
+               AND cursor_sm.laboratory_id = $1
+          ))
+        ORDER BY sm.performed_at DESC, sm.id DESC
+        LIMIT $7`,
       [
         query.laboratoryId,
         query.batchId ?? null,
         query.productId ?? null,
         query.projectId ?? null,
         query.type ?? null,
+        query.cursor ?? null,
         limit + 1,
       ],
     );

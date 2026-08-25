@@ -16,11 +16,13 @@ import type {
 } from '../domain/ports/project-repository.port.js';
 import type { UserReader, UserWriter } from '../domain/ports/user-repository.port.js';
 import { PermissionEvaluator } from '../domain/services/permission-evaluator.js';
+import { ChangePasswordUseCase } from './change-password.use-case.js';
 import { CreateLaboratoryUseCase } from './create-laboratory.use-case.js';
 import { CreateProjectUseCase } from './create-project.use-case.js';
 import { CreateUserUseCase } from './create-user.use-case.js';
 import { ListLaboratoriesUseCase } from './list-laboratories.use-case.js';
 import { ListUsersUseCase } from './list-users.use-case.js';
+import { ResetUserPasswordUseCase } from './reset-user-password.use-case.js';
 import { UpdateProjectUseCase } from './update-project.use-case.js';
 
 const now = '2026-08-14T00:00:00.000Z';
@@ -233,5 +235,71 @@ describe('Identity CRUD authorization and scope', () => {
       context,
     );
     expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows user to change their own password with correct current password', async () => {
+    const setPasswordHash = vi.fn(async () => {});
+    const findActiveById = vi.fn(async () => ({
+      principal: principal('USUARIO'),
+      passwordHash: '$argon2id$hashed',
+    }));
+    const verify = vi.fn(async (pass: string, _hash: string | null) => pass === 'current-pass-123');
+    const hash = vi.fn(async (_pass: string) => '$argon2id$new-hash');
+
+    const changePassword = new ChangePasswordUseCase(
+      { findActiveByEmail: vi.fn(), findActiveById },
+      { create: vi.fn(), update: vi.fn(), setPasswordHash },
+      { verify },
+      { hash },
+    );
+
+    const result = await changePassword.execute(
+      principal('USUARIO'),
+      { currentPassword: 'current-pass-123', newPassword: 'new-strong-password-123' },
+      context,
+    );
+
+    expect(result.success).toBe(true);
+    expect(setPasswordHash).toHaveBeenCalledWith(
+      userId,
+      '$argon2id$new-hash',
+      expect.objectContaining({ actorId: userId }),
+      'identity.user.password_changed',
+    );
+  });
+
+  it('allows administrator to reset a user password with admin confirmation password', async () => {
+    const setPasswordHash = vi.fn(async () => {});
+    const reauthenticate = {
+      assertPassword: vi.fn(async () => {}),
+    } as unknown as ReauthenticationService;
+    const hash = vi.fn(async (_pass: string) => '$argon2id$reset-hash');
+
+    const resetUserPassword = new ResetUserPasswordUseCase(
+      { create: vi.fn(), update: vi.fn(), setPasswordHash },
+      permissions,
+      reauthenticate,
+      { hash },
+    );
+
+    const targetUserId = '7da7b810-9dad-11d1-80b4-00c04fd430c9';
+    const result = await resetUserPassword.execute(
+      principal('USUARIO', true),
+      targetUserId,
+      { newPassword: 'brand-new-password-123', confirmationPassword: 'admin-password' },
+      context,
+    );
+
+    expect(result.success).toBe(true);
+    expect(reauthenticate.assertPassword).toHaveBeenCalledWith(
+      expect.anything(),
+      'admin-password',
+    );
+    expect(setPasswordHash).toHaveBeenCalledWith(
+      targetUserId,
+      '$argon2id$reset-hash',
+      expect.objectContaining({ actorId: userId }),
+      'identity.user.password_reset_by_admin',
+    );
   });
 });

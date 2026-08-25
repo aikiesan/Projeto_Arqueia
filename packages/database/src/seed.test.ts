@@ -151,6 +151,17 @@ describe('development seed execution', () => {
         sourceRowCount: expect.any(Number),
         optionCount: expect.any(Number),
       },
+      fapespCatalog: {
+        sourceId: 'catalog-source-id',
+        sourceCreated: true,
+        sourceRowCount: expect.any(Number),
+        optionCount: expect.any(Number),
+      },
+      preRegistration: {
+        equipmentsCreated: expect.any(Number),
+        productsCreated: expect.any(Number),
+        batchesCreated: expect.any(Number),
+      },
     });
 
     const statements = database.calls.map(({ statement }) => statement).join('\n');

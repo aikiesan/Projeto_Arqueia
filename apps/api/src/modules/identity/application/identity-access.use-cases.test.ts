@@ -96,11 +96,21 @@ const assignment: SystemRoleAssignment = {
 };
 
 function reauthentication(admin: AuthenticatedPrincipal): ReauthenticationService {
-  const account: LocalIdentityAccount = { principal: admin, passwordHash: 'stored-hash' };
+  const account: LocalIdentityAccount = {
+    principal: admin,
+    passwordHash: 'stored-hash',
+    failedAttempts: 0,
+    lockedUntil: null,
+  };
   const reader: LocalIdentityReader = {
     findActiveByEmail: vi.fn(async (email: string) =>
       email === admin.user.email ? account : null,
     ),
+    findActiveById: vi.fn(async (id: string) =>
+      id === admin.user.id ? account : null,
+    ),
+    recordLoginSuccess: vi.fn(async () => undefined),
+    recordLoginFailure: vi.fn(async () => ({ failedAttempts: 1, isLocked: false, lockedUntil: null })),
   };
   const verifier: PasswordVerifier = {
     verify: vi.fn(async (password: string, hash: string | null) =>

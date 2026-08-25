@@ -3,17 +3,33 @@ import { Catch, HttpStatus } from '@nestjs/common';
 
 import type { Response } from 'express';
 
+import { AuthorizationDeniedError } from '../../identity/domain/errors/authorization-denied.error.js';
 import {
   AuditEventNotFoundError,
   InvalidPeriodError,
   ManagementLaboratoryNotFoundError,
 } from '../domain/management.errors.js';
 
-@Catch(AuditEventNotFoundError, InvalidPeriodError, ManagementLaboratoryNotFoundError)
+@Catch(
+  AuthorizationDeniedError,
+  AuditEventNotFoundError,
+  InvalidPeriodError,
+  ManagementLaboratoryNotFoundError,
+)
 export class ManagementExceptionFilter implements ExceptionFilter {
   public catch(exception: Error, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+
+    if (exception instanceof AuthorizationDeniedError) {
+      response.status(HttpStatus.FORBIDDEN).json({
+        statusCode: HttpStatus.FORBIDDEN,
+        error: 'Forbidden',
+        message: exception.message,
+        code: 'AUTHORIZATION_DENIED',
+      });
+      return;
+    }
 
     if (
       exception instanceof AuditEventNotFoundError ||

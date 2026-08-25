@@ -11,6 +11,11 @@ import {
   type DatabasePool,
 } from './client.js';
 import { seedCP2bReferenceCatalog, type CP2bCatalogSeedResult } from './reference-data/seed-cp2b-catalog.js';
+import { seedFapespReferenceCatalog } from './reference-data/seed-fapesp-catalog.js';
+import {
+  seedFapespPreRegistration,
+  type FapespPreRegistrationResult,
+} from './reference-data/seed-fapesp-preregistration.js';
 
 const MINIMUM_ADMIN_PASSWORD_LENGTH = 12;
 
@@ -55,6 +60,8 @@ export interface SeedResult {
   readonly credentialCreated: boolean;
   readonly systemRoleAssignmentId: string;
   readonly catalog: CP2bCatalogSeedResult;
+  readonly fapespCatalog: CP2bCatalogSeedResult;
+  readonly preRegistration: FapespPreRegistrationResult;
 }
 
 export type PasswordHasher = (password: string) => Promise<string>;
@@ -307,6 +314,13 @@ export async function seedDevelopmentData(
     }
 
     const catalog = await seedCP2bReferenceCatalog(client, laboratoryId, administratorId);
+    const fapespCatalog = await seedFapespReferenceCatalog(client, laboratoryId, administratorId);
+    const preRegistration = await seedFapespPreRegistration(
+      client,
+      laboratoryId,
+      projectId,
+      administratorId,
+    );
 
     return {
       institutionId,
@@ -316,6 +330,8 @@ export async function seedDevelopmentData(
       credentialCreated,
       systemRoleAssignmentId: roleAssignment.id,
       catalog,
+      fapespCatalog,
+      preRegistration,
     };
   });
 }
@@ -350,8 +366,8 @@ if (isDirectExecution) {
     .then(() => {
       console.info('[database:seed] seed concluído.');
     })
-    .catch(() => {
-      console.error('[database:seed] seed falhou; nenhum segredo foi exibido.');
+    .catch((error) => {
+      console.error('[database:seed] seed falhou:', error);
       process.exitCode = 1;
     });
 }

@@ -31,6 +31,28 @@ describe('Inventory Contracts (Checkpoint 1)', () => {
     expect(parsed.unitOfMeasure).toBe('ML');
   });
 
+  it('rejects product with invalid category or unit of measure', () => {
+    expect(() =>
+      createProductInputSchema.parse({
+        laboratoryId: labId,
+        code: 'PRD-INV-CAT',
+        name: 'Produto Categoria Inválida',
+        category: 'INVALID_CATEGORY',
+        unitOfMeasure: 'ML',
+      }),
+    ).toThrow();
+
+    expect(() =>
+      createProductInputSchema.parse({
+        laboratoryId: labId,
+        code: 'PRD-INV-UOM',
+        name: 'Produto Unidade Inválida',
+        category: 'REAGENT',
+        unitOfMeasure: 'INVALID_UOM',
+      }),
+    ).toThrow();
+  });
+
   it('validates a batch entry input', () => {
     const batchPayload = {
       laboratoryId: labId,
@@ -46,6 +68,26 @@ describe('Inventory Contracts (Checkpoint 1)', () => {
     expect(parsed.initialQuantity).toBe(2500);
   });
 
+  it('rejects batch entry with zero or negative initial quantity', () => {
+    expect(() =>
+      createBatchInputSchema.parse({
+        laboratoryId: labId,
+        productId,
+        batchNumber: 'LOT-0-QTY',
+        initialQuantity: 0,
+      }),
+    ).toThrow();
+
+    expect(() =>
+      createBatchInputSchema.parse({
+        laboratoryId: labId,
+        productId,
+        batchNumber: 'LOT-NEG-QTY',
+        initialQuantity: -10,
+      }),
+    ).toThrow();
+  });
+
   it('rejects stock withdrawal missing mandatory projectId', () => {
     const invalidWithdrawal = {
       laboratoryId: labId,
@@ -55,6 +97,28 @@ describe('Inventory Contracts (Checkpoint 1)', () => {
     };
 
     expect(() => withdrawStockInputSchema.parse(invalidWithdrawal)).toThrow();
+  });
+
+  it('rejects stock withdrawal with zero or negative quantity', () => {
+    expect(() =>
+      withdrawStockInputSchema.parse({
+        laboratoryId: labId,
+        batchId,
+        projectId,
+        quantity: 0,
+        purpose: 'Retirada zero inválida',
+      }),
+    ).toThrow();
+
+    expect(() =>
+      withdrawStockInputSchema.parse({
+        laboratoryId: labId,
+        batchId,
+        projectId,
+        quantity: -5,
+        purpose: 'Retirada negativa inválida',
+      }),
+    ).toThrow();
   });
 
   it('validates stock withdrawal input with valid project and purpose', () => {
@@ -93,5 +157,16 @@ describe('Inventory Contracts (Checkpoint 1)', () => {
 
     const parsed = adjustStockInputSchema.parse(validReason);
     expect(parsed.newBalance).toBe(1800);
+  });
+
+  it('rejects negative newBalance on stock adjustment', () => {
+    expect(() =>
+      adjustStockInputSchema.parse({
+        laboratoryId: labId,
+        batchId,
+        newBalance: -1,
+        reason: 'Tentativa de saldo negativo em ajuste',
+      }),
+    ).toThrow();
   });
 });

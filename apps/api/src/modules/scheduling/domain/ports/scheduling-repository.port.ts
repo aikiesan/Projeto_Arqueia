@@ -3,8 +3,10 @@ import type {
   CreateReservationResult,
   CreateTechnicalBlockInput,
   ListScheduleQuery,
+  ReleaseAbsentReservationsResult,
   Reservation,
   ScheduleResponse,
+  StartWalkInReservationInput,
   TechnicalBlock,
 } from '@arqueia/contracts';
 
@@ -28,6 +30,30 @@ export interface SchedulingRepository {
     context: SchedulingMutationContext,
   ): Promise<CreateReservationResult>;
 
+  startWalkInReservation(
+    input: StartWalkInReservationInput,
+    context: SchedulingMutationContext,
+  ): Promise<Reservation>;
+
+  checkInReservation(
+    laboratoryId: string,
+    reservationId: string,
+    context: SchedulingMutationContext,
+    canManageReservations: boolean,
+  ): Promise<Reservation>;
+
+  completeReservation(
+    laboratoryId: string,
+    reservationId: string,
+    notes: string | undefined,
+    context: SchedulingMutationContext,
+    canManageReservations: boolean,
+  ): Promise<Reservation>;
+
+  releaseAbsentReservations(
+    laboratoryId: string,
+    context: SchedulingMutationContext,
+  ): Promise<ReleaseAbsentReservationsResult>;
 
   cancelReservation(
     laboratoryId: string,

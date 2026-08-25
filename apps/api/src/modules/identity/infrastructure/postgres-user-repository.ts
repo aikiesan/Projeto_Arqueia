@@ -133,4 +133,43 @@ export class PostgresUserRepository implements UserReader, UserWriter {
       return translateIdentityWriteError(error);
     }
   }
+
+  public async setPasswordHash(
+    userId: string,
+    passwordHash: string,
+    context: IdentityMutationContext,
+    action: string = 'identity.user.password_updated',
+  ): Promise<void> {
+    try {
+      await inTransaction(this.pool, async (client) => {
+        const userResult = await client.query<UserRow>(
+          `SELECT ${USER_COLUMNS} FROM users WHERE id = $1 AND archived_at IS NULL FOR UPDATE`,
+          [userId],
+        );
+        if (userResult.rows[0] === undefined) {
+          throw new IdentityEntityNotFoundError('User', userId);
+        }
+
+        await client.query(
+          `INSERT INTO local_credentials (user_id, password_hash)
+           VALUES ($1, $2)
+           ON CONFLICT (user_id)
+           DO UPDATE SET password_hash = EXCLUDED.password_hash`,
+          [userId, passwordHash],
+        );
+
+        await appendMutationAudit(client, context, {
+          laboratoryId: null,
+          action,
+          entity: 'User',
+          entityId: userId,
+          before: null,
+          after: { userId, credentialUpdated: true },
+        });
+      });
+    } catch (error) {
+      if (error instanceof IdentityEntityNotFoundError) throw error;
+      return translateIdentityWriteError(error);
+    }
+  }
 }

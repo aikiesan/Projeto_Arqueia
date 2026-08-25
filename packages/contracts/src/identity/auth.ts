@@ -99,6 +99,20 @@ export const oidcProviderMetadataSchema = z
   })
   .strict();
 
+export const changePasswordInputSchema = z
+  .object({
+    currentPassword: z.string().min(1).max(128),
+    newPassword: z.string().min(12).max(128),
+  })
+  .strict();
+
+export const resetUserPasswordInputSchema = z
+  .object({
+    newPassword: z.string().min(12).max(128),
+    confirmationPassword: z.string().min(1).max(128),
+  })
+  .strict();
+
 export type LocalLoginInput = z.input<typeof localLoginInputSchema>;
 export type AuthenticatedPrincipal = z.infer<typeof authenticatedPrincipalSchema>;
 export type SessionMetadata = z.infer<typeof sessionMetadataSchema>;
@@ -111,3 +125,5 @@ export type ApiRefreshResult = z.infer<typeof apiRefreshResultSchema>;
 export type BffPublicRefreshResponse = z.infer<typeof bffPublicRefreshResponseSchema>;
 export type LoginResponse = z.infer<typeof loginResponseSchema>;
 export type OidcProviderMetadata = z.infer<typeof oidcProviderMetadataSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordInputSchema>;
+export type ResetUserPasswordInput = z.infer<typeof resetUserPasswordInputSchema>;

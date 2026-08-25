@@ -24,6 +24,12 @@ const inventoryMigrationPath = fileURLToPath(
 const managementMigrationPath = fileURLToPath(
   new URL('../migrations/006_management_audit_indexes.cjs', import.meta.url),
 );
+const stockMovementNonNegativeMigrationPath = fileURLToPath(
+  new URL('../migrations/009_stock_movement_non_negative.cjs', import.meta.url),
+);
+const stockMovementLedgerConsistencyMigrationPath = fileURLToPath(
+  new URL('../migrations/010_stock_movement_ledger_consistency.cjs', import.meta.url),
+);
 const require = createRequire(import.meta.url);
 
 function renderMigrationSql(path = migrationPath): string {
@@ -177,5 +183,34 @@ describe('management audit indexes migration invariants', () => {
     expect(sql).toContain('audit_events_actor_timeline_idx');
     expect(sql).toContain('audit_events_lab_timeline_cursor_idx');
     expect(sql).toContain('occurred_at');
+  });
+});
+
+describe('stock movements balance_after non-negative constraint migration invariants', () => {
+  it('adds check constraint balance_after >= 0 to stock_movements', () => {
+    const sql = renderMigrationSql(stockMovementNonNegativeMigrationPath);
+
+    expect(sql).toContain('ALTER TABLE "stock_movements"');
+    expect(sql).toContain('stock_movements_balance_after_non_negative_check');
+    expect(sql).toContain('CHECK (balance_after >= 0)');
+  });
+
+  it('declares down rollback dropping the check constraint', async () => {
+    const migration = await readFile(stockMovementNonNegativeMigrationPath, 'utf8');
+
+    expect(migration).toContain('dropConstraint');
+    expect(migration).toContain('stock_movements_balance_after_non_negative_check');
+  });
+});
+
+describe('stock movement ledger consistency migration invariants', () => {
+  it('serializes batch writers and validates the stored snapshot against the derived ledger', async () => {
+    const migration = await readFile(stockMovementLedgerConsistencyMigrationPath, 'utf8');
+
+    expect(migration).toContain('stock_movements_ledger_consistency');
+    expect(migration).toContain('FOR UPDATE');
+    expect(migration).toContain("WHEN movement_type IN ('WITHDRAWAL', 'DISCARD') THEN -quantity");
+    expect(migration).toContain('NEW.balance_after IS DISTINCT FROM expected_balance');
+    expect(migration).toContain("CONSTRAINT = 'stock_movements_ledger_consistency_check'");
   });
 });
