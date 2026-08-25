@@ -22,8 +22,25 @@ pm2 restart infrastructure/pm2/ecosystem.config.js
 pm2 save
 
 echo ">> health checks"
-code_api=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4001/health || true)
-code_web=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4002 || true)
-echo "   api:4001/health -> ${code_api}"
-echo "   web:4002        -> ${code_web}"
-[ "$code_api" = "200" ] && [ "$code_web" = "200" ] && echo ">> OK" || { echo "!! Falha no health check"; exit 1; }
+MAX_RETRIES=10
+attempt=1
+success=0
+
+while [ "$attempt" -le "$MAX_RETRIES" ]; do
+  code_api=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4001/api/health || true)
+  code_web=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4002/api/health || true)
+  echo "   [tentativa $attempt/$MAX_RETRIES] api:4001/api/health -> ${code_api}, web:4002/api/health -> ${code_web}"
+  if [ "$code_api" = "200" ] && [ "$code_web" = "200" ]; then
+    success=1
+    break
+  fi
+  sleep 2
+  attempt=$((attempt + 1))
+done
+
+if [ "$success" -eq 1 ]; then
+  echo ">> Deploy e health checks concluídos com sucesso."
+else
+  echo "!! Falha no health check após $MAX_RETRIES tentativas"
+  exit 1
+fi

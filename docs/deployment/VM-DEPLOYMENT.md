@@ -61,7 +61,7 @@ pm2 startup            # gerar/instalar o serviço systemd do PM2 (sobrevive a r
 
 ## 6. Apache2 (VirtualHost + TLS)
 ```bash
-sudo a2enmod proxy proxy_http proxy_wstunnel headers ssl rewrite
+sudo a2enmod proxy proxy_http proxy_wstunnel headers ssl rewrite remoteip
 sudo cp infrastructure/proxy/arqueia.cp2b.unicamp.br.apache.conf \
         /etc/apache2/sites-available/
 sudo a2ensite arqueia.cp2b.unicamp.br.apache.conf
@@ -73,11 +73,12 @@ sudo certbot --apache -d cp2b.unicamp.br -d arqueia.cp2b.unicamp.br
 ```
 
 ## 7. Verificação (health checks)
+Consulte o checklist completo de aceitação em `docs/deployment/PRODUCTION_DEPLOYMENT_CHECKLIST.md`:
 ```bash
-pm2 list                                                   # api, web, worker: online
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:4001/health   # 200
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:4002          # 200
-curl -s -o /dev/null -w "%{http_code}\n" https://arqueia.cp2b.unicamp.br # 200
+pm2 list                                                      # api, web, worker: online
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:4001/api/health   # 200
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:4002              # 200
+curl -s -o /dev/null -w "%{http_code}\n" https://arqueia.cp2b.unicamp.br    # 200
 ```
 
 ## Deploy recorrente (após a configuração inicial)
