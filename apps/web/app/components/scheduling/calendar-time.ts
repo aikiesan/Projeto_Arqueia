@@ -2,6 +2,7 @@ export interface ScheduleSlotSelection {
   readonly date: string;
   readonly hour: number;
   readonly timezone: string;
+  readonly equipmentId?: string | undefined;
 }
 
 export type ScheduleCalendarView = 'DAY' | 'WEEK';
@@ -231,4 +232,166 @@ export function shiftCalendarDate(anchor: Date, days: number, timezone: string):
   const currentDate = getCalendarDateInTimezone(anchor, timezone);
   const shiftedDate = addCalendarDays(currentDate, days);
   return new Date(zonedDateTimeToIso(shiftedDate, '12:00', timezone));
+}
+
+export interface SlotOccupationInfo {
+  readonly isOccupied: boolean;
+  readonly isStart: boolean;
+  readonly isContinuation: boolean;
+}
+
+export function isItemActiveInHourSlot(
+  item: { readonly startsAt: string; readonly endsAt: string },
+  dateStr: string,
+  hour: number,
+  timezone: string,
+): SlotOccupationInfo {
+  try {
+    const slotStartIso = zonedDateTimeToIso(
+      dateStr,
+      `${String(hour).padStart(2, '0')}:00`,
+      timezone,
+    );
+    const nextHour = hour === 23 ? 0 : hour + 1;
+    const nextDateStr = hour === 23 ? addCalendarDays(dateStr, 1) : dateStr;
+    const slotEndIso = zonedDateTimeToIso(
+      nextDateStr,
+      `${String(nextHour).padStart(2, '0')}:00`,
+      timezone,
+    );
+
+    const slotStartMs = new Date(slotStartIso).getTime();
+    const slotEndMs = new Date(slotEndIso).getTime();
+    const itemStartMs = new Date(item.startsAt).getTime();
+    const itemEndMs = new Date(item.endsAt).getTime();
+
+    const isOccupied = itemStartMs < slotEndMs && itemEndMs > slotStartMs;
+    if (!isOccupied) {
+      return { isOccupied: false, isStart: false, isContinuation: false };
+    }
+
+    const isStart = itemStartMs >= slotStartMs && itemStartMs < slotEndMs;
+    return {
+      isOccupied: true,
+      isStart,
+      isContinuation: !isStart,
+    };
+  } catch {
+    return { isOccupied: false, isStart: false, isContinuation: false };
+  }
+}
+
+export function getMinuteInTimezone(date: Date, timezone: string): number {
+  const minute = new Intl.DateTimeFormat('en', {
+    timeZone: timezone,
+    minute: '2-digit',
+  })
+    .formatToParts(date)
+    .find((part) => part.type === 'minute')?.value;
+
+  if (minute === undefined) {
+    throw new RangeError(`Unable to resolve minute in timezone: ${timezone}`);
+  }
+
+  return Number(minute);
+}
+
+export function formatTimeInTimezone(date: Date, timezone: string): string {
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+export function formatDurationMinutes(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  if (hours === 0) {
+    return `${remainingMinutes}min`;
+  }
+  if (remainingMinutes === 0) {
+    return `${hours}h`;
+  }
+  return `${hours}h ${remainingMinutes}min`;
+}
+
+export interface EventBlockGeometry {
+  readonly top: number;
+  readonly height: number;
+  readonly isVisible: boolean;
+  readonly startTimeLabel: string;
+  readonly endTimeLabel: string;
+  readonly formattedDuration: string;
+}
+
+export function calculateEventBlockGeometry(
+  item: { readonly startsAt: string; readonly endsAt: string },
+  dayDateStr: string,
+  startHour: number,
+  endHour: number,
+  hourHeight: number,
+  timezone: string,
+): EventBlockGeometry {
+  try {
+    const itemStartDate = new Date(item.startsAt);
+    const itemEndDate = new Date(item.endsAt);
+    const itemStartDay = getCalendarDateInTimezone(itemStartDate, timezone);
+    const itemEndDay = getCalendarDateInTimezone(itemEndDate, timezone);
+
+    if (itemStartDay > dayDateStr || itemEndDay < dayDateStr) {
+      return {
+        top: 0,
+        height: 0,
+        isVisible: false,
+        startTimeLabel: '',
+        endTimeLabel: '',
+        formattedDuration: '',
+      };
+    }
+
+    const startH =
+      itemStartDay < dayDateStr ? startHour : getHourInTimezone(itemStartDate, timezone);
+    const startM =
+      itemStartDay < dayDateStr ? 0 : getMinuteInTimezone(itemStartDate, timezone);
+
+    const endH =
+      itemEndDay > dayDateStr ? endHour + 1 : getHourInTimezone(itemEndDate, timezone);
+    const endM =
+      itemEndDay > dayDateStr ? 0 : getMinuteInTimezone(itemEndDate, timezone);
+
+    const totalGridHours = endHour - startHour + 1;
+    const totalGridMinutes = totalGridHours * 60;
+    const startMinutesFromGrid = (startH - startHour) * 60 + startM;
+    const endMinutesFromGrid = (endH - startHour) * 60 + endM;
+
+    const clampedStart = Math.max(0, Math.min(totalGridMinutes, startMinutesFromGrid));
+    const clampedEnd = Math.max(clampedStart, Math.min(totalGridMinutes, endMinutesFromGrid));
+    const durationMinutes = Math.max(15, clampedEnd - clampedStart);
+
+    const top = Math.round((clampedStart / 60) * hourHeight);
+    const height = Math.max(36, Math.round((durationMinutes / 60) * hourHeight) - 3);
+
+    const startTimeLabel = formatTimeInTimezone(itemStartDate, timezone);
+    const endTimeLabel = formatTimeInTimezone(itemEndDate, timezone);
+    const formattedDuration = formatDurationMinutes(durationMinutes);
+
+    return {
+      top,
+      height,
+      isVisible: true,
+      startTimeLabel,
+      endTimeLabel,
+      formattedDuration,
+    };
+  } catch {
+    return {
+      top: 0,
+      height: 0,
+      isVisible: false,
+      startTimeLabel: '',
+      endTimeLabel: '',
+      formattedDuration: '',
+    };
+  }
 }

@@ -1,3 +1,4 @@
+import React from 'react';
 import type {
   AuthenticatedPrincipal,
   Equipment,
@@ -154,6 +155,8 @@ function createSampleItems(): ScheduleItem[] {
       status: 'CONFIRMED',
       isMine: true,
       canCancel: true,
+      canCheckIn: false,
+      canComplete: false,
       reservationDetails: {
         reservationId: 'res-mine-1',
         userId: principal.user.id,
@@ -177,6 +180,8 @@ function createSampleItems(): ScheduleItem[] {
       status: 'CONFIRMED',
       isMine: false,
       canCancel: false,
+      canCheckIn: false,
+      canComplete: false,
     },
     {
       id: 'block-1',
@@ -189,6 +194,8 @@ function createSampleItems(): ScheduleItem[] {
       status: 'ACTIVE',
       isMine: false,
       canCancel: true,
+      canCheckIn: false,
+      canComplete: false,
       blockDetails: {
         technicalBlockId: 'block-1',
         reason: 'MAINTENANCE',
@@ -434,8 +441,9 @@ describe('AgendaPageClient Integration', () => {
 
     render(<AgendaPageClient />);
 
-    expect(await screen.findByRole('tablist', { name: 'Seleção rápida do dia da semana' })).toBeInTheDocument();
-    expect(screen.getAllByRole('tab')).toHaveLength(7);
+    const weekdayTablist = await screen.findByRole('tablist', { name: 'Seleção rápida do dia da semana' });
+    expect(weekdayTablist).toBeInTheDocument();
+    expect(within(weekdayTablist).getAllByRole('tab')).toHaveLength(7);
   });
 
   // 9. ausência do modo MONTH
@@ -515,8 +523,9 @@ describe('AgendaPageClient Integration', () => {
     const dayBtn = await screen.findByRole('button', { name: 'Dia' });
     fireEvent.click(dayBtn);
 
-    const slot09 = await screen.findByLabelText('Horário disponível às 09:00');
-    fireEvent.click(slot09);
+    const [slot09] = await screen.findAllByLabelText(/Horário disponível.*09:00/i);
+    expect(slot09).toBeDefined();
+    fireEvent.click(slot09!);
 
     const dialog = await screen.findByRole('dialog', { name: /Nova Reserva de Equipamento/i });
     expect(dialog).toBeInTheDocument();
@@ -536,8 +545,9 @@ describe('AgendaPageClient Integration', () => {
     const dayBtn = await screen.findByRole('button', { name: 'Dia' });
     fireEvent.click(dayBtn);
 
-    const slot09 = await screen.findByLabelText('Horário disponível às 09:00');
-    fireEvent.click(slot09);
+    const [slot09] = await screen.findAllByLabelText(/Horário disponível.*09:00/i);
+    expect(slot09).toBeDefined();
+    fireEvent.click(slot09!);
 
     const dialog = await screen.findByRole('dialog', { name: /Nova Reserva de Equipamento/i });
     const startInput = dialog.querySelector('input[name="startTime"]') as HTMLInputElement;
@@ -901,5 +911,50 @@ describe('AgendaPageClient Integration', () => {
       expect(screen.getAllByText('Resposta recente').length).toBeGreaterThanOrEqual(1);
       expect(screen.queryAllByText('Análise de Frações HPLC')).toHaveLength(0);
     });
+  });
+
+  it('30. renderiza abas de equipamentos e sincroniza filtro ao clicar em uma aba', async () => {
+    const fetchSpy = setupDefaultFetch();
+    render(<AgendaPageClient />);
+
+    const tablist = await screen.findByRole('tablist', { name: 'Filtrar agenda por equipamento' });
+    expect(tablist).toBeInTheDocument();
+
+    const tabs = within(tablist).getAllByRole('tab');
+    expect(tabs.length).toBeGreaterThanOrEqual(2);
+
+    const msTab = within(tablist).getByRole('tab', { name: /Espectrômetro de Massa/i });
+    fireEvent.click(msTab);
+
+    await waitFor(() => {
+      const select = screen.getByRole('combobox', { name: 'Filtrar por equipamento' });
+      expect(select).toHaveValue(sampleEquipment2.id);
+    });
+
+    await waitFor(() => {
+      const call = fetchSpy.mock.calls.find(
+        ([url]) =>
+          String(url).startsWith('/api/scheduling?') &&
+          String(url).includes(`equipmentId=${sampleEquipment2.id}`),
+      );
+      expect(call).toBeDefined();
+    });
+  });
+
+  it('31. alterna para visão DAY e renderiza raias multi-equipamento com todos os equipamentos', async () => {
+    setupDefaultFetch();
+    render(<AgendaPageClient />);
+
+    // Switch to DAY view
+    const dayBtn = await screen.findByRole('button', { name: 'Dia' });
+    fireEvent.click(dayBtn);
+
+    // Expect region with grade horária
+    const region = await screen.findByRole('region', { name: /Grade horária de/i });
+    expect(region).toBeInTheDocument();
+
+    // Verify lanes header contains equipment names
+    expect(within(region).getAllByText('Cromatógrafo HPLC').length).toBeGreaterThanOrEqual(1);
+    expect(within(region).getAllByText('Espectrômetro de Massa').length).toBeGreaterThanOrEqual(1);
   });
 });

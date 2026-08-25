@@ -70,7 +70,10 @@ export function HomeDashboard({ presentation, summary }: HomeDashboardProps) {
       laboratories={presentation.laboratories}
       mobileNavigation={presentation.mobileNavigation}
       moduleNavigation={presentation.moduleNavigation}
-      qrAction={{ href: '/qr', label: 'Ler QR Code' }}
+      qrAction={{
+        href: presentation.activeLaboratoryId ? `/qr?laboratory=${presentation.activeLaboratoryId}` : '/qr',
+        label: 'Ler QR Code',
+      }}
       sectionLabel="Visão geral"
       userInitials={presentation.userInitials}
       userLabel={presentation.currentUser.name}

@@ -10,7 +10,15 @@ import type {
 
 export type CalendarViewMode = 'DAY' | 'WEEK';
 
-export type { ScheduleSlotSelection } from './calendar-time';
+export type { EventBlockGeometry, ScheduleSlotSelection } from './calendar-time';
+
+export interface ScheduleResourceLane {
+  readonly equipmentId: string;
+  readonly equipmentName: string;
+  readonly equipmentCode: string;
+  readonly status: string;
+  readonly items: readonly ScheduleItem[];
+}
 
 export type ScheduleFeedbackState = 'loading' | 'empty' | 'unavailable' | 'error' | 'ready';
 

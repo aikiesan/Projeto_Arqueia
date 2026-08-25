@@ -9,7 +9,16 @@ import { InteractionFeedbackProvider } from './interaction-feedback';
 
 export const metadata: Metadata = {
   applicationName: 'Arqueia',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Arqueia',
+  },
   description: 'Gestão, rastreabilidade e compartilhamento de infraestrutura laboratorial.',
+  icons: {
+    apple: [{ url: '/icons/arqueia-maskable.svg' }],
+    icon: [{ type: 'image/svg+xml', url: '/icons/arqueia.svg' }],
+  },
   manifest: '/manifest.webmanifest',
   title: {
     default: 'Arqueia',

@@ -181,7 +181,16 @@ export function EquipmentPageClient() {
   if (!pageData || !activeLaboratory || !presentation) return <main className="standalone-loading"><span className="loading-pulse" />{error ?? 'Carregando espaço seguro…'}</main>;
 
   return (
-    <WorkspaceShell {...presentation} activeModuleHref="/equipamentos" appName="Arqueia" currentContext={activeLaboratory.name} qrAction={{ href: '/qr', label: 'Ler QR Code' }} sectionLabel="Equipamentos" userLabel={presentation.currentUser.name} userMenu={<LogoutButton />}>
+    <WorkspaceShell
+      {...presentation}
+      activeModuleHref="/equipamentos"
+      appName="Arqueia"
+      currentContext={activeLaboratory.name}
+      qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
+      sectionLabel="Equipamentos"
+      userLabel={presentation.currentUser.name}
+      userMenu={<LogoutButton />}
+    >
       <section className="equipment-toolbar"><div><span className="section-kicker">Cadastro operacional</span><h2>Equipamentos do {activeLaboratory.code}</h2><p>Localize, cadastre e mantenha os dados usados pela agenda e pela gestão do laboratório.</p></div>{canManage ? <button className="primary-button" onClick={() => setFormEquipment(null)} type="button"><ArqueiaIcon name="mais" size={18} /> Cadastrar equipamento</button> : null}</section>
 
       <form className="equipment-filters" onSubmit={applyFilters} role="search">
@@ -191,12 +200,141 @@ export function EquipmentPageClient() {
       </form>
 
       {error ? <p aria-live="polite" className="form-error equipment-error">{error}</p> : null}
-      {loading ? <div className="equipment-empty"><span className="loading-pulse" /><h3>Carregando equipamentos…</h3></div> : equipment.length === 0 ? (
-        <div className="equipment-empty"><span className="equipment-empty-icon"><ArqueiaIcon name="equipamentos" size={30} /></span><h3>{appliedSearch || status ? 'Nenhum resultado encontrado' : 'Nenhum equipamento cadastrado'}</h3><p>{appliedSearch || status ? 'Ajuste os filtros e tente novamente.' : 'Use o catálogo CP2b para confirmar o primeiro ativo físico.'}</p>{canManage && !appliedSearch && !status ? <button className="secondary-button" onClick={() => setFormEquipment(null)} type="button">Cadastrar o primeiro</button> : null}</div>
+      {loading ? (
+        <div className="equipment-empty">
+          <span className="loading-pulse" />
+          <h3>Carregando equipamentos…</h3>
+        </div>
+      ) : equipment.length === 0 ? (
+        <div className="equipment-empty">
+          <span className="equipment-empty-icon">
+            <ArqueiaIcon name="equipamentos" size={30} />
+          </span>
+          <h3>{appliedSearch || status ? 'Nenhum resultado encontrado' : 'Nenhum equipamento cadastrado'}</h3>
+          <p>
+            {appliedSearch || status
+              ? 'Ajuste os filtros e tente novamente.'
+              : 'Use o catálogo CP2b para confirmar o primeiro ativo físico.'}
+          </p>
+          {canManage && !appliedSearch && !status ? (
+            <button className="secondary-button" onClick={() => setFormEquipment(null)} type="button">
+              Cadastrar o primeiro
+            </button>
+          ) : null}
+        </div>
       ) : (
-        <><div className="equipment-grid">{equipment.map((item) => (
-          <article className="equipment-card" key={item.id}><div className="equipment-card-heading"><span className={`status-dot status-dot--${item.status.toLowerCase()}`} />{canManage ? <label className="equipment-inline-status"><span className="sr-only">Status de {item.name}</span><select aria-label={`Status de ${item.name}`} disabled={statusPendingId === item.id} onChange={(event) => void updateStatusInline(item, event.target.value as EquipmentStatus)} value={item.status}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>{statusPendingId === item.id ? <small role="status">Salvando…</small> : null}</label> : <span>{statusLabels[item.status]}</span>}{canManage ? <button aria-label={`Editar ${item.name}`} onClick={() => setFormEquipment(item)} type="button">Editar</button> : null}</div><h3>{item.name}</h3><code>{item.code}</code><dl><div><dt>Modelo</dt><dd>{optionLabel(item.catalogOptionId, catalog.models)}</dd></div><div><dt>Local</dt><dd>{optionLabel(item.spaceOptionId, catalog.spaces)}</dd></div><div><dt>Patrimônio</dt><dd>{item.assetTag ?? 'Não informado'}</dd></div><div><dt>Série</dt><dd>{item.serialNumber ?? 'Não informada'}</dd></div><div><dt>Reserva máxima</dt><dd>{item.reservationPolicy.maxReservationMinutes} min</dd></div><div><dt>Treinamento</dt><dd>{item.reservationPolicy.requiresTraining ? 'Obrigatório' : 'Não exigido'}</dd></div></dl>{item.notes ? <p className="equipment-card-notes">{item.notes}</p> : null}<a className="equipment-reserve-link" href={`/agenda?equipmentId=${item.id}`}>Reservar</a></article>
-        ))}</div><nav aria-label="Paginação de equipamentos" className="equipment-pagination"><button className="secondary-button" disabled={cursorHistory.length === 1} onClick={() => { const next = cursorHistory.slice(0, -1); setCursorHistory(next); void loadEquipment(activeLaboratory.id, next.at(-1) ?? null, status, appliedSearch); }} type="button">Anterior</button><span>Página {cursorHistory.length}</span><button className="secondary-button" disabled={!pageInfo.hasNextPage || !pageInfo.nextCursor} onClick={() => { if (!pageInfo.nextCursor) return; const next = [...cursorHistory, pageInfo.nextCursor]; setCursorHistory(next); void loadEquipment(activeLaboratory.id, pageInfo.nextCursor, status, appliedSearch); }} type="button">Próxima</button></nav></>
+        <>
+          <div className="equipment-grid">
+            {equipment.map((item) => (
+              <article className="equipment-card" key={item.id}>
+                <div className="equipment-card-heading">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0 }}>
+                    <span className={`status-dot status-dot--${item.status.toLowerCase()}`} />
+                    {canManage ? (
+                      <label className="equipment-inline-status">
+                        <span className="sr-only">Status de {item.name}</span>
+                        <select
+                          aria-label={`Status de ${item.name}`}
+                          disabled={statusPendingId === item.id}
+                          onChange={(event) => void updateStatusInline(item, event.target.value as EquipmentStatus)}
+                          value={item.status}
+                        >
+                          {Object.entries(statusLabels).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                        {statusPendingId === item.id ? <small role="status">Salvando…</small> : null}
+                      </label>
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{statusLabels[item.status]}</span>
+                    )}
+                  </div>
+                  {canManage ? (
+                    <button
+                      aria-label={`Editar ${item.name}`}
+                      className="equipment-edit-btn"
+                      onClick={() => setFormEquipment(item)}
+                      type="button"
+                    >
+                      Editar
+                    </button>
+                  ) : null}
+                </div>
+
+                <h3>{item.name}</h3>
+                <code>{item.code}</code>
+
+                <dl>
+                  <div>
+                    <dt>Modelo</dt>
+                    <dd title={optionLabel(item.catalogOptionId, catalog.models)}>
+                      {optionLabel(item.catalogOptionId, catalog.models)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Local</dt>
+                    <dd title={optionLabel(item.spaceOptionId, catalog.spaces)}>
+                      {optionLabel(item.spaceOptionId, catalog.spaces)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Patrimônio</dt>
+                    <dd>{item.assetTag ?? 'Não informado'}</dd>
+                  </div>
+                  <div>
+                    <dt>Série</dt>
+                    <dd>{item.serialNumber ?? 'Não informada'}</dd>
+                  </div>
+                  <div>
+                    <dt>Reserva máx.</dt>
+                    <dd>{item.reservationPolicy.maxReservationMinutes} min</dd>
+                  </div>
+                  <div>
+                    <dt>Treinamento</dt>
+                    <dd>{item.reservationPolicy.requiresTraining ? 'Obrigatório' : 'Não exigido'}</dd>
+                  </div>
+                </dl>
+
+                {item.notes ? <p className="equipment-card-notes">{item.notes}</p> : null}
+
+                <a className="equipment-reserve-link" href={`/agenda?equipmentId=${item.id}`}>
+                  Reservar Horário
+                </a>
+              </article>
+            ))}
+          </div>
+
+          <nav aria-label="Paginação de equipamentos" className="equipment-pagination">
+            <button
+              className="secondary-button"
+              disabled={cursorHistory.length === 1}
+              onClick={() => {
+                const next = cursorHistory.slice(0, -1);
+                setCursorHistory(next);
+                void loadEquipment(activeLaboratory.id, next.at(-1) ?? null, status, appliedSearch);
+              }}
+              type="button"
+            >
+              Anterior
+            </button>
+            <span>Página {cursorHistory.length}</span>
+            <button
+              className="secondary-button"
+              disabled={!pageInfo.hasNextPage || !pageInfo.nextCursor}
+              onClick={() => {
+                if (!pageInfo.nextCursor) return;
+                const next = [...cursorHistory, pageInfo.nextCursor];
+                setCursorHistory(next);
+                void loadEquipment(activeLaboratory.id, pageInfo.nextCursor, status, appliedSearch);
+              }}
+              type="button"
+            >
+              Próxima
+            </button>
+          </nav>
+        </>
       )}
       {formEquipment !== undefined ? <EquipmentFormDialog catalog={catalog} equipment={formEquipment} laboratoryId={activeLaboratory.id} onClose={() => setFormEquipment(undefined)} onSave={saveEquipment} pending={pending} /> : null}
     </WorkspaceShell>

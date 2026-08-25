@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { LogoutButton } from '../logout-button';
 import { loadLaboratories, loadPrincipal } from '../lib/session';
 import { createWorkspacePresentation } from '../presentation';
+import { ProfileSecurityClient } from './profile-security-client';
 
 const providerLabels = { LOCAL: 'Conta local', OIDC: 'Acesso institucional', HYBRID: 'Local e institucional' } as const;
 
@@ -22,7 +23,10 @@ export default async function ProfilePage() {
       laboratories={presentation.laboratories}
       mobileNavigation={presentation.mobileNavigation}
       moduleNavigation={presentation.moduleNavigation}
-      qrAction={{ href: '/qr', label: 'Ler QR Code' }}
+      qrAction={{
+        href: presentation.activeLaboratoryId ? `/qr?laboratory=${presentation.activeLaboratoryId}` : '/qr',
+        label: 'Ler QR Code',
+      }}
       sectionLabel="Meu perfil"
       userInitials={presentation.userInitials}
       userLabel={presentation.currentUser.name}
@@ -38,6 +42,7 @@ export default async function ProfilePage() {
         <div><span>Laboratórios</span><strong>{principal.memberships.filter(({ archivedAt }) => archivedAt === null).length}</strong></div>
         <div><span>Funções do sistema</span><strong>{principal.systemRoles.filter(({ archivedAt }) => archivedAt === null).map(({ role }) => role).join(', ') || 'Nenhuma'}</strong></div>
       </section>
+      <ProfileSecurityClient />
     </WorkspaceShell>
   );
 }

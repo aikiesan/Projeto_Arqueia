@@ -64,6 +64,9 @@ export function UsersPageClient() {
   const [newUserModalOpen, setNewUserModalOpen] = useState(false);
   const [editUserModal, setEditUserModal] = useState<User | null>(null);
   const [accessModalUser, setAccessModalUser] = useState<User | null>(null);
+  const [resetPassModalUser, setResetPassModalUser] = useState<User | null>(null);
+  const [adminNewPass, setAdminNewPass] = useState('');
+  const [adminConfirmAuthPass, setAdminConfirmAuthPass] = useState('');
 
   // Access Modal state
   const [selectedRole, setSelectedRole] = useState<LaboratoryRole>('USUARIO');
@@ -71,6 +74,7 @@ export function UsersPageClient() {
   const [confirmationPassword, setConfirmationPassword] = useState('');
   const [currentAccess, setCurrentAccess] = useState<UserAccessSnapshot | null>(null);
   const [accessLoading, setAccessLoading] = useState(false);
+
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -234,6 +238,35 @@ export function UsersPageClient() {
     }
   };
 
+  const handleAdminResetPassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!resetPassModalUser) return;
+    setPending(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      await readJson(`/api/users/${resetPassModalUser.id}/password-reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          newPassword: adminNewPass,
+          confirmationPassword: adminConfirmAuthPass,
+        }),
+      });
+
+      setResetPassModalUser(null);
+      setAdminNewPass('');
+      setAdminConfirmAuthPass('');
+      setNotice(`✅ Senha do usuário ${resetPassModalUser.name} redefinida com sucesso!`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao redefinir senha do usuário.');
+    } finally {
+      setPending(false);
+    }
+  };
+
+
   const openAccessModal = async (user: User) => {
     setAccessModalUser(user);
     setConfirmationPassword('');
@@ -305,7 +338,7 @@ export function UsersPageClient() {
       laboratories={laboratoryRail}
       mobileNavigation={presentation.mobileNavigation}
       moduleNavigation={presentation.moduleNavigation}
-      qrAction={{ href: '/qr', label: 'Ler QR Code' }}
+      qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Gestão de Usuários"
       userInitials={userInitials}
       userLabel={pageData.principal.user.name}
@@ -384,7 +417,19 @@ export function UsersPageClient() {
                   </div>
                 </dl>
 
-                <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid #edf2f7', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid #edf2f7', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                  <button
+                    className="secondary-button"
+                    onClick={() => {
+                      setResetPassModalUser(u);
+                      setAdminNewPass('');
+                      setAdminConfirmAuthPass('');
+                    }}
+                    style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}
+                    type="button"
+                  >
+                    Redefinir Senha
+                  </button>
                   <button
                     className="secondary-button"
                     onClick={() => setEditUserModal(u)}
@@ -629,6 +674,65 @@ export function UsersPageClient() {
                 </button>
                 <button className="primary-button" disabled={pending || !confirmationPassword} type="submit">
                   {pending ? 'Atribuindo...' : 'Confirmar e Atribuir Papel'}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {/* Modal Redefinir Senha pelo Administrador */}
+      {resetPassModalUser && (
+        <div className="equipment-dialog-backdrop" role="presentation">
+          <section aria-labelledby="reset-pass-title" aria-modal="true" className="equipment-dialog" role="dialog">
+            <div className="equipment-dialog-heading">
+              <div>
+                <span className="section-kicker">Segurança & Credenciais</span>
+                <h2 id="reset-pass-title">Redefinir Senha de {resetPassModalUser.name}</h2>
+              </div>
+              <button aria-label="Fechar" onClick={() => setResetPassModalUser(null)} type="button">
+                ×
+              </button>
+            </div>
+            <form className="equipment-form" onSubmit={handleAdminResetPassword}>
+              <p style={{ fontSize: '0.85rem', color: '#718096' }}>
+                Defina uma nova senha para o usuário. Ele poderá utilizá-la imediatamente para fazer login local.
+              </p>
+
+              <label className="field-wide">
+                <span>Nova Senha do Usuário * (mínimo 12 caracteres)</span>
+                <input
+                  type="password"
+                  value={adminNewPass}
+                  onChange={(e) => setAdminNewPass(e.target.value)}
+                  placeholder="Nova senha temporária ou definitiva"
+                  minLength={12}
+                  maxLength={128}
+                  required
+                />
+              </label>
+
+              <label className="field-wide" style={{ background: '#fff5f5', border: '1px solid #feb2b2', padding: '0.75rem', borderRadius: '6px' }}>
+                <span style={{ color: '#9b2c2c', fontWeight: 600 }}>Sua Senha de Administrador (Confirmação) *</span>
+                <input
+                  type="password"
+                  value={adminConfirmAuthPass}
+                  onChange={(e) => setAdminConfirmAuthPass(e.target.value)}
+                  placeholder="Digite sua senha para autorizar esta redefinição"
+                  required
+                />
+              </label>
+
+              <div className="equipment-form-actions">
+                <button className="secondary-button" onClick={() => setResetPassModalUser(null)} type="button">
+                  Cancelar
+                </button>
+                <button
+                  className="primary-button"
+                  disabled={pending || !adminNewPass || !adminConfirmAuthPass}
+                  type="submit"
+                >
+                  {pending ? 'Redefinindo...' : 'Confirmar e Redefinir Senha'}
                 </button>
               </div>
             </form>

@@ -9,6 +9,10 @@ export interface ScheduleDetailsDrawerProps {
   readonly errorMessage?: string | null;
   readonly onCancelItem?: ((item: ScheduleItem) => void) | undefined;
   readonly isCancelling?: boolean | undefined;
+  readonly onCheckInItem?: ((item: ScheduleItem) => void) | undefined;
+  readonly isCheckingIn?: boolean | undefined;
+  readonly onCompleteItem?: ((item: ScheduleItem) => void) | undefined;
+  readonly isCompleting?: boolean | undefined;
   readonly className?: string | undefined;
 }
 
@@ -21,9 +25,11 @@ const blockReasonFriendlyNames: Record<TechnicalBlockReason, string> = {
 
 const statusFriendlyNames: Record<ScheduleItem['status'], string> = {
   CONFIRMED: 'Confirmada',
+  IN_PROGRESS: 'Em Andamento',
   ACTIVE: 'Ativo',
   CANCELLED: 'Cancelado',
   COMPLETED: 'Concluído',
+  RELEASED_ABSENCE: 'Liberada por Ausência',
 };
 
 export function ScheduleDetailsDrawer({
@@ -34,6 +40,10 @@ export function ScheduleDetailsDrawer({
   errorMessage = null,
   onCancelItem,
   isCancelling = false,
+  onCheckInItem,
+  isCheckingIn = false,
+  onCompleteItem,
+  isCompleting = false,
   className = '',
 }: ScheduleDetailsDrawerProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -133,7 +143,8 @@ export function ScheduleDetailsDrawer({
   }
 
   const isBlock = item.type === 'TECHNICAL_BLOCK';
-  const isCancelled = item.status === 'CANCELLED';
+  const isCancelled = item.status === 'CANCELLED' || item.status === 'RELEASED_ABSENCE';
+  const isInProgress = item.status === 'IN_PROGRESS';
 
   return (
     <div
@@ -153,9 +164,23 @@ export function ScheduleDetailsDrawer({
         <header className="schedule-drawer-header">
           <div className="schedule-drawer-header-left">
             <span
-              className={`schedule-drawer-badge ${isBlock ? 'schedule-drawer-badge--block' : item.isMine ? 'schedule-drawer-badge--mine' : 'schedule-drawer-badge--other'}`}
+              className={`schedule-drawer-badge ${
+                isBlock
+                  ? 'schedule-drawer-badge--block'
+                  : isInProgress
+                  ? 'schedule-drawer-badge--in-progress'
+                  : item.isMine
+                  ? 'schedule-drawer-badge--mine'
+                  : 'schedule-drawer-badge--other'
+              }`}
             >
-              {isBlock ? 'Bloqueio Técnico' : item.isMine ? 'Minha Reserva' : 'Reserva'}
+              {isBlock
+                ? 'Bloqueio Técnico'
+                : isInProgress
+                ? 'Em Execução'
+                : item.isMine
+                ? 'Minha Reserva'
+                : 'Reserva'}
             </span>
             <h2 className="schedule-drawer-title" id={titleId}>
               {item.title}
@@ -196,7 +221,13 @@ export function ScheduleDetailsDrawer({
                 <dt>Status</dt>
                 <dd>
                   <span
-                    className={`schedule-status-tag ${isCancelled ? 'schedule-status-tag--cancelled' : 'schedule-status-tag--active'}`}
+                    className={`schedule-status-tag ${
+                      isCancelled
+                        ? 'schedule-status-tag--cancelled'
+                        : isInProgress
+                        ? 'schedule-status-tag--in-progress'
+                        : 'schedule-status-tag--active'
+                    }`}
                   >
                     {statusFriendlyNames[item.status]}
                   </span>
@@ -233,6 +264,20 @@ export function ScheduleDetailsDrawer({
                   <div>
                     <dt>Amostras</dt>
                     <dd>{item.reservationDetails.sampleCount}</dd>
+                  </div>
+                )}
+
+                {item.reservationDetails.startedAt && (
+                  <div>
+                    <dt>Início Real (Check-In)</dt>
+                    <dd>{new Date(item.reservationDetails.startedAt).toLocaleTimeString('pt-BR')}</dd>
+                  </div>
+                )}
+
+                {item.reservationDetails.completedAt && (
+                  <div>
+                    <dt>Conclusão Real</dt>
+                    <dd>{new Date(item.reservationDetails.completedAt).toLocaleTimeString('pt-BR')}</dd>
                   </div>
                 )}
 
@@ -275,6 +320,32 @@ export function ScheduleDetailsDrawer({
         ) : null}
 
         <footer className="schedule-drawer-footer">
+          {/* Check-In Button */}
+          {item.canCheckIn && onCheckInItem && (
+            <button
+              aria-label="Fazer check-in e iniciar uso do equipamento"
+              className="schedule-drawer-btn schedule-drawer-btn--primary"
+              disabled={isCheckingIn}
+              onClick={() => onCheckInItem(item)}
+              type="button"
+            >
+              {isCheckingIn ? 'Iniciando...' : '▶ Iniciar Uso (Check-In)'}
+            </button>
+          )}
+
+          {/* Complete Usage Button */}
+          {item.canComplete && onCompleteItem && (
+            <button
+              aria-label="Finalizar e concluir uso do equipamento"
+              className="schedule-drawer-btn schedule-drawer-btn--complete"
+              disabled={isCompleting}
+              onClick={() => onCompleteItem(item)}
+              type="button"
+            >
+              {isCompleting ? 'Finalizando...' : '✓ Finalizar Uso'}
+            </button>
+          )}
+
           {/* Cancel button is ONLY shown if item.canCancel is true */}
           {item.canCancel && onCancelItem && (
             <button
