@@ -40,13 +40,12 @@ const principal: AuthenticatedPrincipal = {
   user: {
     archivedAt: null,
     createdAt: now,
-    email: 'lucas@unicamp.br',
+    loginCode: 'ARQ-LUCAS-001',
     id: '6ba7b810-9dad-11d1-b245-5ffdce74fad2',
-    identityProvider: 'LOCAL',
+    academicCategory: 'PESQUISADOR',
     institutionId: laboratory.institutionId,
-    name: 'Lucas Nakamura',
+    mustChangePassword: false,
     status: 'ACTIVE',
-    supervisorUserId: null,
     updatedAt: now,
   },
 };

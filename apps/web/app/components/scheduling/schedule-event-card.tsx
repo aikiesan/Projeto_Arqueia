@@ -89,9 +89,6 @@ export function ScheduleEventCard({
         {!isCompact && !isContinuation && (
           <span className="schedule-card-equipment">{item.equipmentName}</span>
         )}
-        {!isCompact && item.reservationDetails?.userName && (
-          <span className="schedule-card-requester">{item.reservationDetails.userName}</span>
-        )}
         {!isCompact && item.reservationDetails?.projectCode && (
           <span className="schedule-card-project">{item.reservationDetails.projectCode}</span>
         )}

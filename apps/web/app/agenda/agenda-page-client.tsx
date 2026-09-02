@@ -646,12 +646,7 @@ export function AgendaPageClient() {
     );
   }
 
-  const initials = pageData.principal.user.name
-    .split(' ')
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('');
+  const initials = pageData.principal.user.loginCode.replace(/^ARQ-/, '').slice(0, 2);
 
   const laboratoryRail = pageData.laboratories.map((lab) => ({
     href: `/agenda?laboratory=${lab.id}`,
@@ -673,7 +668,7 @@ export function AgendaPageClient() {
       qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Agenda Operacional"
       userInitials={initials}
-      userLabel={pageData.principal.user.name}
+      userLabel={pageData.principal.user.loginCode}
     >
       <section className="equipment-toolbar">
         <div>

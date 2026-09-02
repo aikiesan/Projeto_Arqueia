@@ -519,7 +519,6 @@ export class InMemorySchedulingRepository implements SchedulingRepository {
             ? {
                 reservationId: res.id,
                 userId: res.userId,
-                userName: 'Pesquisador',
                 projectId: res.projectId,
                 projectCode: 'PRJ-CP2B-01',
                 purpose: res.purpose,

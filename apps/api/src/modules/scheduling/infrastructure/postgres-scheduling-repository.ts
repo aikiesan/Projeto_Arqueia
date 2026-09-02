@@ -75,7 +75,6 @@ interface OccupationRow {
 
 interface ReservationRow extends OccupationRow {
   user_id: string;
-  user_name?: string;
   project_id: string;
   project_code?: string;
   purpose: string;
@@ -106,7 +105,6 @@ interface CombinedScheduleRow {
   ends_at: Date;
   status: string;
   user_id: string | null;
-  user_name: string | null;
   project_id: string | null;
   project_code: string | null;
   purpose: string | null;
@@ -851,13 +849,12 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
     const result = await this.pool.query<CombinedScheduleRow>(
       `SELECT o.id, o.laboratory_id, o.equipment_id, e.name AS equipment_name, o.occupation_type,
               o.starts_at, o.ends_at, o.status,
-              r.user_id, u.name AS user_name, r.project_id, p.code AS project_code,
+              r.user_id, r.project_id, p.code AS project_code,
               r.purpose, r.sample_count, r.notes, r.started_at, r.completed_at,
               tb.created_by_user_id, tb.reason AS block_reason, tb.description
          FROM equipment_occupations o
          JOIN equipment e ON e.id = o.equipment_id
     LEFT JOIN reservations r ON r.id = o.id
-    LEFT JOIN users u ON u.id = r.user_id
     LEFT JOIN projects p ON p.id = r.project_id
     LEFT JOIN technical_blocks tb ON tb.id = o.id
         WHERE o.laboratory_id = $1
@@ -921,7 +918,6 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
             ? {
                 reservationId: row.id,
                 userId: row.user_id!,
-                userName: row.user_name ?? undefined,
                 projectId: row.project_id!,
                 projectCode: row.project_code ?? undefined,
                 purpose: row.purpose ?? '',

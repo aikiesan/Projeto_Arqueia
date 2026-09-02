@@ -7,6 +7,10 @@ import type {
 import type { DatabasePool } from '@arqueia/database';
 
 import type {
+  CurrentCredential,
+  CurrentCredentialReader,
+} from '../domain/ports/current-credential-reader.port.js';
+import type {
   LocalIdentityAccount,
   LocalIdentityReader,
 } from '../domain/ports/local-identity-reader.port.js';
@@ -15,11 +19,10 @@ import type { PrincipalReader } from '../domain/ports/principal-reader.port.js';
 interface UserRow {
   id: string;
   institution_id: string;
-  supervisor_user_id: string | null;
-  name: string;
-  email: string;
+  login_code: string;
+  academic_category: User['academicCategory'];
   status: User['status'];
-  identity_provider: User['identityProvider'];
+  must_change_password: boolean;
   created_at: Date;
   updated_at: Date;
   archived_at: Date | null;
@@ -54,20 +57,22 @@ function timestamp(value: Date): string {
   return value.toISOString();
 }
 
-export class PostgresLocalIdentityReader implements LocalIdentityReader, PrincipalReader {
+export class PostgresLocalIdentityReader
+  implements LocalIdentityReader, CurrentCredentialReader, PrincipalReader
+{
   public constructor(private readonly pool: DatabasePool) {}
 
-  public async findActiveByEmail(email: string): Promise<LocalIdentityAccount | null> {
+  public async findActiveByLoginCode(loginCode: string): Promise<LocalIdentityAccount | null> {
     const userResult = await this.pool.query<UserCredentialRow>(
-      `SELECT u.id, u.institution_id, u.supervisor_user_id, u.name, u.email,
-              u.status, u.identity_provider, u.created_at, u.updated_at, u.archived_at,
+      `SELECT u.id, u.institution_id, u.login_code, u.academic_category,
+              u.status, u.must_change_password, u.created_at, u.updated_at, u.archived_at,
               c.password_hash, c.failed_attempts, c.locked_until
          FROM users u
          JOIN local_credentials c ON c.user_id = u.id
-        WHERE lower(u.email) = lower($1)
+        WHERE upper(u.login_code) = upper($1)
           AND u.archived_at IS NULL
         LIMIT 1`,
-      [email],
+      [loginCode],
     );
     const row = userResult.rows[0];
 
@@ -85,8 +90,8 @@ export class PostgresLocalIdentityReader implements LocalIdentityReader, Princip
 
   public async findActiveById(userId: string): Promise<LocalIdentityAccount | null> {
     const userResult = await this.pool.query<UserCredentialRow>(
-      `SELECT u.id, u.institution_id, u.supervisor_user_id, u.name, u.email,
-              u.status, u.identity_provider, u.created_at, u.updated_at, u.archived_at,
+      `SELECT u.id, u.institution_id, u.login_code, u.academic_category,
+              u.status, u.must_change_password, u.created_at, u.updated_at, u.archived_at,
               c.password_hash, c.failed_attempts, c.locked_until
          FROM users u
          JOIN local_credentials c ON c.user_id = u.id
@@ -146,10 +151,25 @@ export class PostgresLocalIdentityReader implements LocalIdentityReader, Princip
     };
   }
 
+  public async findActiveByUserId(userId: string): Promise<CurrentCredential | null> {
+    const result = await this.pool.query<{ password_hash: string }>(
+      `SELECT c.password_hash
+         FROM users u
+         JOIN local_credentials c ON c.user_id = u.id
+        WHERE u.id = $1
+          AND u.status = 'ACTIVE'
+          AND u.archived_at IS NULL
+        LIMIT 1`,
+      [userId],
+    );
+    const row = result.rows[0];
+    return row === undefined ? null : { passwordHash: row.password_hash };
+  }
+
   public async findByUserId(userId: string): Promise<AuthenticatedPrincipal | null> {
     const result = await this.pool.query<UserRow>(
-      `SELECT id, institution_id, supervisor_user_id, name, email, status,
-              identity_provider, created_at, updated_at, archived_at
+      `SELECT id, institution_id, login_code, academic_category, status,
+              must_change_password, created_at, updated_at, archived_at
          FROM users
         WHERE id = $1 AND archived_at IS NULL
         LIMIT 1`,
@@ -178,11 +198,10 @@ export class PostgresLocalIdentityReader implements LocalIdentityReader, Princip
     const user: User = {
       id: row.id,
       institutionId: row.institution_id,
-      supervisorUserId: row.supervisor_user_id,
-      name: row.name,
-      email: row.email,
+      loginCode: row.login_code,
+      academicCategory: row.academic_category,
       status: row.status,
-      identityProvider: row.identity_provider,
+      mustChangePassword: row.must_change_password,
       createdAt: timestamp(row.created_at),
       updatedAt: timestamp(row.updated_at),
       archivedAt: row.archived_at === null ? null : timestamp(row.archived_at),

@@ -20,7 +20,7 @@ export class UpdateUserUseCase {
     input: UpdateUserInput,
     context: Omit<IdentityMutationContext, 'actorId'>,
   ): Promise<User> {
-    this.permissions.assertCan(principal, 'identity.user.manage');
+    this.permissions.assertCan(principal, 'identity.user.manage', input.laboratoryId);
     return this.users.update(userId, input, { ...context, actorId: principal.user.id });
   }
 }

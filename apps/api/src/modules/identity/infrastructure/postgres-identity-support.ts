@@ -13,11 +13,10 @@ import type { IdentityMutationContext } from '../domain/ports/identity-mutation-
 export interface UserRow {
   id: string;
   institution_id: string;
-  supervisor_user_id: string | null;
-  name: string;
-  email: string;
+  login_code: string;
+  academic_category: User['academicCategory'];
   status: User['status'];
-  identity_provider: User['identityProvider'];
+  must_change_password: boolean;
   created_at: Date;
   updated_at: Date;
   archived_at: Date | null;
@@ -73,11 +72,10 @@ export function mapUser(row: UserRow): User {
   return {
     id: row.id,
     institutionId: row.institution_id,
-    supervisorUserId: row.supervisor_user_id,
-    name: row.name,
-    email: row.email,
+    loginCode: row.login_code,
+    academicCategory: row.academic_category,
     status: row.status,
-    identityProvider: row.identity_provider,
+    mustChangePassword: row.must_change_password,
     createdAt: timestamp(row.created_at),
     updatedAt: timestamp(row.updated_at),
     archivedAt: row.archived_at === null ? null : timestamp(row.archived_at),

@@ -246,13 +246,6 @@ export function ScheduleDetailsDrawer({
                   <dd>{item.reservationDetails.purpose}</dd>
                 </div>
 
-                {item.reservationDetails.userName && (
-                  <div>
-                    <dt>Solicitante</dt>
-                    <dd>{item.reservationDetails.userName}</dd>
-                  </div>
-                )}
-
                 {item.reservationDetails.projectCode && (
                   <div>
                     <dt>Projeto</dt>

@@ -188,7 +188,7 @@ export function EquipmentPageClient() {
       currentContext={activeLaboratory.name}
       qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Equipamentos"
-      userLabel={presentation.currentUser.name}
+      userLabel={presentation.currentUser.loginCode}
       userMenu={<LogoutButton />}
     >
       <section className="equipment-toolbar"><div><span className="section-kicker">Cadastro operacional</span><h2>Equipamentos do {activeLaboratory.code}</h2><p>Localize, cadastre e mantenha os dados usados pela agenda e pela gestão do laboratório.</p></div>{canManage ? <button className="primary-button" onClick={() => setFormEquipment(null)} type="button"><ArqueiaIcon name="mais" size={18} /> Cadastrar equipamento</button> : null}</section>

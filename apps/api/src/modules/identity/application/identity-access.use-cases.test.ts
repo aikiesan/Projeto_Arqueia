@@ -36,16 +36,18 @@ const assignmentId = '9c5b94b1-35ad-49bb-b118-8e8fc24abf80';
 const CORRECT_PASSWORD = 'current-password';
 const context = { origin: 'api:http', requestId: null } as const;
 
-function principal(role: 'USUARIO' | 'TECNICO', admin = false): AuthenticatedPrincipal {
+function principal(
+  role: 'USUARIO' | 'GESTOR_ACESSO_CP2B' | 'TECNICO',
+  admin = false,
+): AuthenticatedPrincipal {
   return {
     user: {
       id: actorId,
       institutionId,
-      name: 'Pessoa Teste',
-      email: 'pessoa@unicamp.br',
-      supervisorUserId: null,
+      loginCode: 'ARQ-PESSOA-01',
+      academicCategory: 'PESQUISADOR',
       status: 'ACTIVE',
-      identityProvider: 'LOCAL',
+      mustChangePassword: false,
       createdAt: now,
       updatedAt: now,
       archivedAt: null,
@@ -103,8 +105,8 @@ function reauthentication(admin: AuthenticatedPrincipal): ReauthenticationServic
     lockedUntil: null,
   };
   const reader: LocalIdentityReader = {
-    findActiveByEmail: vi.fn(async (email: string) =>
-      email === admin.user.email ? account : null,
+    findActiveByLoginCode: vi.fn(async (loginCode: string) =>
+      loginCode === admin.user.loginCode ? account : null,
     ),
     findActiveById: vi.fn(async (id: string) =>
       id === admin.user.id ? account : null,
@@ -125,7 +127,10 @@ describe('Access assignment authorization and reauthentication', () => {
 
   it('lists only access returned by the administrative readers', async () => {
     const admin = principal('USUARIO', true);
-    const memberships: MembershipReader = { listActiveByUser: vi.fn(async () => [membership]) };
+    const memberships: MembershipReader = {
+      listActiveByUser: vi.fn(async () => [membership]),
+      findActiveById: vi.fn(async () => membership),
+    };
     const systemRoles: SystemRoleReader = { listActiveByUser: vi.fn(async () => [assignment]) };
 
     await expect(
@@ -134,7 +139,10 @@ describe('Access assignment authorization and reauthentication', () => {
   });
 
   it('denies access listing to a laboratory technician', async () => {
-    const memberships: MembershipReader = { listActiveByUser: vi.fn(async () => [membership]) };
+    const memberships: MembershipReader = {
+      listActiveByUser: vi.fn(async () => [membership]),
+      findActiveById: vi.fn(async () => membership),
+    };
     const systemRoles: SystemRoleReader = { listActiveByUser: vi.fn(async () => [assignment]) };
 
     await expect(
@@ -162,6 +170,43 @@ describe('Access assignment authorization and reauthentication', () => {
       { userId: targetUserId, laboratoryId: labA, role: 'TECNICO' },
       expect.objectContaining({ actorId }),
     );
+  });
+
+  it('allows a CP2B access manager to assign only the USUARIO role in their laboratory', async () => {
+    const manager = principal('GESTOR_ACESSO_CP2B');
+    const assign = vi.fn(async () => ({ ...membership, role: 'USUARIO' as const }));
+    const writer: MembershipWriter = { assign, revoke: vi.fn(async () => membership) };
+    const useCase = new AssignMembershipUseCase(writer, permissions, reauthentication(manager));
+
+    await useCase.execute(
+      manager,
+      {
+        userId: targetUserId,
+        laboratoryId: labA,
+        role: 'USUARIO',
+        confirmationPassword: CORRECT_PASSWORD,
+      },
+      context,
+    );
+
+    expect(assign).toHaveBeenCalledWith(
+      { userId: targetUserId, laboratoryId: labA, role: 'USUARIO' },
+      expect.objectContaining({ actorId }),
+    );
+
+    await expect(
+      useCase.execute(
+        manager,
+        {
+          userId: targetUserId,
+          laboratoryId: labA,
+          role: 'TECNICO',
+          confirmationPassword: CORRECT_PASSWORD,
+        },
+        context,
+      ),
+    ).rejects.toBeInstanceOf(AuthorizationDeniedError);
+    expect(assign).toHaveBeenCalledTimes(1);
   });
 
   it('denies membership assignment to non-administrators before touching the writer', async () => {
@@ -200,7 +245,16 @@ describe('Access assignment authorization and reauthentication', () => {
     const admin = principal('USUARIO', true);
     const revoke = vi.fn(async () => ({ ...membership, archivedAt: now }));
     const writer: MembershipWriter = { assign: vi.fn(async () => membership), revoke };
-    const useCase = new RevokeMembershipUseCase(writer, permissions, reauthentication(admin));
+    const reader: MembershipReader = {
+      listActiveByUser: vi.fn(async () => [membership]),
+      findActiveById: vi.fn(async () => membership),
+    };
+    const useCase = new RevokeMembershipUseCase(
+      reader,
+      writer,
+      permissions,
+      reauthentication(admin),
+    );
 
     await useCase.execute(admin, membershipId, { confirmationPassword: CORRECT_PASSWORD }, context);
 

@@ -78,7 +78,7 @@ describe('Management Domain Real Use Cases & Edge Cases (No Mocks)', () => {
       expect(userSummary.laboratoryId).toBe(labAId);
       expect(userSummary.availability.maintenance).toBe(false);
       expect(userSummary.availability.equipment).toBe(true);
-      expect(userSummary.availability.inventory).toBe(true);
+      expect(userSummary.availability.inventory).toBe(false);
 
       const tecnicoSummary = await useCase.execute(tecnico, labAId);
       expect(tecnicoSummary.availability.maintenance).toBe(true);

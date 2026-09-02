@@ -30,6 +30,9 @@ const stockMovementNonNegativeMigrationPath = fileURLToPath(
 const stockMovementLedgerConsistencyMigrationPath = fileURLToPath(
   new URL('../migrations/010_stock_movement_ledger_consistency.cjs', import.meta.url),
 );
+const pseudonymousIdentityMigrationPath = fileURLToPath(
+  new URL('../migrations/011_pseudonymous_user_identity.cjs', import.meta.url),
+);
 const require = createRequire(import.meta.url);
 
 function renderMigrationSql(path = migrationPath): string {
@@ -200,6 +203,21 @@ describe('stock movements balance_after non-negative constraint migration invari
 
     expect(migration).toContain('dropConstraint');
     expect(migration).toContain('stock_movements_balance_after_non_negative_check');
+  });
+});
+
+describe('pseudonymous identity migration invariants', () => {
+  it('replaces direct identifiers with a constrained pseudonymous login code', () => {
+    const sql = renderMigrationSql(pseudonymousIdentityMigrationPath);
+
+    expect(sql).toContain('ADD COLUMN login_code');
+    expect(sql).toContain('ADD COLUMN academic_category');
+    expect(sql).toContain('users_login_code_active_uk');
+    expect(sql).toContain('DROP COLUMN name');
+    expect(sql).toContain('DROP COLUMN email');
+    expect(sql).toContain('DROP COLUMN ip_address');
+    expect(sql).toContain('DROP COLUMN user_agent');
+    expect(sql).toContain('GESTOR_ACESSO_CP2B');
   });
 });
 

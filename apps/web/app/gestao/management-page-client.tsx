@@ -354,12 +354,7 @@ export function ManagementPageClient() {
     );
   }
 
-  const userInitials = pageData.principal.user.name
-    .split(' ')
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('');
+  const userInitials = pageData.principal.user.loginCode.replace(/^ARQ-/, '').slice(0, 2);
 
   const laboratoryRail = pageData.laboratories.map((lab) => ({
     href: `/gestao?laboratory=${lab.id}`,
@@ -383,7 +378,7 @@ export function ManagementPageClient() {
       qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Painel de Gestão & Administração"
       userInitials={userInitials}
-      userLabel={pageData.principal.user.name}
+      userLabel={pageData.principal.user.loginCode}
     >
       {/* Header & Main Info */}
       <section className="equipment-toolbar" style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
@@ -838,18 +833,18 @@ export function ManagementPageClient() {
               <table style={{ width: '100%', borderCollapse: 'collapse', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
                 <thead style={{ background: '#f7fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left', fontSize: '0.85rem' }}>
                   <tr>
-                    <th style={{ padding: '0.75rem 1rem' }}>Nome</th>
-                    <th style={{ padding: '0.75rem 1rem' }}>E-mail</th>
+                    <th style={{ padding: '0.75rem 1rem' }}>Código</th>
+                    <th style={{ padding: '0.75rem 1rem' }}>Categoria</th>
                     <th style={{ padding: '0.75rem 1rem' }}>Status</th>
-                    <th style={{ padding: '0.75rem 1rem' }}>Provedor</th>
+                    <th style={{ padding: '0.75rem 1rem' }}>Credencial</th>
                     <th style={{ padding: '0.75rem 1rem' }}>Ações</th>
                   </tr>
                 </thead>
                 <tbody style={{ fontSize: '0.85rem' }}>
                   {users.map((u) => (
                     <tr key={u.id} style={{ borderBottom: '1px solid #edf2f7' }}>
-                      <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>{u.name}</td>
-                      <td style={{ padding: '0.75rem 1rem' }}><code>{u.email}</code></td>
+                      <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>{u.loginCode}</td>
+                      <td style={{ padding: '0.75rem 1rem' }}><code>{u.academicCategory}</code></td>
                       <td style={{ padding: '0.75rem 1rem' }}>
                         <span
                           style={{
@@ -865,7 +860,7 @@ export function ManagementPageClient() {
                         </span>
                       </td>
                       <td style={{ padding: '0.75rem 1rem', color: '#718096' }}>
-                        {u.identityProvider === 'LOCAL' ? 'Senha Local' : 'SSO Unicamp'}
+                        {u.mustChangePassword ? 'Troca de senha pendente' : 'Senha local'}
                       </td>
                       <td style={{ padding: '0.75rem 1rem' }}>
                         <Link

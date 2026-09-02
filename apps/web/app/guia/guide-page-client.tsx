@@ -66,12 +66,7 @@ export function GuidePageClient() {
     );
   }
 
-  const userInitials = pageData.principal.user.name
-    .split(' ')
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('');
+  const userInitials = pageData.principal.user.loginCode.replace(/^ARQ-/, '').slice(0, 2);
 
   const laboratoryRail = pageData.laboratories.map((lab) => ({
     href: `/guia?laboratory=${lab.id}`,
@@ -104,7 +99,7 @@ export function GuidePageClient() {
       qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Guia de Uso"
       userInitials={userInitials}
-      userLabel={pageData.principal.user.name}
+      userLabel={pageData.principal.user.loginCode}
     >
       {/* Editorial Header */}
       <section className="equipment-toolbar" style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>

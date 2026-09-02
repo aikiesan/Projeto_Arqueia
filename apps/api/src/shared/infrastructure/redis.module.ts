@@ -1,6 +1,9 @@
-import * as net from 'node:net';
-import * as tls from 'node:tls';
+import net from 'node:net';
+import tls from 'node:tls';
+import { URL } from 'node:url';
+
 import { Global, Module } from '@nestjs/common';
+
 import { loadApiEnvironment } from '../../configuration.js';
 
 export const REDIS_CLIENT = Symbol('REDIS_CLIENT');
@@ -9,113 +12,103 @@ export interface RedisClient {
   ping(timeoutMs?: number): Promise<string>;
 }
 
-export interface RedisClientOptions {
-  url: string;
-}
-
-export function createRedisClient(options: RedisClientOptions): RedisClient {
+export function createRedisClient(options: { url: string }): RedisClient {
   const parsed = new URL(options.url);
   const isTls = parsed.protocol === 'rediss:';
-  const port = parsed.port ? parseInt(parsed.port, 10) : 6379;
   const host = parsed.hostname || '127.0.0.1';
+  const port = parsed.port ? Number.parseInt(parsed.port, 10) : 6379;
   const password = parsed.password ? decodeURIComponent(parsed.password) : undefined;
 
   return {
     async ping(timeoutMs = 2000): Promise<string> {
       return new Promise<string>((resolve, reject) => {
-        let socket: net.Socket | tls.TLSSocket | null = null;
         let settled = false;
+        let socket: net.Socket;
 
         const timer = setTimeout(() => {
           if (!settled) {
             settled = true;
-            if (socket && !socket.destroyed) {
-              socket.destroy();
-            }
-            reject(new Error(`Redis ping timed out after ${timeoutMs}ms`));
+            if (socket) socket.destroy();
+            reject(new Error('Redis ping timed out'));
           }
         }, timeoutMs);
 
         const cleanup = () => {
           clearTimeout(timer);
-          if (socket && !socket.destroyed) {
-            socket.destroy();
-          }
-        };
-
-        const onDone = (err?: Error, result?: string) => {
-          if (settled) return;
-          settled = true;
-          cleanup();
-          if (err) {
-            reject(err);
-          } else {
-            resolve(result ?? 'PONG');
-          }
         };
 
         try {
-          const socketOptions = { host, port };
-          if (isTls) {
-            socket = tls.connect({
-              ...socketOptions,
-              servername: host,
-              rejectUnauthorized: true,
-            });
-          } else {
-            socket = net.createConnection(socketOptions);
+          socket = isTls
+            ? tls.connect({
+                host,
+                port,
+                timeout: timeoutMs,
+                servername: host,
+                rejectUnauthorized: true,
+              })
+            : net.createConnection({ host, port, timeout: timeoutMs });
+        } catch (err) {
+          cleanup();
+          return reject(err);
+        }
+
+        socket.setTimeout(timeoutMs);
+
+        socket.on('error', (err) => {
+          if (!settled) {
+            settled = true;
+            cleanup();
+            socket.destroy();
+            reject(err);
           }
+        });
 
-          socket.setTimeout(timeoutMs);
+        socket.on('timeout', () => {
+          if (!settled) {
+            settled = true;
+            cleanup();
+            socket.destroy();
+            reject(new Error('Redis socket timed out'));
+          }
+        });
 
-          socket.on('error', (err) => {
-            onDone(err);
-          });
+        let authenticated = !password;
 
-          socket.on('timeout', () => {
-            onDone(new Error(`Socket connection timed out after ${timeoutMs}ms`));
-          });
+        socket.on(isTls ? 'secureConnect' : 'connect', () => {
+          if (password) {
+            socket.write(`AUTH ${password}\r\n`);
+          } else {
+            socket.write('PING\r\n');
+          }
+        });
 
-          let authenticated = !password;
-
-          const onConnected = () => {
-            if (password) {
-              socket?.write(`AUTH ${password}\r\n`);
+        socket.on('data', (data) => {
+          const response = data.toString();
+          if (!authenticated) {
+            if (response.startsWith('+OK')) {
+              authenticated = true;
+              socket.write('PING\r\n');
             } else {
-              socket?.write('PING\r\n');
-            }
-          };
-
-          if (isTls) {
-            (socket as tls.TLSSocket).on('secureConnect', onConnected);
-          } else {
-            socket.on('connect', onConnected);
-          }
-
-          socket.on('data', (data) => {
-            const response = data.toString();
-            if (!authenticated) {
-              if (response.startsWith('+OK')) {
-                authenticated = true;
-                socket?.write('PING\r\n');
-                return;
-              } else {
-                onDone(new Error(`Redis AUTH failed: ${response.trim()}`));
-                return;
+              if (!settled) {
+                settled = true;
+                cleanup();
+                socket.destroy();
+                reject(new Error(`Redis authentication failed: ${response.trim()}`));
               }
             }
-
-            if (response.startsWith('+PONG') || response.trim() === 'PONG') {
-              onDone(undefined, 'PONG');
-            } else if (response.startsWith('-')) {
-              onDone(new Error(`Redis error: ${response.trim()}`));
-            } else {
-              onDone(undefined, response.trim());
+          } else {
+            if (!settled) {
+              settled = true;
+              cleanup();
+              socket.end();
+              if (response.includes('PONG') || response.startsWith('+PONG')) {
+                resolve('PONG');
+              } else {
+                reject(new Error(`Unexpected Redis response: ${response.trim()}`));
+              }
             }
-          });
-        } catch (err) {
-          onDone(err instanceof Error ? err : new Error(String(err)));
-        }
+          }
+        });
       });
     },
   };

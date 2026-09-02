@@ -80,14 +80,15 @@ describe('Identity & RBAC Domain Real Tests (No Mocks)', () => {
       expect(evaluator.can(tecnicoLabA, 'inventory.read', labBId)).toBe(false);
     });
 
-    it('enforces least privilege for USUARIO (can reserve and withdraw, but cannot manage equipment or blocks)', () => {
+    it('enforces least privilege for USUARIO (can view equipment and reserve, without inventory access)', () => {
       const usuario = principalWithMemberships([{ laboratoryId: labAId, role: 'USUARIO' }]);
 
       expect(evaluator.can(usuario, 'equipment.read', labAId)).toBe(true);
-      expect(evaluator.can(usuario, 'inventory.read', labAId)).toBe(true);
-      expect(evaluator.can(usuario, 'inventory.withdraw', labAId)).toBe(true);
+      expect(evaluator.can(usuario, 'inventory.read', labAId)).toBe(false);
+      expect(evaluator.can(usuario, 'inventory.withdraw', labAId)).toBe(false);
       expect(evaluator.can(usuario, 'scheduling.reserve', labAId)).toBe(true);
-      expect(evaluator.can(usuario, 'scheduling.cancel', labAId)).toBe(true);
+      expect(evaluator.can(usuario, 'scheduling.cancel-own', labAId)).toBe(true);
+      expect(evaluator.can(usuario, 'scheduling.cancel', labAId)).toBe(false);
 
       expect(evaluator.can(usuario, 'equipment.manage', labAId)).toBe(false);
       expect(evaluator.can(usuario, 'inventory.manage', labAId)).toBe(false);

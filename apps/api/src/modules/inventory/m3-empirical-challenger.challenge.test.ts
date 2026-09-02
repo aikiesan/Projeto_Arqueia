@@ -85,16 +85,14 @@ describe('Milestone 3 Empirical Challenger Battery: Password, Pagination & Stock
       let currentStoredHash = initialHash;
 
       const mockLocalIdentities = {
-        findActiveById: vi.fn(async (id: string) => {
+        findActiveByUserId: vi.fn(async (id: string) => {
           if (id === userId) {
             return {
-              principal: testPrincipal,
               passwordHash: currentStoredHash,
             };
           }
           return null;
         }),
-        findActiveByEmail: vi.fn(),
       };
 
       const mockUsers = {
@@ -137,11 +135,9 @@ describe('Milestone 3 Empirical Challenger Battery: Password, Pagination & Stock
       const initialHash = await hasher.hash(initialPassword);
 
       const mockLocalIdentities = {
-        findActiveById: vi.fn(async () => ({
-          principal: testPrincipal,
+        findActiveByUserId: vi.fn(async () => ({
           passwordHash: initialHash,
         })),
-        findActiveByEmail: vi.fn(),
       };
 
       const mockUsers = {
@@ -170,8 +166,7 @@ describe('Milestone 3 Empirical Challenger Battery: Password, Pagination & Stock
 
     it('rejects ChangePasswordUseCase with InvalidCredentialsError when account does not exist', async () => {
       const mockLocalIdentities = {
-        findActiveById: vi.fn(async () => null),
-        findActiveByEmail: vi.fn(),
+        findActiveByUserId: vi.fn(async () => null),
       };
 
       const mockUsers = {

@@ -6,7 +6,13 @@ import { userSchema } from './user.js';
 
 export const localLoginInputSchema = z
   .object({
-    email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
+    loginCode: z
+      .string()
+      .trim()
+      .min(6)
+      .max(32)
+      .regex(/^[A-Za-z0-9-]+$/)
+      .transform((value) => value.toUpperCase()),
     password: z.string().min(1).max(128),
   })
   .strict();
@@ -22,8 +28,6 @@ export const authenticatedPrincipalSchema = z
 export const sessionMetadataSchema = z
   .object({
     id: uuidSchema,
-    deviceInfo: z.string().min(1).max(256),
-    ipAddress: z.string().min(1).max(45),
     isCurrent: z.boolean(),
     createdAt: z.string().datetime(),
     lastActiveAt: z.string().datetime(),
@@ -104,10 +108,15 @@ export const changePasswordInputSchema = z
     currentPassword: z.string().min(1).max(128),
     newPassword: z.string().min(12).max(128),
   })
-  .strict();
+  .strict()
+  .refine(({ currentPassword, newPassword }) => currentPassword !== newPassword, {
+    message: 'A nova senha deve ser diferente da senha atual.',
+    path: ['newPassword'],
+  });
 
 export const resetUserPasswordInputSchema = z
   .object({
+    laboratoryId: uuidSchema,
     newPassword: z.string().min(12).max(128),
     confirmationPassword: z.string().min(1).max(128),
   })

@@ -24,9 +24,9 @@ import { LoginLocalUseCase } from '../application/login-local.use-case.js';
 import { InvalidCredentialsError } from '../domain/errors/invalid-credentials.error.js';
 import { OIDC_PROVIDER, type OidcProvider } from '../domain/ports/oidc-provider.port.js';
 import { CurrentPrincipal } from './current-principal.decorator.js';
+import { AuthRateLimitGuard } from './auth-rate-limit.guard.js';
 import { identityRequestContext } from './identity-request-context.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
-import { AuthRateLimitGuard } from './auth-rate-limit.guard.js';
 
 const requestIdSchema = z.string().uuid();
 
@@ -67,7 +67,7 @@ export class AuthController {
     @CurrentPrincipal() principal: AuthenticatedPrincipal,
     @Body(new ZodValidationPipe(changePasswordInputSchema)) input: ChangePasswordInput,
     @Headers('x-request-id') requestId?: string,
-  ): Promise<{ success: boolean }> {
+  ): Promise<{ success: true }> {
     try {
       return await this.changePasswordUseCase.execute(
         principal,
@@ -78,7 +78,7 @@ export class AuthController {
       if (error instanceof InvalidCredentialsError) {
         throw new UnauthorizedException({
           code: 'INVALID_CREDENTIALS',
-          message: error.message,
+          message: 'Credencial atual inválida.',
         });
       }
       throw error;

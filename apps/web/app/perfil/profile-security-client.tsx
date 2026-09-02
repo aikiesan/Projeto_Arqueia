@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 
-export function ProfileSecurityClient() {
+export function ProfileSecurityClient({ required = false }: { readonly required?: boolean }) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -48,6 +48,7 @@ export function ProfileSecurityClient() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      if (required) window.location.assign('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao alterar senha.');
     } finally {
@@ -66,6 +67,11 @@ export function ProfileSecurityClient() {
       }}
     >
       <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>Segurança da Conta & Alteração de Senha</h3>
+      {required ? (
+        <p className="form-error" role="alert">
+          Troque a senha provisória antes de utilizar os demais módulos.
+        </p>
+      ) : null}
       <p style={{ fontSize: '0.85rem', color: '#718096', marginBottom: '1rem' }}>
         Atualize sua senha de acesso periodicamente. Mínimo de 12 caracteres com boa complexidade.
       </p>

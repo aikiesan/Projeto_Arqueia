@@ -42,11 +42,10 @@ function principal(admin = false): AuthenticatedPrincipal {
       ...metadata,
       id: '44444444-4444-4444-a444-444444444444',
       institutionId: lab1.institutionId,
-      name: 'Maria Pesquisadora',
-      email: 'maria@example.com',
-      supervisorUserId: null,
+      loginCode: 'ARQ-MARIA-001',
+      academicCategory: 'PESQUISADOR',
       status: 'ACTIVE',
-      identityProvider: 'LOCAL',
+      mustChangePassword: false,
     },
     memberships: [
       {

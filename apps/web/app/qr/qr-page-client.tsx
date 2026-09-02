@@ -333,7 +333,7 @@ export function QrPageClient() {
       qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Leitor QR Code"
       userInitials={presentation.userInitials}
-      userLabel={pageData.principal.user.name}
+      userLabel={pageData.principal.user.loginCode}
       userMenu={<LogoutButton />}
     >
       <div className="qr-page-container">

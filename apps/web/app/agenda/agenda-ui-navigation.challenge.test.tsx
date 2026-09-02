@@ -15,6 +15,8 @@ import { AgendaPageClient } from './agenda-page-client';
 import {
   calculateEventBlockGeometry,
   formatDurationMinutes,
+  getCalendarDateInTimezone,
+  zonedDateTimeToIso,
 } from '../components/scheduling/calendar-time';
 
 let mockSearchParams = new URLSearchParams();
@@ -46,11 +48,10 @@ const principalUser: AuthenticatedPrincipal = {
   user: {
     id: 'user-maria-1',
     institutionId: 'inst-unicamp',
-    name: 'Dra. Maria Silveira',
-    email: 'maria@cp2b.unicamp.br',
-    supervisorUserId: null,
+    loginCode: 'ARQ-MARIA-001',
+    academicCategory: 'PESQUISADOR',
     status: 'ACTIVE',
-    identityProvider: 'LOCAL',
+    mustChangePassword: false,
     createdAt: now,
     updatedAt: now,
     archivedAt: null,
@@ -154,6 +155,7 @@ const projectActive: Project = {
 };
 
 function createChallengeScheduleItems(): ScheduleItem[] {
+  const calendarDay = getCalendarDateInTimezone(new Date(), 'America/Sao_Paulo');
   return [
     // 4-hour continuous booking on HPLC (10:00 to 14:00 in America/Sao_Paulo => 13:00 to 17:00 UTC)
     {
@@ -161,8 +163,8 @@ function createChallengeScheduleItems(): ScheduleItem[] {
       type: 'RESERVATION',
       equipmentId: equipmentHPLC.id,
       equipmentName: equipmentHPLC.name,
-      startsAt: '2026-08-25T13:00:00.000Z',
-      endsAt: '2026-08-25T17:00:00.000Z',
+      startsAt: zonedDateTimeToIso(calendarDay, '10:00', 'America/Sao_Paulo'),
+      endsAt: zonedDateTimeToIso(calendarDay, '14:00', 'America/Sao_Paulo'),
       title: 'Cinética Enzimática HPLC',
       status: 'CONFIRMED',
       isMine: true,
@@ -172,7 +174,6 @@ function createChallengeScheduleItems(): ScheduleItem[] {
       reservationDetails: {
         reservationId: 'res-hplc-4h',
         userId: principalUser.user.id,
-        userName: principalUser.user.name,
         projectId: projectActive.id,
         projectCode: projectActive.code,
         purpose: 'Cinética enzimática de longa duração',
@@ -187,8 +188,8 @@ function createChallengeScheduleItems(): ScheduleItem[] {
       type: 'RESERVATION',
       equipmentId: equipmentMS.id,
       equipmentName: equipmentMS.name,
-      startsAt: '2026-08-25T13:00:00.000Z',
-      endsAt: '2026-08-25T15:00:00.000Z',
+      startsAt: zonedDateTimeToIso(calendarDay, '10:00', 'America/Sao_Paulo'),
+      endsAt: zonedDateTimeToIso(calendarDay, '12:00', 'America/Sao_Paulo'),
       title: 'Identificação Peptídica MS',
       status: 'CONFIRMED',
       isMine: false,
@@ -198,7 +199,6 @@ function createChallengeScheduleItems(): ScheduleItem[] {
       reservationDetails: {
         reservationId: 'res-ms-2h',
         userId: 'user-carlos-2',
-        userName: 'Dr. Carlos Souza',
         projectId: projectActive.id,
         projectCode: projectActive.code,
         purpose: 'Varredura MS/MS',
@@ -230,11 +230,12 @@ describe('Agenda UI & Navigation Empirical Challenge Suite (M4)', () => {
   function setupChallengeFetch(overrides?: {
     scheduleResponse?: Partial<ScheduleResponse>;
   }) {
+    const calendarDay = getCalendarDateInTimezone(new Date(), 'America/Sao_Paulo');
     const defaultScheduleRes: ScheduleResponse = {
       laboratoryId: labCP2b.id,
       timezone: 'America/Sao_Paulo',
-      startsAt: '2026-08-25T00:00:00.000Z',
-      endsAt: '2026-08-25T23:59:59.000Z',
+      startsAt: zonedDateTimeToIso(calendarDay, '00:00', 'America/Sao_Paulo'),
+      endsAt: zonedDateTimeToIso(calendarDay, '23:59', 'America/Sao_Paulo'),
       capabilities: {
         canReserve: true,
         canManageBlocks: true,

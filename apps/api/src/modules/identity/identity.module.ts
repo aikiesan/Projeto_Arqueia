@@ -19,10 +19,10 @@ import { LoginLocalUseCase } from './application/login-local.use-case.js';
 import { UpdateLaboratoryUseCase } from './application/update-laboratory.use-case.js';
 import { UpdateProjectUseCase } from './application/update-project.use-case.js';
 import { UpdateUserUseCase } from './application/update-user.use-case.js';
-
 import { ACCESS_TOKEN_ISSUER } from './domain/ports/access-token-issuer.port.js';
 import { ACCESS_TOKEN_VERIFIER } from './domain/ports/access-token-verifier.port.js';
 import { AUDIT_EVENT_WRITER } from './domain/ports/audit-event-writer.port.js';
+import { CURRENT_CREDENTIAL_READER } from './domain/ports/current-credential-reader.port.js';
 import { LOCAL_IDENTITY_READER } from './domain/ports/local-identity-reader.port.js';
 import {
   LABORATORY_READER,
@@ -40,6 +40,7 @@ import { PASSWORD_VERIFIER } from './domain/ports/password-verifier.port.js';
 import { PRINCIPAL_READER } from './domain/ports/principal-reader.port.js';
 import { PROJECT_READER, PROJECT_WRITER } from './domain/ports/project-repository.port.js';
 import { USER_READER, USER_WRITER } from './domain/ports/user-repository.port.js';
+import { USER_CREDENTIAL_WRITER } from './domain/ports/user-credential-writer.port.js';
 import { PermissionEvaluator } from './domain/services/permission-evaluator.js';
 import { ReauthenticationService } from './domain/services/reauthentication.js';
 import {
@@ -47,6 +48,7 @@ import {
   Argon2PasswordVerifier,
 } from './infrastructure/argon2-password-verifier.js';
 import { ConfiguredOidcProvider } from './infrastructure/configured-oidc-provider.js';
+import { AuthRateLimiterService } from './infrastructure/auth-rate-limiter.service.js';
 import { JwtAccessTokenIssuer } from './infrastructure/jwt-access-token-issuer.js';
 import { JwtAccessTokenVerifier } from './infrastructure/jwt-access-token-verifier.js';
 import { PostgresAuditEventWriter } from './infrastructure/postgres-audit-event-writer.js';
@@ -59,13 +61,12 @@ import {
 import { PostgresProjectRepository } from './infrastructure/postgres-project-repository.js';
 import { PostgresUserRepository } from './infrastructure/postgres-user-repository.js';
 import { AccessController } from './interface/access.controller.js';
+import { AuthRateLimitGuard } from './interface/auth-rate-limit.guard.js';
 import { AuthController } from './interface/auth.controller.js';
 import { LaboratoriesController } from './interface/laboratories.controller.js';
 import { JwtAuthGuard } from './interface/jwt-auth.guard.js';
 import { ProjectsController } from './interface/projects.controller.js';
 import { UsersController } from './interface/users.controller.js';
-import { AuthRateLimiterService } from './infrastructure/auth-rate-limiter.service.js';
-import { AuthRateLimitGuard } from './interface/auth-rate-limit.guard.js';
 import { loadApiEnvironment } from '../../configuration.js';
 import { DATABASE_POOL, DatabaseModule } from '../../shared/infrastructure/database.module.js';
 
@@ -98,6 +99,11 @@ const POSTGRES_SYSTEM_ROLE_REPOSITORY = Symbol('POSTGRES_SYSTEM_ROLE_REPOSITORY'
     },
     {
       provide: PRINCIPAL_READER,
+      inject: [POSTGRES_IDENTITY_READER],
+      useFactory: (reader: PostgresLocalIdentityReader) => reader,
+    },
+    {
+      provide: CURRENT_CREDENTIAL_READER,
       inject: [POSTGRES_IDENTITY_READER],
       useFactory: (reader: PostgresLocalIdentityReader) => reader,
     },
@@ -155,17 +161,8 @@ const POSTGRES_SYSTEM_ROLE_REPOSITORY = Symbol('POSTGRES_SYSTEM_ROLE_REPOSITORY'
         ACCESS_TOKEN_ISSUER,
         AUDIT_EVENT_WRITER,
       ],
-      useFactory: (identities, verifier, issuer, auditEvents) => {
-        const environment = loadApiEnvironment();
-        return new LoginLocalUseCase(
-          identities,
-          verifier,
-          issuer,
-          auditEvents,
-          environment.AUTH_MAX_FAILED_ATTEMPTS,
-          environment.AUTH_LOCKOUT_DURATION_SECONDS,
-        );
-      },
+      useFactory: (...dependencies: ConstructorParameters<typeof LoginLocalUseCase>) =>
+        new LoginLocalUseCase(...dependencies),
     },
     PermissionEvaluator,
     {
@@ -180,6 +177,11 @@ const POSTGRES_SYSTEM_ROLE_REPOSITORY = Symbol('POSTGRES_SYSTEM_ROLE_REPOSITORY'
     },
     {
       provide: USER_WRITER,
+      inject: [POSTGRES_USER_REPOSITORY],
+      useFactory: (repository: PostgresUserRepository) => repository,
+    },
+    {
+      provide: USER_CREDENTIAL_WRITER,
       inject: [POSTGRES_USER_REPOSITORY],
       useFactory: (repository: PostgresUserRepository) => repository,
     },
@@ -233,13 +235,23 @@ const POSTGRES_SYSTEM_ROLE_REPOSITORY = Symbol('POSTGRES_SYSTEM_ROLE_REPOSITORY'
     },
     {
       provide: ChangePasswordUseCase,
-      inject: [LOCAL_IDENTITY_READER, USER_WRITER, PASSWORD_VERIFIER, PASSWORD_HASHER],
+      inject: [
+        CURRENT_CREDENTIAL_READER,
+        USER_CREDENTIAL_WRITER,
+        PASSWORD_VERIFIER,
+        PASSWORD_HASHER,
+      ],
       useFactory: (...dependencies: ConstructorParameters<typeof ChangePasswordUseCase>) =>
         new ChangePasswordUseCase(...dependencies),
     },
     {
       provide: ResetUserPasswordUseCase,
-      inject: [USER_WRITER, PermissionEvaluator, ReauthenticationService, PASSWORD_HASHER],
+      inject: [
+        USER_CREDENTIAL_WRITER,
+        PermissionEvaluator,
+        ReauthenticationService,
+        PASSWORD_HASHER,
+      ],
       useFactory: (...dependencies: ConstructorParameters<typeof ResetUserPasswordUseCase>) =>
         new ResetUserPasswordUseCase(...dependencies),
     },
@@ -329,7 +341,7 @@ const POSTGRES_SYSTEM_ROLE_REPOSITORY = Symbol('POSTGRES_SYSTEM_ROLE_REPOSITORY'
     },
     {
       provide: RevokeMembershipUseCase,
-      inject: [MEMBERSHIP_WRITER, PermissionEvaluator, ReauthenticationService],
+      inject: [MEMBERSHIP_READER, MEMBERSHIP_WRITER, PermissionEvaluator, ReauthenticationService],
       useFactory: (...dependencies: ConstructorParameters<typeof RevokeMembershipUseCase>) =>
         new RevokeMembershipUseCase(...dependencies),
     },

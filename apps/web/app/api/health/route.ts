@@ -1,62 +1,56 @@
-export const dynamic = 'force-dynamic';
+import { apiBaseUrl, noStoreJson } from '../../lib/api-server';
 
 export async function GET(): Promise<Response> {
-  const apiUrl =
-    process.env.API_INTERNAL_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    'http://127.0.0.1:4001';
   const timestamp = new Date().toISOString();
 
   try {
-    const upstreamRes = await fetch(`${apiUrl}/health`, {
-      cache: 'no-store',
+    const upstreamUrl = `${apiBaseUrl()}/api/health`;
+    const upstream = await fetch(upstreamUrl, {
+      method: 'GET',
       headers: {
         Accept: 'application/json',
       },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(5000),
     });
 
-    let upstreamJson: unknown = null;
+    let payload: unknown;
     try {
-      upstreamJson = await upstreamRes.json();
+      payload = await upstream.json();
     } catch {
-      upstreamJson = { status: 'error' };
+      payload = { status: upstream.ok ? 'ok' : 'error' };
     }
 
-    const isHealthy = upstreamRes.status === 200;
-    const body = {
-      status: isHealthy ? 'ok' : 'error',
+    if (!upstream.ok) {
+      return noStoreJson(
+        {
+          status: 'error',
+          service: 'arqueia-web',
+          timestamp,
+          api: payload,
+        },
+        503,
+      );
+    }
+
+    return noStoreJson({
+      status: 'ok',
       service: 'arqueia-web',
       timestamp,
-      api: upstreamJson,
-    };
-
-    return new Response(JSON.stringify(body), {
-      status: isHealthy ? 200 : 503,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-store',
-      },
+      api: payload,
     });
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : 'API indisponível';
-
-    const body = {
-      status: 'error',
-      service: 'arqueia-web',
-      timestamp,
-      api: {
-        status: 'disconnected',
-        message,
+  } catch (err) {
+    return noStoreJson(
+      {
+        status: 'error',
+        service: 'arqueia-web',
+        timestamp,
+        api: {
+          status: 'disconnected',
+          message: err instanceof Error ? err.message : 'API indisponível',
+        },
       },
-    };
-
-    return new Response(JSON.stringify(body), {
-      status: 503,
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-store',
-      },
-    });
+      503,
+    );
   }
 }

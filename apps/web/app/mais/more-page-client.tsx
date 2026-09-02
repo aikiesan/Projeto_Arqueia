@@ -142,7 +142,7 @@ export function MorePageClient() {
       qrAction={{ href: qrHref, label: 'Ler QR Code' }}
       sectionLabel="Mais opções"
       userInitials={presentation.userInitials}
-      userLabel={presentation.currentUser.name}
+      userLabel={presentation.currentUser.loginCode}
       userMenu={<LogoutButton />}
     >
       <section className="more-hub-intro">

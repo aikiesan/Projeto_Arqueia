@@ -1,59 +1,118 @@
-import * as net from 'node:net';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import net from 'node:net';
+import tls from 'node:tls';
+import { EventEmitter } from 'node:events';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
 import { createRedisClient } from './redis.module.js';
 
-describe('RedisModule & Native RedisClient', () => {
-  let server: net.Server;
-  let serverPort: number;
+describe('createRedisClient', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
-  beforeAll(async () => {
-    server = net.createServer((socket) => {
-      socket.on('data', (data) => {
-        const text = data.toString();
-        if (text.startsWith('PING')) {
-          socket.write('+PONG\r\n');
-        } else if (text.startsWith('AUTH secret')) {
-          socket.write('+OK\r\n');
-        } else if (text.startsWith('AUTH wrong')) {
-          socket.write('-ERR invalid password\r\n');
-        }
-      });
+  function createMockSocket() {
+    const socket = new EventEmitter() as EventEmitter & {
+      write: ReturnType<typeof vi.fn>;
+      setTimeout: ReturnType<typeof vi.fn>;
+      destroy: ReturnType<typeof vi.fn>;
+      end: ReturnType<typeof vi.fn>;
+    };
+    socket.write = vi.fn();
+    socket.setTimeout = vi.fn();
+    socket.destroy = vi.fn();
+    socket.end = vi.fn();
+    return socket;
+  }
+
+  it('returns PONG on successful socket response', async () => {
+    const mockSocket = createMockSocket();
+
+    vi.spyOn(net, 'createConnection').mockImplementation(() => {
+      setTimeout(() => {
+        mockSocket.emit('connect');
+        mockSocket.emit('data', Buffer.from('+PONG\r\n'));
+      }, 5);
+      return mockSocket as unknown as net.Socket;
     });
 
-    await new Promise<void>((resolve) => {
-      server.listen(0, '127.0.0.1', () => {
-        const addr = server.address() as net.AddressInfo;
-        serverPort = addr.port;
-        resolve();
-      });
+    const client = createRedisClient({ url: 'redis://localhost:6379' });
+    const result = await client.ping(1000);
+
+    expect(result).toBe('PONG');
+    expect(mockSocket.write).toHaveBeenCalledWith('PING\r\n');
+    expect(mockSocket.end).toHaveBeenCalled();
+  });
+
+  it('authenticates with password when present in REDIS_URL', async () => {
+    const mockSocket = createMockSocket();
+
+    vi.spyOn(net, 'createConnection').mockImplementation(() => {
+      setTimeout(() => {
+        mockSocket.emit('connect');
+        // after AUTH, respond +OK
+        mockSocket.emit('data', Buffer.from('+OK\r\n'));
+        // after PING, respond +PONG
+        mockSocket.emit('data', Buffer.from('+PONG\r\n'));
+      }, 5);
+      return mockSocket as unknown as net.Socket;
     });
+
+    const client = createRedisClient({ url: 'redis://:secretpass@localhost:6379' });
+    const result = await client.ping(1000);
+
+    expect(result).toBe('PONG');
+    expect(mockSocket.write).toHaveBeenCalledWith('AUTH secretpass\r\n');
   });
 
-  afterAll(async () => {
-    await new Promise<void>((resolve) => {
-      server.close(() => resolve());
+  it('waits for a secure TLS connection before sending PING for rediss URLs', async () => {
+    const mockSocket = createMockSocket();
+
+    const connect = vi.spyOn(tls, 'connect').mockImplementation(() => {
+      setTimeout(() => {
+        mockSocket.emit('secureConnect');
+        mockSocket.emit('data', Buffer.from('+PONG\r\n'));
+      }, 5);
+      return mockSocket as unknown as tls.TLSSocket;
     });
+
+    const client = createRedisClient({ url: 'rediss://localhost:6380' });
+    await expect(client.ping(1000)).resolves.toBe('PONG');
+
+    expect(connect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        host: 'localhost',
+        servername: 'localhost',
+        rejectUnauthorized: true,
+      }),
+    );
+    expect(mockSocket.write).toHaveBeenCalledWith('PING\r\n');
   });
 
-  it('connects to mock server and pings successfully', async () => {
-    const client = createRedisClient({ url: `redis://127.0.0.1:${serverPort}` });
-    const res = await client.ping(1000);
-    expect(res).toBe('PONG');
+  it('rejects on socket error event', async () => {
+    const mockSocket = createMockSocket();
+
+    vi.spyOn(net, 'createConnection').mockImplementation(() => {
+      setTimeout(() => {
+        mockSocket.emit('error', new Error('ECONNREFUSED'));
+      }, 5);
+      return mockSocket as unknown as net.Socket;
+    });
+
+    const client = createRedisClient({ url: 'redis://localhost:6379' });
+    await expect(client.ping(1000)).rejects.toThrow('ECONNREFUSED');
   });
 
-  it('authenticates with password and pings successfully', async () => {
-    const client = createRedisClient({ url: `redis://:secret@127.0.0.1:${serverPort}` });
-    const res = await client.ping(1000);
-    expect(res).toBe('PONG');
-  });
+  it('rejects when socket times out', async () => {
+    const mockSocket = createMockSocket();
 
-  it('rejects on wrong password', async () => {
-    const client = createRedisClient({ url: `redis://:wrong@127.0.0.1:${serverPort}` });
-    await expect(client.ping(1000)).rejects.toThrow(/Redis AUTH failed/);
-  });
+    vi.spyOn(net, 'createConnection').mockImplementation(() => {
+      setTimeout(() => {
+        mockSocket.emit('timeout');
+      }, 5);
+      return mockSocket as unknown as net.Socket;
+    });
 
-  it('rejects on connection refused when server is down', async () => {
-    const client = createRedisClient({ url: 'redis://127.0.0.1:59998' });
-    await expect(client.ping(500)).rejects.toThrow();
+    const client = createRedisClient({ url: 'redis://localhost:6379' });
+    await expect(client.ping(1000)).rejects.toThrow('timed out');
   });
 });

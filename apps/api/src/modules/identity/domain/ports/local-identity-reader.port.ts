@@ -8,7 +8,7 @@ export interface LocalIdentityAccount {
 }
 
 export interface LocalIdentityReader {
-  findActiveByEmail(email: string): Promise<LocalIdentityAccount | null>;
+  findActiveByLoginCode(loginCode: string): Promise<LocalIdentityAccount | null>;
   findActiveById(userId: string): Promise<LocalIdentityAccount | null>;
   recordLoginSuccess(userId: string): Promise<void>;
   recordLoginFailure(

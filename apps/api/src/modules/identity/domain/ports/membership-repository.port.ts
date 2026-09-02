@@ -18,6 +18,7 @@ export interface MembershipWriter {
 
 export interface MembershipReader {
   listActiveByUser(userId: string): Promise<readonly Membership[]>;
+  findActiveById(membershipId: string): Promise<Membership | null>;
 }
 
 export interface SystemRoleWriter {

@@ -8,8 +8,10 @@ import {
   createSystemRoleAssignmentInputSchema,
   createUserInputSchema,
   bffPublicLoginResponseSchema,
+  changePasswordInputSchema,
   localLoginInputSchema,
   refreshSessionInputSchema,
+  resetUserPasswordInputSchema,
   revokeAccessRequestSchema,
   sessionMetadataSchema,
   userAccessQuerySchema,
@@ -32,11 +34,12 @@ describe('identity contract', () => {
     ).toThrow();
   });
 
-  it('normalizes e-mail and laboratory code at the boundary', () => {
+  it('validates pseudonymous user creation and normalizes laboratory code', () => {
     const user = createUserInputSchema.parse({
       institutionId: uuid,
-      name: '  Ana Pesquisadora  ',
-      email: '  Ana@UNICAMP.BR ',
+      laboratoryId: otherUuid,
+      academicCategory: 'DOUTORADO',
+      temporaryPassword: 'temporary-password',
     });
     const laboratory = createLaboratoryInputSchema.parse({
       institutionId: uuid,
@@ -45,9 +48,8 @@ describe('identity contract', () => {
     });
 
     expect(user).toMatchObject({
-      name: 'Ana Pesquisadora',
-      email: 'ana@unicamp.br',
-      supervisorUserId: null,
+      laboratoryId: otherUuid,
+      academicCategory: 'DOUTORADO',
     });
     expect(laboratory).toMatchObject({
       code: 'CP2b-LAB',
@@ -89,11 +91,32 @@ describe('identity contract', () => {
     expect(result.success).toBe(false);
   });
 
-  it('normalizes local-login e-mail without weakening password validation', () => {
+  it('normalizes local login code without weakening password validation', () => {
     expect(
-      localLoginInputSchema.parse({ email: 'ADMIN@UNICAMP.BR', password: 'valid-password' }),
-    ).toEqual({ email: 'admin@unicamp.br', password: 'valid-password' });
-    expect(() => localLoginInputSchema.parse({ email: 'admin@unicamp.br', password: '' })).toThrow();
+      localLoginInputSchema.parse({ loginCode: ' arq-admin-local ', password: 'valid-password' }),
+    ).toEqual({ loginCode: 'ARQ-ADMIN-LOCAL', password: 'valid-password' });
+    expect(() => localLoginInputSchema.parse({ loginCode: 'ARQ-ADMIN-LOCAL', password: '' })).toThrow();
+  });
+
+  it('validates password management inputs without accepting password reuse', () => {
+    expect(
+      changePasswordInputSchema.parse({
+        currentPassword: 'current-password',
+        newPassword: 'new-password-strong',
+      }),
+    ).toEqual({ currentPassword: 'current-password', newPassword: 'new-password-strong' });
+    expect(() =>
+      changePasswordInputSchema.parse({
+        currentPassword: 'same-password',
+        newPassword: 'same-password',
+      }),
+    ).toThrow();
+    expect(() =>
+      resetUserPasswordInputSchema.parse({
+        newPassword: 'short',
+        confirmationPassword: 'admin-password',
+      }),
+    ).toThrow();
   });
 
   it('requires reauthentication for access-assignment requests', () => {
@@ -132,8 +155,6 @@ describe('identity contract', () => {
     const sessionId = uuid;
     const session = sessionMetadataSchema.parse({
       id: sessionId,
-      deviceInfo: 'Chrome 128 (Windows 11)',
-      ipAddress: '192.168.1.100',
       isCurrent: true,
       createdAt: '2026-08-14T10:00:00.000Z',
       lastActiveAt: '2026-08-14T12:00:00.000Z',
@@ -157,11 +178,10 @@ describe('identity contract', () => {
         user: {
           id: uuid,
           institutionId: otherUuid,
-          name: 'Ana Pesquisadora',
-          email: 'ana@unicamp.br',
-          supervisorUserId: null,
+          loginCode: 'ARQ-ANA-001',
+          academicCategory: 'DOUTORADO',
           status: 'ACTIVE',
-          identityProvider: 'LOCAL',
+          mustChangePassword: false,
           createdAt: '2026-08-14T00:00:00.000Z',
           updatedAt: '2026-08-14T00:00:00.000Z',
           archivedAt: null,

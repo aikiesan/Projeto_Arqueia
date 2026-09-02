@@ -19,7 +19,14 @@ export class CancelReservationUseCase {
     reason: string | undefined,
     context: Omit<SchedulingMutationContext, 'actorId'>,
   ): Promise<Reservation> {
-    this.permissions.assertCan(principal, 'scheduling.cancel', laboratoryId);
+    const canManageReservations = this.permissions.can(
+      principal,
+      'scheduling.approve',
+      laboratoryId,
+    );
+    if (!canManageReservations) {
+      this.permissions.assertCan(principal, 'scheduling.cancel-own', laboratoryId);
+    }
 
     return this.repository.cancelReservation(
       laboratoryId,
@@ -29,7 +36,7 @@ export class CancelReservationUseCase {
         ...context,
         actorId: principal.user.id,
       },
-      this.permissions.can(principal, 'scheduling.approve', laboratoryId),
+      canManageReservations,
     );
   }
 }

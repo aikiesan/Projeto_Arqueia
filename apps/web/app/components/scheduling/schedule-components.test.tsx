@@ -39,7 +39,6 @@ describe('Scheduling Presentational Components', () => {
     reservationDetails: {
       reservationId: '11111111-1111-4111-a111-111111111111',
       userId: '33333333-3333-4333-a333-333333333333',
-      userName: 'Dra. Maria Silva',
       projectId: '44444444-4444-4444-a444-444444444444',
       projectCode: 'BIO-2026',
       purpose: 'Identificação de peptídeos',
@@ -165,7 +164,6 @@ describe('Scheduling Presentational Components', () => {
     reservationDetails: {
       reservationId: '99999999-9999-4999-a999-999999999999',
       userId: '44444444-4444-4444-a444-444444444444',
-      userName: 'Dr. Carlos Mendes',
       projectId: '55555555-5555-4555-a555-555555555555',
       projectCode: 'BIO-2027',
       purpose: 'Purificação preparativa',
@@ -473,7 +471,7 @@ describe('Scheduling Presentational Components', () => {
 
       expect(screen.getByText('Análise de Proteínas')).toBeInTheDocument();
       expect(screen.getByText('Identificação de peptídeos')).toBeInTheDocument();
-      expect(screen.getByText('Dra. Maria Silva')).toBeInTheDocument();
+      expect(screen.queryByText('Dra. Maria Silva')).not.toBeInTheDocument();
       expect(screen.getByText('BIO-2026')).toBeInTheDocument();
       expect(screen.getByText('12')).toBeInTheDocument();
       expect(screen.getByText('Trazer solvente grau HPLC.')).toBeInTheDocument();

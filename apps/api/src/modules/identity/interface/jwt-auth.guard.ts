@@ -3,6 +3,7 @@ import {
   type ExecutionContext,
   Inject,
   Injectable,
+  ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Request } from 'express';
@@ -43,6 +44,13 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     (request as AuthenticatedRequest).principal = principal;
+
+    const passwordChangeAllowedPath =
+      request.path.endsWith('/api/auth/change-password')
+      || request.path.endsWith('/api/auth/me');
+    if (principal.user.mustChangePassword && !passwordChangeAllowedPath) {
+      throw new ForbiddenException({ code: 'PASSWORD_CHANGE_REQUIRED' });
+    }
     return true;
   }
 }

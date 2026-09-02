@@ -28,7 +28,6 @@ import { CreateUserUseCase } from '../application/create-user.use-case.js';
 import { ListUsersUseCase } from '../application/list-users.use-case.js';
 import { ResetUserPasswordUseCase } from '../application/reset-user-password.use-case.js';
 import { UpdateUserUseCase } from '../application/update-user.use-case.js';
-import { AuthRateLimitGuard } from './auth-rate-limit.guard.js';
 import { CurrentPrincipal } from './current-principal.decorator.js';
 import { IdentityExceptionFilter } from './identity-exception.filter.js';
 import { identityRequestContext } from './identity-request-context.js';
@@ -77,13 +76,12 @@ export class UsersController {
   }
 
   @Post(':userId/password-reset')
-  @UseGuards(AuthRateLimitGuard)
   public resetPassword(
     @CurrentPrincipal() principal: AuthenticatedPrincipal,
     @Param(new ZodValidationPipe(userParamsSchema)) params: UserParams,
     @Body(new ZodValidationPipe(resetUserPasswordInputSchema)) input: ResetUserPasswordInput,
     @Headers('x-request-id') requestId?: string,
-  ): Promise<{ success: boolean }> {
+  ): Promise<{ success: true }> {
     return this.resetUserPassword.execute(
       principal,
       params.userId,

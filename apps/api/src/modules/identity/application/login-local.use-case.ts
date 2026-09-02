@@ -25,7 +25,7 @@ export class LoginLocalUseCase {
     input: LocalLoginInput,
     context: LoginRequestContext,
   ): Promise<LoginResponse> {
-    const account = await this.identities.findActiveByEmail(input.email);
+    const account = await this.identities.findActiveByLoginCode(input.loginCode);
     const passwordMatches = await this.passwordVerifier.verify(
       input.password,
       account?.passwordHash ?? null,
