@@ -1,17 +1,24 @@
 import {
   cancelReservationInputSchema,
   cancelTechnicalBlockInputSchema,
+  checkInReservationInputSchema,
+  completeReservationInputSchema,
   createReservationInputSchema,
   createTechnicalBlockInputSchema,
   listScheduleQuerySchema,
+  releaseAbsentReservationsInputSchema,
   reservationParamsSchema,
+  startWalkInReservationInputSchema,
   technicalBlockParamsSchema,
   type AuthenticatedPrincipal,
   type CreateReservationInput,
   type CreateReservationResult,
   type CreateTechnicalBlockInput,
+  type ReleaseAbsentReservationsInput,
+  type ReleaseAbsentReservationsResult,
   type Reservation,
   type ScheduleResponse,
+  type StartWalkInReservationInput,
   type TechnicalBlock,
 } from '@arqueia/contracts';
 import {
@@ -33,9 +40,13 @@ import { CurrentPrincipal } from '../../identity/interface/current-principal.dec
 import { JwtAuthGuard } from '../../identity/interface/jwt-auth.guard.js';
 import { CancelReservationUseCase } from '../application/cancel-reservation.use-case.js';
 import { CancelTechnicalBlockUseCase } from '../application/cancel-technical-block.use-case.js';
+import { CheckInReservationUseCase } from '../application/check-in-reservation.use-case.js';
+import { CompleteReservationUseCase } from '../application/complete-reservation.use-case.js';
 import { CreateReservationUseCase } from '../application/create-reservation.use-case.js';
 import { CreateTechnicalBlockUseCase } from '../application/create-technical-block.use-case.js';
 import { ListScheduleUseCase } from '../application/list-schedule.use-case.js';
+import { ReleaseAbsentReservationsUseCase } from '../application/release-absent-reservations.use-case.js';
+import { StartWalkInReservationUseCase } from '../application/start-walk-in-reservation.use-case.js';
 import { SchedulingExceptionFilter } from './scheduling-exception.filter.js';
 
 type ReservationParams = z.output<typeof reservationParamsSchema>;
@@ -61,6 +72,13 @@ export class SchedulingController {
   public constructor(
     @Inject(ListScheduleUseCase) private readonly listSchedule: ListScheduleUseCase,
     @Inject(CreateReservationUseCase) private readonly createReservation: CreateReservationUseCase,
+    @Inject(StartWalkInReservationUseCase)
+    private readonly startWalkInReservation: StartWalkInReservationUseCase,
+    @Inject(CheckInReservationUseCase) private readonly checkInReservation: CheckInReservationUseCase,
+    @Inject(CompleteReservationUseCase)
+    private readonly completeReservation: CompleteReservationUseCase,
+    @Inject(ReleaseAbsentReservationsUseCase)
+    private readonly releaseAbsentReservations: ReleaseAbsentReservationsUseCase,
     @Inject(CancelReservationUseCase) private readonly cancelReservation: CancelReservationUseCase,
     @Inject(CreateTechnicalBlockUseCase)
     private readonly createTechnicalBlock: CreateTechnicalBlockUseCase,
@@ -86,6 +104,54 @@ export class SchedulingController {
     return this.createReservation.execute(principal, input, requestContext(requestId));
   }
 
+  @Post('reservations/walk-in')
+  public walkIn(
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Body(new ZodValidationPipe(startWalkInReservationInputSchema)) input: StartWalkInReservationInput,
+    @Headers('x-request-id') requestId?: string,
+  ): Promise<Reservation> {
+    return this.startWalkInReservation.execute(principal, input, requestContext(requestId));
+  }
+
+  @Post('reservations/:reservationId/check-in')
+  public checkIn(
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Param(new ZodValidationPipe(reservationParamsSchema)) params: ReservationParams,
+    @Body(new ZodValidationPipe(checkInReservationInputSchema.omit({ reservationId: true })))
+    body: { laboratoryId: string },
+    @Headers('x-request-id') requestId?: string,
+  ): Promise<Reservation> {
+    return this.checkInReservation.execute(
+      principal,
+      { laboratoryId: body.laboratoryId, reservationId: params.reservationId },
+      requestContext(requestId),
+    );
+  }
+
+  @Post('reservations/:reservationId/complete')
+  public complete(
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Param(new ZodValidationPipe(reservationParamsSchema)) params: ReservationParams,
+    @Body(new ZodValidationPipe(completeReservationInputSchema.omit({ reservationId: true })))
+    body: { laboratoryId: string; notes?: string },
+    @Headers('x-request-id') requestId?: string,
+  ): Promise<Reservation> {
+    return this.completeReservation.execute(
+      principal,
+      { laboratoryId: body.laboratoryId, reservationId: params.reservationId, notes: body.notes },
+      requestContext(requestId),
+    );
+  }
+
+  @Post('reservations/release-absent')
+  public releaseAbsent(
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Body(new ZodValidationPipe(releaseAbsentReservationsInputSchema))
+    body: ReleaseAbsentReservationsInput,
+    @Headers('x-request-id') requestId?: string,
+  ): Promise<ReleaseAbsentReservationsResult> {
+    return this.releaseAbsentReservations.execute(principal, body, requestContext(requestId));
+  }
 
   @Post('reservations/:reservationId/cancel')
   public cancelRes(

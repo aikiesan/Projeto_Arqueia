@@ -8,6 +8,7 @@ import type { IdentityMutationContext } from '../domain/ports/identity-mutation-
 import type { MembershipWriter } from '../domain/ports/membership-repository.port.js';
 import type { PermissionEvaluator } from '../domain/services/permission-evaluator.js';
 import type { ReauthenticationService } from '../domain/services/reauthentication.js';
+import { AuthorizationDeniedError } from '../domain/errors/authorization-denied.error.js';
 
 export class AssignMembershipUseCase {
   public constructor(
@@ -21,7 +22,13 @@ export class AssignMembershipUseCase {
     input: AssignMembershipRequest,
     context: Omit<IdentityMutationContext, 'actorId'>,
   ): Promise<Membership> {
-    this.permissions.assertCan(principal, 'identity.membership.manage');
+    this.permissions.assertCan(principal, 'identity.membership.manage', input.laboratoryId);
+    const isSystemAdmin = principal.systemRoles.some(
+      ({ archivedAt, role }) => archivedAt === null && role === 'ADMIN',
+    );
+    if (!isSystemAdmin && input.role !== 'USUARIO') {
+      throw new AuthorizationDeniedError();
+    }
     const { confirmationPassword, ...membership } = input;
     await this.reauthentication.assertPassword(principal, confirmationPassword);
     return this.memberships.assign(membership, { ...context, actorId: principal.user.id });

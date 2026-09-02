@@ -8,8 +8,10 @@ import {
   ProductConflictError,
   ProductNotFoundError,
 } from '../domain/inventory.errors.js';
+import { AuthorizationDeniedError } from '../../identity/domain/errors/authorization-denied.error.js';
 
 @Catch(
+  AuthorizationDeniedError,
   InsufficientStockError,
   ProductNotFoundError,
   ProductConflictError,
@@ -19,6 +21,16 @@ export class InventoryExceptionFilter implements ExceptionFilter {
   public catch(exception: Error, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+
+    if (exception instanceof AuthorizationDeniedError) {
+      response.status(HttpStatus.FORBIDDEN).json({
+        statusCode: HttpStatus.FORBIDDEN,
+        error: 'Forbidden',
+        message: exception.message,
+        code: 'AUTHORIZATION_DENIED',
+      });
+      return;
+    }
 
     if (exception instanceof InsufficientStockError) {
       response.status(HttpStatus.BAD_REQUEST).json({

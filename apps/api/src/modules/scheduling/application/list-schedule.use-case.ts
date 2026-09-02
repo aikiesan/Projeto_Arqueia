@@ -17,7 +17,7 @@ export class ListScheduleUseCase {
     principal: AuthenticatedPrincipal,
     query: ListScheduleQuery,
   ): Promise<ScheduleResponse> {
-    this.permissions.assertCan(principal, 'equipment.read', query.laboratoryId);
+    this.permissions.assertCan(principal, 'scheduling.read', query.laboratoryId);
 
     const canManageReservations = this.permissions.can(
       principal,
@@ -26,7 +26,7 @@ export class ListScheduleUseCase {
     );
 
     return this.repository.listSchedule(query, principal.user.id, {
-      canCancelOwn: this.permissions.can(principal, 'scheduling.cancel', query.laboratoryId),
+      canCancelOwn: this.permissions.can(principal, 'scheduling.cancel-own', query.laboratoryId),
       canManageBlocks: this.permissions.can(
         principal,
         'scheduling.block.manage',

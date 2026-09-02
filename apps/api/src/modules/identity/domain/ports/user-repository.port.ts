@@ -11,7 +11,7 @@ export type CreateUserRecord = Omit<CreateUserInput, 'temporaryPassword'>;
 export interface UserWriter {
   create(
     input: CreateUserRecord,
-    passwordHash: string | null,
+    passwordHash: string,
     context: IdentityMutationContext,
   ): Promise<User>;
   update(
@@ -19,7 +19,14 @@ export interface UserWriter {
     input: UpdateUserInput,
     context: IdentityMutationContext,
   ): Promise<User>;
+  setPasswordHash(
+    userId: string,
+    passwordHash: string,
+    context: IdentityMutationContext,
+    action?: string,
+  ): Promise<void>;
 }
+
 
 export const USER_READER = Symbol('USER_READER');
 export const USER_WRITER = Symbol('USER_WRITER');

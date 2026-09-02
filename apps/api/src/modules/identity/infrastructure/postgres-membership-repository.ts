@@ -39,6 +39,17 @@ export class PostgresMembershipRepository implements MembershipReader, Membershi
     return result.rows.map(mapMembership);
   }
 
+  public async findActiveById(membershipId: string): Promise<Membership | null> {
+    const result = await this.pool.query<MembershipRow>(
+      `SELECT ${MEMBERSHIP_COLUMNS} FROM memberships
+        WHERE id = $1 AND archived_at IS NULL
+        LIMIT 1`,
+      [membershipId],
+    );
+    const row = result.rows[0];
+    return row === undefined ? null : mapMembership(row);
+  }
+
   public async assign(
     input: CreateMembershipInput,
     context: IdentityMutationContext,

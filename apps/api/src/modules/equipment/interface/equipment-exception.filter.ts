@@ -21,8 +21,10 @@ export class EquipmentExceptionFilter implements ExceptionFilter {
 
     if (exception instanceof AuthorizationDeniedError) {
       response.status(HttpStatus.FORBIDDEN).json({
-        code: 'AUTHORIZATION_DENIED',
+        statusCode: HttpStatus.FORBIDDEN,
+        error: 'Forbidden',
         message: exception.message,
+        code: 'AUTHORIZATION_DENIED',
       });
       return;
     }

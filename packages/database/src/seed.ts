@@ -11,6 +11,11 @@ import {
   type DatabasePool,
 } from './client.js';
 import { seedCP2bReferenceCatalog, type CP2bCatalogSeedResult } from './reference-data/seed-cp2b-catalog.js';
+import { seedFapespReferenceCatalog } from './reference-data/seed-fapesp-catalog.js';
+import {
+  seedFapespPreRegistration,
+  type FapespPreRegistrationResult,
+} from './reference-data/seed-fapesp-preregistration.js';
 
 const MINIMUM_ADMIN_PASSWORD_LENGTH = 12;
 
@@ -30,8 +35,8 @@ export const DEVELOPMENT_SEED = Object.freeze({
     description: 'Projeto determinístico para desenvolvimento e homologação.',
   },
   administrator: {
-    name: 'Administrador Arqueia',
-    email: 'admin@arqueia.local',
+    loginCode: 'ARQ-ADMIN-LOCAL',
+    academicCategory: 'PESQUISADOR',
   },
   systemRole: 'ADMIN',
 } as const);
@@ -55,6 +60,8 @@ export interface SeedResult {
   readonly credentialCreated: boolean;
   readonly systemRoleAssignmentId: string;
   readonly catalog: CP2bCatalogSeedResult;
+  readonly fapespCatalog: CP2bCatalogSeedResult;
+  readonly preRegistration: FapespPreRegistrationResult;
 }
 
 export type PasswordHasher = (password: string) => Promise<string>;
@@ -213,29 +220,31 @@ export async function seedDevelopmentData(
       client,
       `
         WITH seeded AS (
-          INSERT INTO users (institution_id, name, email, status, identity_provider)
-          VALUES ($1, $2, $3, 'ACTIVE', 'LOCAL')
-          ON CONFLICT (lower(email)) WHERE archived_at IS NULL
+          INSERT INTO users (
+            institution_id, login_code, academic_category, status, must_change_password
+          )
+          VALUES ($1, $2, $3, 'ACTIVE', false)
+          ON CONFLICT (upper(login_code)) WHERE archived_at IS NULL
           DO UPDATE SET
             institution_id = EXCLUDED.institution_id,
-            name = EXCLUDED.name,
+            academic_category = EXCLUDED.academic_category,
             status = EXCLUDED.status,
-            identity_provider = EXCLUDED.identity_provider
+            must_change_password = EXCLUDED.must_change_password
           WHERE users.institution_id IS DISTINCT FROM EXCLUDED.institution_id
-             OR users.name IS DISTINCT FROM EXCLUDED.name
+             OR users.academic_category IS DISTINCT FROM EXCLUDED.academic_category
              OR users.status IS DISTINCT FROM EXCLUDED.status
-             OR users.identity_provider IS DISTINCT FROM EXCLUDED.identity_provider
+             OR users.must_change_password IS DISTINCT FROM EXCLUDED.must_change_password
           RETURNING id
         )
         SELECT id FROM seeded
         UNION ALL
-        SELECT id FROM users WHERE lower(email) = lower($3) AND archived_at IS NULL
+        SELECT id FROM users WHERE upper(login_code) = upper($2) AND archived_at IS NULL
         LIMIT 1
       `,
       [
         institutionId,
-        DEVELOPMENT_SEED.administrator.name,
-        DEVELOPMENT_SEED.administrator.email,
+        DEVELOPMENT_SEED.administrator.loginCode,
+        DEVELOPMENT_SEED.administrator.academicCategory,
       ],
       'usuário administrador local',
     );
@@ -307,6 +316,13 @@ export async function seedDevelopmentData(
     }
 
     const catalog = await seedCP2bReferenceCatalog(client, laboratoryId, administratorId);
+    const fapespCatalog = await seedFapespReferenceCatalog(client, laboratoryId, administratorId);
+    const preRegistration = await seedFapespPreRegistration(
+      client,
+      laboratoryId,
+      projectId,
+      administratorId,
+    );
 
     return {
       institutionId,
@@ -316,6 +332,8 @@ export async function seedDevelopmentData(
       credentialCreated,
       systemRoleAssignmentId: roleAssignment.id,
       catalog,
+      fapespCatalog,
+      preRegistration,
     };
   });
 }
@@ -350,8 +368,8 @@ if (isDirectExecution) {
     .then(() => {
       console.info('[database:seed] seed concluído.');
     })
-    .catch(() => {
-      console.error('[database:seed] seed falhou; nenhum segredo foi exibido.');
+    .catch((error) => {
+      console.error('[database:seed] seed falhou:', error);
       process.exitCode = 1;
     });
 }

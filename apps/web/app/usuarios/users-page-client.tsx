@@ -1,6 +1,7 @@
 'use client';
 
 import type {
+  AcademicCategory,
   AuthenticatedPrincipal,
   Laboratory,
   LaboratoryRole,
@@ -20,9 +21,18 @@ interface PageData {
 }
 
 const roleLabels: Record<LaboratoryRole, string> = {
+  GESTOR_ACESSO_CP2B: 'Gestor de Acessos CP2b',
   TECNICO: 'Técnico de Laboratório',
   USUARIO: 'Usuário Pesquisador',
   RESPONSAVEL_CONTROLADOS: 'Responsável por Controlados',
+};
+
+const categoryLabels: Record<AcademicCategory, string> = {
+  IC: 'Iniciação científica',
+  MESTRADO: 'Mestrado',
+  DOUTORADO: 'Doutorado',
+  POS_DOUTORADO: 'Pós-doutorado',
+  PESQUISADOR: 'Pesquisador',
 };
 
 const statusLabels: Record<UserStatus, string> = {
@@ -64,6 +74,9 @@ export function UsersPageClient() {
   const [newUserModalOpen, setNewUserModalOpen] = useState(false);
   const [editUserModal, setEditUserModal] = useState<User | null>(null);
   const [accessModalUser, setAccessModalUser] = useState<User | null>(null);
+  const [resetPassModalUser, setResetPassModalUser] = useState<User | null>(null);
+  const [adminNewPass, setAdminNewPass] = useState('');
+  const [adminConfirmAuthPass, setAdminConfirmAuthPass] = useState('');
 
   // Access Modal state
   const [selectedRole, setSelectedRole] = useState<LaboratoryRole>('USUARIO');
@@ -71,6 +84,7 @@ export function UsersPageClient() {
   const [confirmationPassword, setConfirmationPassword] = useState('');
   const [currentAccess, setCurrentAccess] = useState<UserAccessSnapshot | null>(null);
   const [accessLoading, setAccessLoading] = useState(false);
+
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -127,14 +141,15 @@ export function UsersPageClient() {
   const filteredUsers = useMemo(() => {
     if (!search.trim()) return users;
     const term = search.toLowerCase();
-    return users.filter(
-      (u) => u.name.toLowerCase().includes(term) || u.email.toLowerCase().includes(term),
+    return users.filter((u) =>
+      u.loginCode.toLowerCase().includes(term)
+      || categoryLabels[u.academicCategory].toLowerCase().includes(term),
     );
   }, [users, search]);
 
   const handleCreateUser = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!pageData) return;
+    if (!pageData || !laboratoryId) return;
     setPending(true);
     setError(null);
     setNotice(null);
@@ -143,19 +158,19 @@ export function UsersPageClient() {
     const tempPass = String(form.get('temporaryPassword') ?? '').trim();
 
     try {
-      await readJson('/api/users', {
+      const created = await readJson<User>('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           institutionId: pageData.principal.user.institutionId,
-          name: form.get('name'),
-          email: form.get('email'),
-          temporaryPassword: tempPass || undefined,
+          laboratoryId,
+          academicCategory: form.get('academicCategory'),
+          temporaryPassword: tempPass,
         }),
       });
 
       setNewUserModalOpen(false);
-      setNotice('✅ Usuário criado com sucesso no sistema!');
+      setNotice(`✅ Usuário criado. Código de acesso: ${created.loginCode}`);
       await loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao criar usuário.');
@@ -177,7 +192,8 @@ export function UsersPageClient() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: form.get('name'),
+          laboratoryId,
+          academicCategory: form.get('academicCategory'),
           status: form.get('status'),
         }),
       });
@@ -234,6 +250,36 @@ export function UsersPageClient() {
     }
   };
 
+  const handleAdminResetPassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!resetPassModalUser || !laboratoryId) return;
+    setPending(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      await readJson(`/api/users/${resetPassModalUser.id}/password-reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          laboratoryId,
+          newPassword: adminNewPass,
+          confirmationPassword: adminConfirmAuthPass,
+        }),
+      });
+
+      setResetPassModalUser(null);
+      setAdminNewPass('');
+      setAdminConfirmAuthPass('');
+      setNotice(`✅ Senha do usuário ${resetPassModalUser.loginCode} redefinida com sucesso!`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao redefinir senha do usuário.');
+    } finally {
+      setPending(false);
+    }
+  };
+
+
   const openAccessModal = async (user: User) => {
     setAccessModalUser(user);
     setConfirmationPassword('');
@@ -281,12 +327,7 @@ export function UsersPageClient() {
     );
   }
 
-  const userInitials = pageData.principal.user.name
-    .split(' ')
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('');
+  const userInitials = pageData.principal.user.loginCode.replace(/^ARQ-/, '').slice(0, 2);
 
   const laboratoryRail = pageData.laboratories.map((lab) => ({
     href: `/usuarios?laboratory=${lab.id}`,
@@ -305,10 +346,10 @@ export function UsersPageClient() {
       laboratories={laboratoryRail}
       mobileNavigation={presentation.mobileNavigation}
       moduleNavigation={presentation.moduleNavigation}
-      qrAction={{ href: '/qr', label: 'Ler QR Code' }}
+      qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Gestão de Usuários"
       userInitials={userInitials}
-      userLabel={pageData.principal.user.name}
+      userLabel={pageData.principal.user.loginCode}
     >
       <section className="equipment-toolbar">
         <div>
@@ -335,7 +376,7 @@ export function UsersPageClient() {
       <section className="agenda-control-bar" style={{ display: 'flex', gap: '1rem', alignItems: 'center', margin: '1rem 0' }}>
         <input
           type="search"
-          placeholder="Buscar por nome ou e-mail..."
+          placeholder="Buscar por código ou categoria..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #ccc', minWidth: '300px' }}
@@ -370,13 +411,13 @@ export function UsersPageClient() {
                   <span>{statusLabels[u.status]}</span>
                   {isSelf && <span style={{ fontSize: '0.75rem', background: '#e2e8f0', padding: '0.1rem 0.4rem', borderRadius: '4px', marginLeft: 'auto' }}>Você</span>}
                 </div>
-                <h3>{u.name}</h3>
-                <code>{u.email}</code>
+                <h3>{u.loginCode}</h3>
+                <code>{categoryLabels[u.academicCategory]}</code>
 
                 <dl style={{ marginTop: '0.5rem' }}>
                   <div>
-                    <dt>Provedor</dt>
-                    <dd>{u.identityProvider === 'LOCAL' ? 'Senha Local' : 'SSO Unicamp'}</dd>
+                    <dt>Troca de senha</dt>
+                    <dd>{u.mustChangePassword ? 'Obrigatória no próximo acesso' : 'Não pendente'}</dd>
                   </div>
                   <div>
                     <dt>Cadastrado em</dt>
@@ -384,7 +425,19 @@ export function UsersPageClient() {
                   </div>
                 </dl>
 
-                <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid #edf2f7', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid #edf2f7', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                  <button
+                    className="secondary-button"
+                    onClick={() => {
+                      setResetPassModalUser(u);
+                      setAdminNewPass('');
+                      setAdminConfirmAuthPass('');
+                    }}
+                    style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}
+                    type="button"
+                  >
+                    Redefinir Senha
+                  </button>
                   <button
                     className="secondary-button"
                     onClick={() => setEditUserModal(u)}
@@ -423,23 +476,23 @@ export function UsersPageClient() {
             </div>
             <form className="equipment-form" onSubmit={handleCreateUser}>
               <label className="field-wide">
-                <span>Nome Completo *</span>
-                <input name="name" placeholder="Ex: Dra. Mariana Silva" required maxLength={120} />
+                <span>Categoria acadêmica *</span>
+                <select name="academicCategory" defaultValue="IC" required>
+                  {(Object.keys(categoryLabels) as AcademicCategory[]).map((category) => (
+                    <option key={category} value={category}>{categoryLabels[category]}</option>
+                  ))}
+                </select>
               </label>
 
               <label className="field-wide">
-                <span>E-mail Institucional *</span>
-                <input type="email" name="email" placeholder="mariana@unicamp.br" required maxLength={254} />
-              </label>
-
-              <label className="field-wide">
-                <span>Senha Provisória (Opcional)</span>
+                <span>Senha provisória *</span>
                 <input
                   type="password"
                   name="temporaryPassword"
-                  placeholder="Sem senha, o acesso permanecerá pendente"
+                  placeholder="Mínimo de 12 caracteres"
                   minLength={12}
                   maxLength={128}
+                  required
                 />
               </label>
 
@@ -471,8 +524,12 @@ export function UsersPageClient() {
             </div>
             <form className="equipment-form" onSubmit={handleUpdateStatus}>
               <label className="field-wide">
-                <span>Nome Completo *</span>
-                <input name="name" defaultValue={editUserModal.name} required maxLength={120} />
+                <span>Categoria acadêmica *</span>
+                <select name="academicCategory" defaultValue={editUserModal.academicCategory} required>
+                  {(Object.keys(categoryLabels) as AcademicCategory[]).map((category) => (
+                    <option key={category} value={category}>{categoryLabels[category]}</option>
+                  ))}
+                </select>
               </label>
 
               <label className="field-wide">
@@ -506,7 +563,7 @@ export function UsersPageClient() {
             <div className="equipment-dialog-heading">
               <div>
                 <span className="section-kicker">Controle de Permissões RBAC</span>
-                <h2 id="access-title">Gerenciar Papéis de {accessModalUser.name}</h2>
+                <h2 id="access-title">Gerenciar Papéis de {accessModalUser.loginCode}</h2>
               </div>
               <button aria-label="Fechar" onClick={() => {
                 setAccessModalUser(null);
@@ -629,6 +686,65 @@ export function UsersPageClient() {
                 </button>
                 <button className="primary-button" disabled={pending || !confirmationPassword} type="submit">
                   {pending ? 'Atribuindo...' : 'Confirmar e Atribuir Papel'}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {/* Modal Redefinir Senha pelo Administrador */}
+      {resetPassModalUser && (
+        <div className="equipment-dialog-backdrop" role="presentation">
+          <section aria-labelledby="reset-pass-title" aria-modal="true" className="equipment-dialog" role="dialog">
+            <div className="equipment-dialog-heading">
+              <div>
+                <span className="section-kicker">Segurança & Credenciais</span>
+                <h2 id="reset-pass-title">Redefinir Senha de {resetPassModalUser.loginCode}</h2>
+              </div>
+              <button aria-label="Fechar" onClick={() => setResetPassModalUser(null)} type="button">
+                ×
+              </button>
+            </div>
+            <form className="equipment-form" onSubmit={handleAdminResetPassword}>
+              <p style={{ fontSize: '0.85rem', color: '#718096' }}>
+                Defina uma nova senha para o usuário. Ele poderá utilizá-la imediatamente para fazer login local.
+              </p>
+
+              <label className="field-wide">
+                <span>Nova Senha do Usuário * (mínimo 12 caracteres)</span>
+                <input
+                  type="password"
+                  value={adminNewPass}
+                  onChange={(e) => setAdminNewPass(e.target.value)}
+                  placeholder="Nova senha temporária ou definitiva"
+                  minLength={12}
+                  maxLength={128}
+                  required
+                />
+              </label>
+
+              <label className="field-wide" style={{ background: '#fff5f5', border: '1px solid #feb2b2', padding: '0.75rem', borderRadius: '6px' }}>
+                <span style={{ color: '#9b2c2c', fontWeight: 600 }}>Sua Senha de Administrador (Confirmação) *</span>
+                <input
+                  type="password"
+                  value={adminConfirmAuthPass}
+                  onChange={(e) => setAdminConfirmAuthPass(e.target.value)}
+                  placeholder="Digite sua senha para autorizar esta redefinição"
+                  required
+                />
+              </label>
+
+              <div className="equipment-form-actions">
+                <button className="secondary-button" onClick={() => setResetPassModalUser(null)} type="button">
+                  Cancelar
+                </button>
+                <button
+                  className="primary-button"
+                  disabled={pending || !adminNewPass || !adminConfirmAuthPass}
+                  type="submit"
+                >
+                  {pending ? 'Redefinindo...' : 'Confirmar e Redefinir Senha'}
                 </button>
               </div>
             </form>

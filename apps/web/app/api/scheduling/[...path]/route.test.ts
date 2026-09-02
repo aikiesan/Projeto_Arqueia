@@ -82,25 +82,39 @@ describe('BFF scheduling mutations', () => {
     );
   });
 
-  it('rejects recurrence at the BFF while the safe series contract is unavailable', async () => {
-    const response = await POST(
-      postRequest('/api/scheduling/reservations', {
-        laboratoryId,
-        equipmentId,
-        projectId,
-        startsAt: '2026-08-20T10:00:00.000Z',
-        endsAt: '2026-08-20T11:00:00.000Z',
-        purpose: 'Análise instrumental',
-        recurrence: {
-          frequency: 'WEEKLY',
-          weekdays: [],
-          untilDate: '2026-09-20T10:00:00.000Z',
+  it('validates recurrence at the BFF and forwards it upstream', async () => {
+    vi.mocked(apiServer.authorizedApiRequest).mockResolvedValue(
+      Response.json(
+        {
+          createdReservations: [reservation],
+          conflictingSlots: [],
         },
-      }),
+        { status: 201 },
+      ),
     );
 
-    expect(response.status).toBe(400);
-    expect(apiServer.authorizedApiRequest).not.toHaveBeenCalled();
+    const request = postRequest('/api/scheduling/reservations', {
+      laboratoryId,
+      equipmentId,
+      projectId,
+      startsAt: '2026-08-20T10:00:00.000Z',
+      endsAt: '2026-08-20T11:00:00.000Z',
+      purpose: 'Análise instrumental',
+      recurrence: {
+        frequency: 'WEEKLY',
+        weekdays: [],
+        untilDate: '2026-09-20T10:00:00.000Z',
+      },
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(200);
+    expect(apiServer.authorizedApiRequest).toHaveBeenCalledWith(
+      expect.anything(),
+      '/api/scheduling/reservations',
+      'POST',
+    );
   });
 
   it('validates conflict responses without exposing another reservation', async () => {

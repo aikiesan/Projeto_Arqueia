@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Arqueia — Briefing para implantação institucional</title>
+    <style>
+      :root {
+        --ink: #18312d;
+        --muted: #53645f;
+        --paper: #ffffff;
+        --canvas: #e9efed;
+        --brand: #0b6b55;
+        --brand-dark: #074a3b;
+        --brand-soft: #e7f3ef;
+        --accent: #c88b2d;
+        --accent-soft: #fff4df;
+        --line: #cbd8d4;
+        --danger: #a33a36;
+        --danger-soft: #faeceb;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        background: var(--canvas);
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--canvas);
+        font-family: "Segoe UI", Arial, sans-serif;
+        font-size: 10.2pt;
+        line-height: 1.42;
+      }
+
+      .print-toolbar {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        z-index: 10;
+      }
+
+      .print-button {
+        border: 0;
+        border-radius: 999px;
+        padding: 12px 20px;
+        color: #fff;
+        background: var(--brand-dark);
+        box-shadow: 0 8px 24px rgb(7 74 59 / 25%);
+        font: 700 10pt "Segoe UI", Arial, sans-serif;
+        cursor: pointer;
+      }
+
+      .document {
+        width: 210mm;
+        margin: 14mm auto;
+      }
+
+      .sheet {
+        position: relative;
+        width: 210mm;
+        min-height: 297mm;
+        padding: 14mm 15mm 13mm;
+        overflow: hidden;
+        background: var(--paper);
+        box-shadow: 0 8px 28px rgb(24 49 45 / 13%);
+        break-after: page;
+        page-break-after: always;
+      }
+
+      .sheet:last-child {
+        break-after: auto;
+        page-break-after: auto;
+      }
+
+      .top-rule {
+        height: 4px;
+        margin: -14mm -15mm 10mm;
+        background: linear-gradient(90deg, var(--brand-dark), var(--brand), var(--accent));
+      }
+
+      .eyebrow {
+        margin: 0 0 3mm;
+        color: var(--brand);
+        font-size: 8.5pt;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        max-width: 155mm;
+        margin-bottom: 5mm;
+        color: var(--brand-dark);
+        font-size: 29pt;
+        line-height: 1.04;
+        letter-spacing: -0.035em;
+      }
+
+      h2 {
+        margin-bottom: 5mm;
+        color: var(--brand-dark);
+        font-size: 19pt;
+        line-height: 1.15;
+        letter-spacing: -0.02em;
+      }
+
+      h3 {
+        margin-bottom: 2mm;
+        color: var(--brand-dark);
+        font-size: 11.5pt;
+      }
+
+      .lead {
+        max-width: 168mm;
+        margin-bottom: 8mm;
+        color: var(--muted);
+        font-size: 13pt;
+        line-height: 1.45;
+      }
+
+      .hero-panel {
+        margin: 10mm 0 7mm;
+        padding: 8mm;
+        border: 1px solid var(--line);
+        border-left: 6px solid var(--brand);
+        border-radius: 4mm;
+        background: linear-gradient(135deg, var(--brand-soft), #fff 72%);
+      }
+
+      .status-line {
+        display: flex;
+        align-items: center;
+        gap: 3mm;
+        margin-bottom: 3mm;
+        font-weight: 800;
+      }
+
+      .status-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+
+      .grid-2,
+      .grid-3 {
+        display: grid;
+        gap: 4mm;
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .card,
+      .callout,
+      .step,
+      table {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      .card {
+        padding: 4mm;
+        border: 1px solid var(--line);
+        border-radius: 3mm;
+        background: #fff;
+      }
+
+      .card p:last-child,
+      .callout p:last-child {
+        margin-bottom: 0;
+      }
+
+      .metric {
+        display: block;
+        margin-bottom: 1mm;
+        color: var(--brand);
+        font-size: 18pt;
+        font-weight: 800;
+      }
+
+      .callout {
+        margin: 5mm 0;
+        padding: 4mm 5mm;
+        border-radius: 2.5mm;
+        background: var(--accent-soft);
+        border: 1px solid #ecd19d;
+      }
+
+      .callout.warning {
+        color: #762b27;
+        background: var(--danger-soft);
+        border-color: #e4b7b4;
+      }
+
+      ul,
+      ol {
+        margin: 2mm 0 0;
+        padding-left: 5mm;
+      }
+
+      li {
+        margin-bottom: 1.4mm;
+      }
+
+      .role {
+        margin-bottom: 5mm;
+        padding: 4mm 0 4mm 5mm;
+        border-left: 4px solid var(--brand);
+      }
+
+      .role.accent {
+        border-left-color: var(--accent);
+      }
+
+      .role p {
+        margin-bottom: 1.5mm;
+      }
+
+      .tag {
+        display: inline-block;
+        margin: 0 1mm 1mm 0;
+        padding: 1mm 2mm;
+        border-radius: 999px;
+        color: var(--brand-dark);
+        background: var(--brand-soft);
+        font-size: 8pt;
+        font-weight: 700;
+      }
+
+      table {
+        width: 100%;
+        margin: 4mm 0 6mm;
+        border-collapse: collapse;
+        font-size: 9.2pt;
+      }
+
+      th,
+      td {
+        padding: 2.5mm 2.8mm;
+        border: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: #fff;
+        background: var(--brand-dark);
+        font-size: 8.5pt;
+        letter-spacing: 0.02em;
+      }
+
+      tbody tr:nth-child(even) {
+        background: #f7faf9;
+      }
+
+      .step-list {
+        display: grid;
+        gap: 3mm;
+        margin: 5mm 0;
+      }
+
+      .step {
+        display: grid;
+        grid-template-columns: 10mm 1fr;
+        gap: 3mm;
+        align-items: start;
+      }
+
+      .step-number {
+        display: grid;
+        width: 9mm;
+        height: 9mm;
+        place-items: center;
+        border-radius: 50%;
+        color: #fff;
+        background: var(--brand);
+        font-weight: 800;
+      }
+
+      .step p {
+        margin-bottom: 0;
+      }
+
+      .checklist {
+        list-style: none;
+        padding-left: 0;
+      }
+
+      .checklist li {
+        position: relative;
+        padding-left: 7mm;
+      }
+
+      .checklist li::before {
+        position: absolute;
+        left: 0;
+        top: 0.2mm;
+        width: 4mm;
+        height: 4mm;
+        border: 1.5px solid var(--brand);
+        border-radius: 1mm;
+        content: "";
+      }
+
+      .decision-box {
+        margin-top: 5mm;
+        padding: 5mm;
+        border: 2px solid var(--brand);
+        border-radius: 3mm;
+      }
+
+      .signature-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12mm;
+        margin-top: 14mm;
+      }
+
+      .signature {
+        padding-top: 2mm;
+        border-top: 1px solid var(--ink);
+        color: var(--muted);
+        font-size: 8.5pt;
+        text-align: center;
+      }
+
+      .footer {
+        position: absolute;
+        right: 15mm;
+        bottom: 7mm;
+        left: 15mm;
+        display: flex;
+        justify-content: space-between;
+        padding-top: 2mm;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 7.8pt;
+      }
+
+      .source-list {
+        color: var(--muted);
+        font-size: 8pt;
+        word-break: break-word;
+      }
+
+      .source-list li {
+        margin-bottom: 1mm;
+      }
+
+      code {
+        padding: 0.3mm 1mm;
+        border-radius: 1mm;
+        background: #edf2f0;
+        font-family: Consolas, monospace;
+        font-size: 8.8pt;
+      }
+
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+
+      @media print {
+        html,
+        body {
+          width: 210mm;
+          background: #fff;
+          print-color-adjust: exact;
+          -webkit-print-color-adjust: exact;
+        }
+
+        .print-toolbar {
+          display: none !important;
+        }
+
+        .document {
+          margin: 0;
+        }
+
+        .sheet {
+          box-shadow: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="print-toolbar">
+      <button class="print-button" type="button" onclick="window.print()">Imprimir em A4</button>
+    </div>
+
+    <main class="document">
+      <section class="sheet">
+        <div class="top-rule"></div>
+        <p class="eyebrow">CP2B · NIPE · Universidade Estadual de Campinas</p>
+        <h1>Arqueia</h1>
+        <p class="lead">Proposta de implantação institucional para gestão interna de acesso, consulta laboratorial e solicitação de reservas de equipamentos.</p>
+
+        <div class="hero-panel">
+          <div class="status-line"><span class="status-dot"></span> Objetivo da reunião</div>
+          <p>Alinhar com o gestor técnico indicado a utilização da VM, do proxy e do certificado já mantidos pela Unicamp; confirmar responsabilidades; e autorizar a preparação do ambiente de homologação.</p>
+        </div>
+
+        <div class="grid-3">
+          <div class="card">
+            <span class="metric">Interno</span>
+            <p>Acesso restrito a pessoas previamente aprovadas pela Coordenação do CP2B.</p>
+          </div>
+          <div class="card">
+            <span class="metric">Mínimo</span>
+            <p>Cadastro pseudonimizado, sem nome, CPF, telefone ou e-mail pessoal.</p>
+          </div>
+          <div class="card">
+            <span class="metric">Restrito</span>
+            <p>Usuário comum consulta dados e solicita reserva; não administra o sistema.</p>
+          </div>
+        </div>
+
+        <div class="callout">
+          <h3>Decisão de escopo</h3>
+          <p>O primeiro go-live não incluirá cadastro público, portal externo, integrações comerciais, substâncias controladas ou privilégios administrativos para usuários comuns.</p>
+        </div>
+
+        <h3>Resultados esperados</h3>
+        <ul>
+          <li>Ambiente de homologação funcionando na infraestrutura institucional.</li>
+          <li>Fluxo de acesso aprovado e revogado exclusivamente pela Coordenação do CP2B.</li>
+          <li>Reserva de equipamentos com isolamento entre usuários e trilha de auditoria.</li>
+          <li>Backup, restauração, deploy e rollback com responsabilidades definidas.</li>
+          <li>Registro simplificado do tratamento no Sistema Privacidade da Unicamp.</li>
+        </ul>
+
+        <div class="decision-box">
+          <strong>Solicitação central ao Gerson</strong>
+          <p style="margin: 2mm 0 0">Confirmar a viabilidade técnica da VM e aceitar, se estiver de acordo, a indicação como gestor técnico do Arqueia.</p>
+        </div>
+
+        <div class="footer"><span>Briefing institucional · 01/09/2026</span><span>Página 1 de 5</span></div>
+      </section>
+
+      <section class="sheet">
+        <div class="top-rule"></div>
+        <p class="eyebrow">01 · Escopo, dados e acesso</p>
+        <h2>O que o sistema fará</h2>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Usuário comum poderá</h3>
+            <ul>
+              <li>Entrar com código individual e senha.</li>
+              <li>Consultar informações autorizadas do laboratório.</li>
+              <li>Ver equipamentos e horários livres ou ocupados.</li>
+              <li>Solicitar reserva de equipamento.</li>
+              <li>Acompanhar e cancelar as próprias solicitações, conforme regra.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Usuário comum não poderá</h3>
+            <ul>
+              <li>Ver a identidade ou o código de outros usuários.</li>
+              <li>Aprovar acessos ou reservas.</li>
+              <li>Alterar equipamentos, permissões ou configurações.</li>
+              <li>Consultar auditoria administrativa.</li>
+              <li>Acessar dados de outro laboratório.</li>
+            </ul>
+          </div>
+        </div>
+
+        <h3 style="margin-top: 6mm">Cadastro mínimo proposto</h3>
+        <table>
+          <thead><tr><th>Campo</th><th>Finalidade</th><th>Proteção</th></tr></thead>
+          <tbody>
+            <tr><td>Código interno / login</td><td>Distinguir a conta sem exibir nome ou e-mail.</td><td>Aleatório, único e sem informação acadêmica embutida.</td></tr>
+            <tr><td>Hash da senha</td><td>Autenticação local.</td><td>Argon2id; a senha original nunca é armazenada.</td></tr>
+            <tr><td>Categoria acadêmica</td><td>IC, Mestrado, Doutorado, Pós-doutorado ou Pesquisador.</td><td>Metadado; não concede privilégio administrativo.</td></tr>
+            <tr><td>Laboratório e status</td><td>Definir escopo e ativar, suspender ou arquivar a conta.</td><td>Autorização validada no servidor.</td></tr>
+            <tr><td>Reservas</td><td>Associar a solicitação à conta e ao equipamento.</td><td>Outros usuários veem apenas “ocupado”.</td></tr>
+          </tbody>
+        </table>
+
+        <div class="callout">
+          <h3>Classificação correta</h3>
+          <p>O conjunto é <strong>pseudonimizado</strong>, não totalmente anônimo: a Coordenação pode relacionar o código à pessoa que recebeu o acesso. O risco é baixo e o tratamento é mínimo, mas deve ser registrado institucionalmente.</p>
+        </div>
+
+        <h3>Controles mínimos de autenticação</h3>
+        <div>
+          <span class="tag">Senha individual</span>
+          <span class="tag">Hash Argon2id</span>
+          <span class="tag">Cookie seguro</span>
+          <span class="tag">Bloqueio de tentativas</span>
+          <span class="tag">Sessão expirável</span>
+          <span class="tag">Redefinição administrativa</span>
+          <span class="tag">Auditoria sem segredos</span>
+        </div>
+
+        <div class="callout warning">
+          <strong>A senha não pode ser simples ou compartilhada.</strong> O código pode ser fácil de digitar, pois funciona como identificador; a senha permanece secreta, forte e pessoal.
+        </div>
+
+        <div class="footer"><span>Arqueia · Escopo de dados mínimo</span><span>Página 2 de 5</span></div>
+      </section>
+
+      <section class="sheet">
+        <div class="top-rule"></div>
+        <p class="eyebrow">02 · Governança e responsabilidades</p>
+        <h2>Quem decide, quem opera e quem acompanha</h2>
+
+        <div class="role">
+          <h3>Coordenação do CP2B — autoridade operacional</h3>
+          <p>Aprova ou nega acessos, define laboratório e categoria, suspende contas e estabelece as regras de reserva.</p>
+          <p><strong>Evidência:</strong> decisão interna ou ato da Coordenação identificando responsáveis titulares e substitutos.</p>
+        </div>
+
+        <div class="role accent">
+          <h3>Gerson / NIPE-Unicamp — gestor técnico proposto</h3>
+          <p>Administra VM, proxy, certificado, deploy, backup, restauração e resposta técnica inicial a indisponibilidades.</p>
+          <p><strong>Limite:</strong> acesso operacional somente quando necessário para suporte, manutenção ou incidente, com conta administrativa separada.</p>
+        </div>
+
+        <div class="role">
+          <h3>Comitê Local de Privacidade — acompanhamento institucional</h3>
+          <p>Orienta o registro do tratamento, acompanha medidas de proteção e atua como interlocutor com o Comitê Gestor e o Escritório de Privacidade.</p>
+          <p><strong>Ponto a confirmar:</strong> identificar o Comitê Local já responsável por CP2B/NIPE. Caso não exista, a Unidade deverá constituí-lo e nomeá-lo por Portaria Interna.</p>
+        </div>
+
+        <h3>Documentos institucionais</h3>
+        <table>
+          <thead><tr><th>Documento</th><th>Responsável</th><th>Situação proposta</th></tr></thead>
+          <tbody>
+            <tr><td>Registro do tratamento no Sistema Privacidade</td><td>Comitê Local / assessor autorizado</td><td>Preencher antes do go-live com usuários reais.</td></tr>
+            <tr><td>Termo oficial de Confidencialidade e Sigilo</td><td>Servidores com acesso administrativo</td><td>Usar o modelo oficial da Unicamp.</td></tr>
+            <tr><td>Designação do gestor técnico</td><td>Unidade/Coordenação</td><td>Formalizar Gerson após aceite.</td></tr>
+            <tr><td>Aviso de Privacidade simplificado</td><td>Coordenação + Comitê Local</td><td>Apresentar dentro do Arqueia.</td></tr>
+            <tr><td>Regras de Uso e Acesso</td><td>Coordenação do CP2B</td><td>Credencial pessoal, reserva, suspensão e suporte.</td></tr>
+          </tbody>
+        </table>
+
+        <div class="callout">
+          <h3>Consentimento</h3>
+          <p>Não se propõe coletar um “consentimento LGPD” genérico. A hipótese legal e a finalidade institucional serão validadas pela Unicamp. O usuário recebe transparência e aceita somente as regras de uso da ferramenta.</p>
+        </div>
+
+        <div class="footer"><span>Arqueia · Responsabilidades propostas</span><span>Página 3 de 5</span></div>
+      </section>
+
+      <section class="sheet">
+        <div class="top-rule"></div>
+        <p class="eyebrow">03 · Registro e infraestrutura</p>
+        <h2>Procedimento para homologar e registrar</h2>
+
+        <div class="step-list">
+          <div class="step"><span class="step-number">1</span><div><h3>Identificar o Comitê Local</h3><p>Confirmar qual comitê atende CP2B/NIPE e quem possui acesso ao Sistema Privacidade.</p></div></div>
+          <div class="step"><span class="step-number">2</span><div><h3>Cadastrar o tratamento</h3><p>Registrar finalidade, titulares, dados mínimos, volume, frequência, duração, localização, compartilhamento e medidas de segurança.</p></div></div>
+          <div class="step"><span class="step-number">3</span><div><h3>Executar a avaliação de risco</h3><p>Usar a metodologia do próprio Sistema Privacidade; complementar RIPD e Plano de Ação se o fluxo institucional solicitar.</p></div></div>
+          <div class="step"><span class="step-number">4</span><div><h3>Preparar homologação</h3><p>Implantar versão candidata na VM com banco e segredos próprios de homologação, sem dados reais.</p></div></div>
+          <div class="step"><span class="step-number">5</span><div><h3>Validar e promover</h3><p>Coordenação valida fluxos; Gerson valida infraestrutura; produção recebe somente a versão testada e identificada.</p></div></div>
+        </div>
+
+        <h3>Confirmações solicitadas ao Gerson</h3>
+        <div class="grid-2">
+          <ul class="checklist">
+            <li>Acesso SSH e usuário de serviço.</li>
+            <li>Sistema operacional e capacidade da VM.</li>
+            <li>Domínio e VirtualHost existentes.</li>
+            <li>Certificado e processo de renovação.</li>
+            <li>Portas e regras de firewall.</li>
+          </ul>
+          <ul class="checklist">
+            <li>PostgreSQL e Redis disponíveis.</li>
+            <li>Diretório oficial da aplicação.</li>
+            <li>Destino institucional dos backups.</li>
+            <li>Rotação e retenção de logs.</li>
+            <li>Procedimento de deploy e rollback.</li>
+          </ul>
+        </div>
+
+        <div class="callout warning">
+          <h3>Segredos</h3>
+          <p>Senhas de banco, chaves de sessão e credenciais administrativas não serão impressas, enviadas por e-mail ou versionadas. A VM receberá segredos exclusivos por canal institucional apropriado.</p>
+        </div>
+
+        <h3>Critério técnico mínimo</h3>
+        <p>HTTPS válido; API, Web, PostgreSQL e Redis sem exposição indevida; health check; backup executado; restauração testada; CI verde; migrações aprovadas; e smoke test após o deploy.</p>
+
+        <div class="footer"><span>Arqueia · Registro e VM institucional</span><span>Página 4 de 5</span></div>
+      </section>
+
+      <section class="sheet">
+        <div class="top-rule"></div>
+        <p class="eyebrow">04 · Plano de execução</p>
+        <h2>Próximos passos acordados</h2>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Frente institucional</h3>
+            <ol>
+              <li>Confirmar Unidade/Órgão responsável.</li>
+              <li>Identificar Comitê Local.</li>
+              <li>Formalizar Coordenação e gestor técnico.</li>
+              <li>Assinar termos oficiais aplicáveis.</li>
+              <li>Registrar tratamento e riscos.</li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3>Frente técnica local</h3>
+            <ol>
+              <li>Atualizar contratos de identidade.</li>
+              <li>Remover nome/e-mail do cadastro.</li>
+              <li>Implementar login por código.</li>
+              <li>Executar PostgreSQL e Redis no Docker.</li>
+              <li>Testar API, Web, migrações e fluxos críticos.</li>
+            </ol>
+          </div>
+        </div>
+
+        <h3 style="margin-top: 7mm">Portões para liberação</h3>
+        <ul class="checklist">
+          <li>Contrato, banco, API e interface usam somente o cadastro mínimo aprovado.</li>
+          <li>Testes, lint, typecheck, build e e2e estão verdes.</li>
+          <li>Isolamento de laboratório e visibilidade da agenda foram comprovados.</li>
+          <li>Backup e restauração foram executados com sucesso.</li>
+          <li>Proxy, certificado, headers e portas foram validados na VM.</li>
+          <li>Coordenação aprovou o fluxo e o Comitê Local acompanhou o registro.</li>
+        </ul>
+
+        <div class="decision-box">
+          <h3>Decisões da reunião</h3>
+          <ul class="checklist">
+            <li>Gerson aceita a indicação como gestor técnico.</li>
+            <li>A VM pode receber o ambiente de homologação.</li>
+            <li>Foi identificado o Comitê Local responsável.</li>
+            <li>Foram definidos responsáveis e canal de suporte.</li>
+          </ul>
+        </div>
+
+        <div class="signature-grid">
+          <div class="signature">Gerson — gestor técnico proposto</div>
+          <div class="signature">Coordenação do CP2B</div>
+        </div>
+
+        <h3 style="margin-top: 12mm">Referências institucionais</h3>
+        <ul class="source-list">
+          <li>Sistema Privacidade: https://www.privacidade.unicamp.br/privacidade/sistema-privacidade/</li>
+          <li>Termos oficiais: https://www.privacidade.unicamp.br/documentos/termos/</li>
+          <li>IN CGPPD nº 01/2024: https://privacidade.unicamp.br/arquivo/uploads/instrucao-normativa-cgppd-no-01-2024/</li>
+          <li>Contato do Escritório de Privacidade: privacidade@unicamp.br</li>
+        </ul>
+
+        <div class="footer"><span>Arqueia · Documento para alinhamento</span><span>Página 5 de 5</span></div>
+      </section>
+    </main>
+  </body>
+</html>

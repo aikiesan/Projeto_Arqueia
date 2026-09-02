@@ -33,6 +33,17 @@ export function noStoreJson(body: unknown, status = 200): Response {
   });
 }
 
+export function forwardedClientIp(request: Request): string {
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded !== null) {
+    const proxyChain = forwarded.split(',').map((part) => part.trim()).filter(Boolean);
+    const nearestAddress = proxyChain.at(-1);
+    if (nearestAddress !== undefined) return nearestAddress;
+  }
+
+  return request.headers.get('x-real-ip')?.trim() || '127.0.0.1';
+}
+
 export async function sessionToken(): Promise<string | null> {
   return (await cookies()).get(SESSION_COOKIE_NAME)?.value ?? null;
 }
@@ -54,12 +65,15 @@ export async function authorizedApiRequest(
   }
 
   try {
+    const clientIp = forwardedClientIp(request);
+
     const upstream = await fetch(`${apiBaseUrl()}${path}`, {
       method,
       headers: {
         Authorization: `Bearer ${token}`,
         ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
         'X-Request-Id': crypto.randomUUID(),
+        'X-Forwarded-For': clientIp,
       },
       ...(body === undefined ? {} : { body }),
       cache: 'no-store',

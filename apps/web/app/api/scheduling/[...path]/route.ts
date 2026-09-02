@@ -1,11 +1,16 @@
 import {
   cancelReservationInputSchema,
   cancelTechnicalBlockInputSchema,
+  checkInReservationInputSchema,
+  completeReservationInputSchema,
   conflictErrorResponseSchema,
   createReservationInputSchema,
   createReservationResultSchema,
   createTechnicalBlockInputSchema,
+  releaseAbsentReservationsInputSchema,
+  releaseAbsentReservationsResultSchema,
   reservationSchema,
+  startWalkInReservationInputSchema,
   technicalBlockSchema,
   uuidSchema,
 } from '@arqueia/contracts';
@@ -29,6 +34,22 @@ function routeContract(pathname: string): MutationRoute | null {
       upstreamBody: (input) => input,
     };
   }
+  if (pathname === '/api/scheduling/reservations/walk-in') {
+    return {
+      inputSchema: startWalkInReservationInputSchema,
+      responseSchema: reservationSchema,
+      laboratoryId: (input) => input.laboratoryId,
+      upstreamBody: (input) => input,
+    };
+  }
+  if (pathname === '/api/scheduling/reservations/release-absent') {
+    return {
+      inputSchema: releaseAbsentReservationsInputSchema,
+      responseSchema: releaseAbsentReservationsResultSchema,
+      laboratoryId: (input) => input.laboratoryId,
+      upstreamBody: (input) => input,
+    };
+  }
   if (pathname === '/api/scheduling/blocks') {
     return {
       inputSchema: createTechnicalBlockInputSchema,
@@ -40,13 +61,45 @@ function routeContract(pathname: string): MutationRoute | null {
   return null;
 }
 
-function cancellationContract(pathname: string, payload: unknown): {
+function parameterizedContract(pathname: string, payload: unknown): {
   readonly route: MutationRoute;
   readonly input: Record<string, unknown>;
 } | null {
-  const reservationMatch = pathname.match(/^\/api\/scheduling\/reservations\/([^/]+)\/cancel$/);
-  if (reservationMatch) {
-    const id = uuidSchema.safeParse(decodeURIComponent(reservationMatch[1] ?? ''));
+  const checkInMatch = pathname.match(/^\/api\/scheduling\/reservations\/([^/]+)\/check-in$/);
+  if (checkInMatch) {
+    const id = uuidSchema.safeParse(decodeURIComponent(checkInMatch[1] ?? ''));
+    if (!id.success || typeof payload !== 'object' || payload === null) return null;
+    const input = { ...(payload as Record<string, unknown>), reservationId: id.data };
+    return {
+      input,
+      route: {
+        inputSchema: checkInReservationInputSchema,
+        responseSchema: reservationSchema,
+        laboratoryId: (value) => value.laboratoryId,
+        upstreamBody: (value) => ({ laboratoryId: value.laboratoryId }),
+      },
+    };
+  }
+
+  const completeMatch = pathname.match(/^\/api\/scheduling\/reservations\/([^/]+)\/complete$/);
+  if (completeMatch) {
+    const id = uuidSchema.safeParse(decodeURIComponent(completeMatch[1] ?? ''));
+    if (!id.success || typeof payload !== 'object' || payload === null) return null;
+    const input = { ...(payload as Record<string, unknown>), reservationId: id.data };
+    return {
+      input,
+      route: {
+        inputSchema: completeReservationInputSchema,
+        responseSchema: reservationSchema,
+        laboratoryId: (value) => value.laboratoryId,
+        upstreamBody: (value) => ({ laboratoryId: value.laboratoryId, notes: value.notes }),
+      },
+    };
+  }
+
+  const reservationCancelMatch = pathname.match(/^\/api\/scheduling\/reservations\/([^/]+)\/cancel$/);
+  if (reservationCancelMatch) {
+    const id = uuidSchema.safeParse(decodeURIComponent(reservationCancelMatch[1] ?? ''));
     if (!id.success || typeof payload !== 'object' || payload === null) return null;
     const input = { ...(payload as Record<string, unknown>), reservationId: id.data };
     return {
@@ -63,9 +116,9 @@ function cancellationContract(pathname: string, payload: unknown): {
     };
   }
 
-  const blockMatch = pathname.match(/^\/api\/scheduling\/blocks\/([^/]+)\/cancel$/);
-  if (blockMatch) {
-    const id = uuidSchema.safeParse(decodeURIComponent(blockMatch[1] ?? ''));
+  const blockCancelMatch = pathname.match(/^\/api\/scheduling\/blocks\/([^/]+)\/cancel$/);
+  if (blockCancelMatch) {
+    const id = uuidSchema.safeParse(decodeURIComponent(blockCancelMatch[1] ?? ''));
     if (!id.success || typeof payload !== 'object' || payload === null) return null;
     const input = { ...(payload as Record<string, unknown>), technicalBlockId: id.data };
     return {
@@ -96,9 +149,9 @@ export async function POST(request: Request): Promise<Response> {
 
   const url = new URL(request.url);
   const payload: unknown = await request.json().catch(() => null);
-  const cancellation = cancellationContract(url.pathname, payload);
-  const contract = cancellation?.route ?? routeContract(url.pathname);
-  const inputPayload = cancellation?.input ?? payload;
+  const parameterized = parameterizedContract(url.pathname, payload);
+  const contract = parameterized?.route ?? routeContract(url.pathname);
+  const inputPayload = parameterized?.input ?? payload;
   if (!contract) return noStoreJson({ code: 'ROUTE_NOT_FOUND' }, 404);
 
   const parsedInput = contract.inputSchema.safeParse(inputPayload);

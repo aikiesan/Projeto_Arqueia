@@ -39,7 +39,13 @@ export function createRedisClient(options: { url: string }): RedisClient {
 
         try {
           socket = isTls
-            ? tls.connect({ host, port, timeout: timeoutMs })
+            ? tls.connect({
+                host,
+                port,
+                timeout: timeoutMs,
+                servername: host,
+                rejectUnauthorized: true,
+              })
             : net.createConnection({ host, port, timeout: timeoutMs });
         } catch (err) {
           cleanup();

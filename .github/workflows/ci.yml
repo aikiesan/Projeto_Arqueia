@@ -47,6 +47,7 @@ jobs:
       PUBLIC_ORIGIN: http://localhost:4002
       NEXT_PUBLIC_API_URL: http://localhost:4001
       DEV_SEED_ADMIN_PASSWORD: ci-only-admin-password
+      AUTH_RATE_LIMIT_MAX_ATTEMPTS: 100
       OIDC_ENABLED: 'false'
 
     steps:
@@ -82,3 +83,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: npm run test:e2e

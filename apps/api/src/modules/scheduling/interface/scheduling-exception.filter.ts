@@ -1,6 +1,7 @@
 import { Catch, HttpStatus, type ArgumentsHost, type ExceptionFilter } from '@nestjs/common';
 import type { Response } from 'express';
 
+import { AuthorizationDeniedError } from '../../identity/domain/errors/authorization-denied.error.js';
 import {
   EquipmentTrainingRequiredError,
   EquipmentUnavailableError,
@@ -15,6 +16,7 @@ import {
 } from '../domain/scheduling.errors.js';
 
 @Catch(
+  AuthorizationDeniedError,
   ReservationConflictError,
   ReservationNotFoundError,
   ReservationCancellationNoticeError,
@@ -30,6 +32,16 @@ export class SchedulingExceptionFilter implements ExceptionFilter {
   public catch(exception: Error, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+
+    if (exception instanceof AuthorizationDeniedError) {
+      response.status(HttpStatus.FORBIDDEN).json({
+        statusCode: HttpStatus.FORBIDDEN,
+        error: 'Forbidden',
+        message: exception.message,
+        code: 'AUTHORIZATION_DENIED',
+      });
+      return;
+    }
 
     if (exception instanceof ReservationConflictError) {
       response.status(HttpStatus.CONFLICT).json({

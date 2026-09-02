@@ -45,6 +45,7 @@ services:
     command: npm run dev --workspace @arqueia/api
     environment:
       NODE_ENV: development
+      API_HOST: 0.0.0.0
       API_PORT: 4001
       DATABASE_URL: ${DATABASE_URL:-postgresql://arqueia:arqueia_dev_only@postgres:5432/arqueia}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}

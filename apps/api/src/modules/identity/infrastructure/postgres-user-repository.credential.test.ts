@@ -35,7 +35,7 @@ describe('PostgresUserRepository credential writes', () => {
       ([sql]) => sql.includes('SELECT id') && sql.includes('FROM users'),
     );
     expect(userLockCall?.[0]).toContain("status = 'ACTIVE'");
-    expect(userLockCall?.[0]).toContain("identity_provider = 'LOCAL'");
+    expect(userLockCall?.[0]).not.toContain('identity_provider');
     expect(userLockCall?.[0]).toContain('FOR UPDATE');
     expect(credentialCall?.[0]).toContain('failed_attempts = 0');
     expect(credentialCall?.[0]).toContain('locked_until = NULL');

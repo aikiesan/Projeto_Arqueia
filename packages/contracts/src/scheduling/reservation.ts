@@ -3,7 +3,13 @@ import { z } from 'zod';
 import { entityMetadataSchema, timestampSchema, uuidSchema } from '../common/entity.js';
 import { createCursorPageSchema } from '../common/pagination.js';
 
-export const reservationStatuses = ['CONFIRMED', 'CANCELLED', 'COMPLETED'] as const;
+export const reservationStatuses = [
+  'CONFIRMED',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'CANCELLED',
+  'RELEASED_ABSENCE',
+] as const;
 export const reservationStatusSchema = z.enum(reservationStatuses);
 
 export const CANCELLATION_MINIMUM_NOTICE_MINUTES = 30;
@@ -49,6 +55,8 @@ export const reservationFieldsSchema = z.object({
   purpose: z.string().trim().min(2).max(500),
   sampleCount: z.coerce.number().int().min(1).max(10_000).nullable().default(null),
   notes: z.string().trim().max(2_000).nullable().default(null),
+  startedAt: timestampSchema.nullable().default(null),
+  completedAt: timestampSchema.nullable().default(null),
   cancelledAt: timestampSchema.nullable().default(null),
   cancelledByUserId: uuidSchema.nullable().default(null),
   cancellationReason: z.string().trim().max(500).nullable().default(null),
@@ -86,9 +94,57 @@ export const createReservationInputSchema = z
     `A reserva deve durar no mínimo ${RESERVATION_MINIMUM_DURATION_MINUTES} minutos.`,
   )
   .refine(
-    (data) => data.recurrence.frequency === 'NONE',
-    'Recorrência estará disponível após o endurecimento do fluxo de reserva única.',
+    (data) => {
+      if (data.recurrence.frequency === 'NONE') return true;
+      if (!data.recurrence.untilDate) return false;
+      const untilTime = new Date(data.recurrence.untilDate).getTime();
+      const startTime = new Date(data.startsAt).getTime();
+      if (untilTime < startTime) return false;
+      const maxFutureMs = 180 * 24 * 60 * 60 * 1000;
+      return untilTime - startTime <= maxFutureMs;
+    },
+    'Para reservas recorrentes, informe uma data limite válida (até no máximo 180 dias após a data inicial).',
   );
+
+export const startWalkInReservationInputSchema = z
+  .object({
+    laboratoryId: uuidSchema,
+    equipmentId: uuidSchema,
+    projectId: uuidSchema,
+    durationMinutes: z.coerce.number().int().min(15).max(1440),
+    purpose: z.string().trim().min(2).max(500),
+    sampleCount: z.coerce.number().int().min(1).max(10_000).nullable().optional().default(null),
+    notes: z.string().trim().max(2_000).nullable().optional().default(null),
+  })
+  .strict();
+
+export const checkInReservationInputSchema = z
+  .object({
+    laboratoryId: uuidSchema,
+    reservationId: uuidSchema,
+  })
+  .strict();
+
+export const completeReservationInputSchema = z
+  .object({
+    laboratoryId: uuidSchema,
+    reservationId: uuidSchema,
+    notes: z.string().trim().max(2_000).optional(),
+  })
+  .strict();
+
+export const releaseAbsentReservationsInputSchema = z
+  .object({
+    laboratoryId: uuidSchema,
+  })
+  .strict();
+
+export const releaseAbsentReservationsResultSchema = z
+  .object({
+    releasedCount: z.number().int().min(0),
+    releasedReservationIds: z.array(uuidSchema),
+  })
+  .strict();
 
 export const conflictingSlotSchema = z.object({
   startsAt: timestampSchema,
@@ -116,8 +172,13 @@ export type ReservationStatus = z.infer<typeof reservationStatusSchema>;
 export type RecurrenceFrequency = z.infer<typeof recurrenceFrequencySchema>;
 export type RecurrenceRule = z.infer<typeof recurrenceRuleSchema>;
 export type Reservation = z.infer<typeof reservationSchema>;
-export type CreateReservationInput = z.input<typeof createReservationInputSchema>;
+export type CreateReservationInput = z.infer<typeof createReservationInputSchema>;
+export type StartWalkInReservationInput = z.infer<typeof startWalkInReservationInputSchema>;
+export type CheckInReservationInput = z.infer<typeof checkInReservationInputSchema>;
+export type CompleteReservationInput = z.infer<typeof completeReservationInputSchema>;
+export type ReleaseAbsentReservationsInput = z.infer<typeof releaseAbsentReservationsInputSchema>;
+export type ReleaseAbsentReservationsResult = z.infer<typeof releaseAbsentReservationsResultSchema>;
 export type ConflictingSlot = z.infer<typeof conflictingSlotSchema>;
 export type CreateReservationResult = z.infer<typeof createReservationResultSchema>;
-export type CancelReservationInput = z.input<typeof cancelReservationInputSchema>;
+export type CancelReservationInput = z.infer<typeof cancelReservationInputSchema>;
 export type ReservationPage = z.infer<typeof reservationPageSchema>;

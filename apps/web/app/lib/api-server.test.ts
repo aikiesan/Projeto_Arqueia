@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { hasTrustedOrigin } from './api-server';
+import { forwardedClientIp, hasTrustedOrigin } from './api-server';
 
 describe('web API boundary', () => {
   it('accepts same-origin mutations and rejects missing or foreign origins', () => {
@@ -19,5 +19,15 @@ describe('web API boundary', () => {
       ),
     ).toBe(false);
     expect(hasTrustedOrigin(new Request('http://localhost:4002/api/equipment'))).toBe(false);
+  });
+
+  it('uses the nearest proxy address instead of a caller-controlled first hop', () => {
+    const request = new Request('http://localhost:4002/api/session/login', {
+      headers: {
+        'x-forwarded-for': '198.51.100.99, 203.0.113.7',
+      },
+    });
+
+    expect(forwardedClientIp(request)).toBe('203.0.113.7');
   });
 });

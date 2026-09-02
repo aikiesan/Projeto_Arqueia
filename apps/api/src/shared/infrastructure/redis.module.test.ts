@@ -67,7 +67,7 @@ describe('createRedisClient', () => {
   it('waits for a secure TLS connection before sending PING for rediss URLs', async () => {
     const mockSocket = createMockSocket();
 
-    vi.spyOn(tls, 'connect').mockImplementation(() => {
+    const connect = vi.spyOn(tls, 'connect').mockImplementation(() => {
       setTimeout(() => {
         mockSocket.emit('secureConnect');
         mockSocket.emit('data', Buffer.from('+PONG\r\n'));
@@ -78,6 +78,13 @@ describe('createRedisClient', () => {
     const client = createRedisClient({ url: 'rediss://localhost:6380' });
     await expect(client.ping(1000)).resolves.toBe('PONG');
 
+    expect(connect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        host: 'localhost',
+        servername: 'localhost',
+        rejectUnauthorized: true,
+      }),
+    );
     expect(mockSocket.write).toHaveBeenCalledWith('PING\r\n');
   });
 

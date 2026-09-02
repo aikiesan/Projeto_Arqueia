@@ -105,10 +105,10 @@ describe('Management Use Cases Unit Tests (Canonical Plan)', () => {
     expect(mockRepository.getDashboardSummary).toHaveBeenCalledWith(labId, {
       equipment: true,
       scheduling: true,
-      inventory: true,
+      inventory: false,
       maintenance: false,
     });
-    expect(result.quickActions.map(({ id }) => id)).toEqual(['scheduling', 'inventory', 'equipment']);
+    expect(result.quickActions.map(({ id }) => id)).toEqual(['scheduling', 'equipment']);
   });
 
   it('does not query the Home for a laboratory outside the membership scope', async () => {

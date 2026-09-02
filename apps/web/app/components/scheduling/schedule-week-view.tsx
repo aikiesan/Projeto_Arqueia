@@ -6,7 +6,7 @@ import {
   formatCalendarDate,
   getCalendarDateInTimezone,
   getCalendarWeekStart,
-  getHourInTimezone,
+  isItemActiveInHourSlot,
 } from './calendar-time';
 import type { ScheduleSlotSelection } from './calendar-time';
 import { ScheduleEventCard } from './schedule-event-card';
@@ -15,6 +15,7 @@ export interface ScheduleWeekViewProps {
   readonly currentDate: Date;
   readonly timezone: string;
   readonly items: readonly ScheduleItem[];
+  readonly selectedEquipmentId?: string | undefined;
   readonly onItemClick?: ((item: ScheduleItem) => void) | undefined;
   readonly onSlotClick?: ((selection: ScheduleSlotSelection) => void) | undefined;
   readonly capabilities?: ScheduleCapabilities | undefined;
@@ -36,6 +37,7 @@ export function ScheduleWeekView({
   currentDate,
   timezone,
   items,
+  selectedEquipmentId,
   onItemClick,
   onSlotClick,
   capabilities,
@@ -53,7 +55,7 @@ export function ScheduleWeekView({
     [currentDate, timezone],
   );
 
-  const [selectedMobileDayStr, setSelectedMobileDayStr] = useState<string>(currentDayStr);
+  const [selectedMobileDayStr, setSelectedMobileDayStr] = useState<string | null>(null);
 
   const weekDays: WeekDayData[] = useMemo(() => {
     const monday = getCalendarWeekStart(currentDayStr);
@@ -62,13 +64,18 @@ export function ScheduleWeekView({
     for (let i = 0; i < 7; i++) {
       const dStr = addCalendarDays(monday, i);
       const dayItems = items.filter((item) => {
-        const itemDate = new Date(item.startsAt);
-        return getCalendarDateInTimezone(itemDate, timezone) === dStr;
+        const itemStartDate = new Date(item.startsAt);
+        const itemEndDate = new Date(item.endsAt);
+        const startDayStr = getCalendarDateInTimezone(itemStartDate, timezone);
+        const endDayStr = getCalendarDateInTimezone(itemEndDate, timezone);
+        return startDayStr <= dStr && endDayStr >= dStr;
       });
 
       days.push({
         dateStr: dStr,
-        dayName: formatCalendarDate(dStr, { weekday: 'short' }).replace('.', ''),
+        dayName: formatCalendarDate(dStr, { weekday: 'short' })
+          .replace('.', '')
+          .toUpperCase(),
         dayNumber: formatCalendarDate(dStr, { day: 'numeric' }),
         monthName: formatCalendarDate(dStr, { month: 'short' }).replace('.', ''),
         isToday: dStr === todayStr,
@@ -87,15 +94,13 @@ export function ScheduleWeekView({
     return hours;
   }, [startHour, endHour]);
 
-  const canCreate = Boolean(onSlotClick && capabilities?.canReserve === true);
+  const canCreate = Boolean(onSlotClick && (capabilities?.canReserve ?? true));
 
-  const selectedDayStr = weekDays.some((day) => day.dateStr === selectedMobileDayStr)
-    ? selectedMobileDayStr
-    : currentDayStr;
+  const activeDayStr = selectedMobileDayStr ?? currentDayStr;
 
   // Active day for mobile single-day focus tab
   const activeMobileDay =
-    weekDays.find((d) => d.dateStr === selectedDayStr) ??
+    weekDays.find((d) => d.dateStr === activeDayStr) ??
     weekDays.find((d) => d.dateStr === currentDayStr) ??
     weekDays[0] ?? {
       dateStr: currentDayStr,
@@ -206,6 +211,7 @@ export function ScheduleWeekView({
                     date: activeMobileDay.dateStr,
                     hour: 9,
                     timezone,
+                    ...(selectedEquipmentId ? { equipmentId: selectedEquipmentId } : {}),
                   })
                 }
                 type="button"
@@ -244,16 +250,18 @@ export function ScheduleWeekView({
               </div>
 
               {weekDays.map((day) => {
-                const cellItems = day.items.filter((item) => {
-                  const itemStartDate = new Date(item.startsAt);
-                  return getHourInTimezone(itemStartDate, timezone) === hour;
-                });
+                const cellOccupations = day.items
+                  .map((item) => ({
+                    item,
+                    occupation: isItemActiveInHourSlot(item, day.dateStr, hour, timezone),
+                  }))
+                  .filter(({ occupation }) => occupation.isOccupied);
 
-                const hasItems = cellItems.length > 0;
+                const hasItems = cellOccupations.length > 0;
 
                 return (
                   <div
-                    aria-label={`${day.dayName} às ${String(hour).padStart(2, '0')}:00${hasItems ? ` (${cellItems.length} ocupações)` : ' (Livre)'}`}
+                    aria-label={`${day.dayName} às ${String(hour).padStart(2, '0')}:00${hasItems ? ` (${cellOccupations.length} ocupações)` : ' (Livre)'}`}
                     className={`schedule-week-grid-cell ${hasItems ? 'schedule-week-grid-cell--occupied' : 'schedule-week-grid-cell--free'} ${!hasItems && canCreate ? 'schedule-week-grid-cell--clickable' : ''}`}
                     key={`${day.dateStr}-${hour}`}
                     onClick={
@@ -263,6 +271,9 @@ export function ScheduleWeekView({
                               date: day.dateStr,
                               hour,
                               timezone,
+                              ...(selectedEquipmentId
+                                ? { equipmentId: selectedEquipmentId }
+                                : {}),
                             })
                         : undefined
                     }
@@ -275,6 +286,9 @@ export function ScheduleWeekView({
                                 date: day.dateStr,
                                 hour,
                                 timezone,
+                                ...(selectedEquipmentId
+                                  ? { equipmentId: selectedEquipmentId }
+                                  : {}),
                               });
                             }
                           }
@@ -283,11 +297,12 @@ export function ScheduleWeekView({
                     role={!hasItems && canCreate ? 'button' : undefined}
                     tabIndex={!hasItems && canCreate ? 0 : undefined}
                   >
-                    {cellItems.map((item) => (
+                    {cellOccupations.map(({ item, occupation }) => (
                       <ScheduleEventCard
                         isCompact={true}
+                        isContinuation={occupation.isContinuation}
                         item={item}
-                        key={item.id}
+                        key={`${item.id}-${day.dateStr}-${hour}`}
                         onClick={onItemClick}
                         timezone={timezone}
                       />

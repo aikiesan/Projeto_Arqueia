@@ -22,11 +22,10 @@ const principal = {
   user: {
     id: '6ba7b810-9dad-11d1-b245-5ffdce74fad2',
     institutionId: laboratory.institutionId,
-    name: 'Lucas Nakamura',
-    email: 'lucas@unicamp.br',
-    supervisorUserId: null,
+    loginCode: 'ARQ-LUCAS-001',
+    academicCategory: 'PESQUISADOR',
     status: 'ACTIVE',
-    identityProvider: 'LOCAL',
+    mustChangePassword: false,
     createdAt: now,
     updatedAt: now,
     archivedAt: null,
@@ -50,11 +49,10 @@ const userList: User[] = [
   {
     id: 'user-2',
     institutionId: laboratory.institutionId,
-    name: 'Dra. Mariana Silva',
-    email: 'mariana@unicamp.br',
-    supervisorUserId: null,
+    loginCode: 'ARQ-MARIANA-002',
+    academicCategory: 'DOUTORADO',
     status: 'ACTIVE',
-    identityProvider: 'OIDC',
+    mustChangePassword: true,
     createdAt: now,
     updatedAt: now,
     archivedAt: null,
@@ -80,8 +78,8 @@ describe('UsersPageClient', () => {
     render(<UsersPageClient />);
 
     expect(await screen.findByRole('heading', { name: 'Equipe & Controle de Acessos' })).toBeInTheDocument();
-    expect(screen.getAllByText('Lucas Nakamura').length).toBeGreaterThan(0);
-    expect(screen.getByText('Dra. Mariana Silva')).toBeInTheDocument();
+    expect(screen.getAllByText('ARQ-LUCAS-001').length).toBeGreaterThan(0);
+    expect(screen.getByText('ARQ-MARIANA-002')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Novo Usuário' })).toBeInTheDocument();
 
   });
@@ -110,7 +108,7 @@ describe('UsersPageClient', () => {
     await screen.findByRole('heading', { name: 'Equipe & Controle de Acessos' });
     fireEvent.click(screen.getAllByRole('button', { name: /Permiss/ })[0]!);
 
-    expect(await screen.findByText(/Pesquisador/)).toBeInTheDocument();
+    expect(await screen.findByText('Técnico de Laboratório', { selector: 'strong' })).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText(/Confirme sua senha/), {
       target: { value: 'current-password' },
     });

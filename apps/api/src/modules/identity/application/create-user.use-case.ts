@@ -17,10 +17,9 @@ export class CreateUserUseCase {
     input: CreateUserInput,
     context: Omit<IdentityMutationContext, 'actorId'>,
   ): Promise<User> {
-    this.permissions.assertCan(principal, 'identity.user.manage');
+    this.permissions.assertCan(principal, 'identity.user.manage', input.laboratoryId);
     const { temporaryPassword, ...userInput } = input;
-    const passwordHash =
-      temporaryPassword === undefined ? null : await this.passwords.hash(temporaryPassword);
+    const passwordHash = await this.passwords.hash(temporaryPassword);
 
     return this.users.create(userInput, passwordHash, {
       ...context,

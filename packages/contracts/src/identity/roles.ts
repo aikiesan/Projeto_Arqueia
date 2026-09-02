@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const laboratoryRoleSchema = z.enum([
   'USUARIO',
+  'GESTOR_ACESSO_CP2B',
   'TECNICO',
   'RESPONSAVEL_CONTROLADOS',
 ]);
@@ -17,6 +18,7 @@ export type RoleScope = z.infer<typeof roleScopeSchema>;
 
 export const ROLE_DEFINITIONS = [
   { role: 'USUARIO', scope: 'LABORATORY' },
+  { role: 'GESTOR_ACESSO_CP2B', scope: 'LABORATORY' },
   { role: 'TECNICO', scope: 'LABORATORY' },
   { role: 'RESPONSAVEL_CONTROLADOS', scope: 'LABORATORY' },
   { role: 'ADMIN', scope: 'SYSTEM' },

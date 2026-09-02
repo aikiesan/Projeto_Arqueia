@@ -1,1 +1,10 @@
+# Auto-detect text files and normalize line endings
+* text=auto eol=lf
+
+# Shell scripts must always use LF
 *.sh text eol=lf
+*.bash text eol=lf
+
+# Windows batch scripts use CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf

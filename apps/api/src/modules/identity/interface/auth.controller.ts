@@ -24,6 +24,7 @@ import { LoginLocalUseCase } from '../application/login-local.use-case.js';
 import { InvalidCredentialsError } from '../domain/errors/invalid-credentials.error.js';
 import { OIDC_PROVIDER, type OidcProvider } from '../domain/ports/oidc-provider.port.js';
 import { CurrentPrincipal } from './current-principal.decorator.js';
+import { AuthRateLimitGuard } from './auth-rate-limit.guard.js';
 import { identityRequestContext } from './identity-request-context.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 
@@ -38,6 +39,7 @@ export class AuthController {
   ) {}
 
   @Post('login')
+  @UseGuards(AuthRateLimitGuard)
   public async login(
     @Body(new ZodValidationPipe(localLoginInputSchema)) input: LocalLoginInput,
     @Headers('x-request-id') requestId?: string,
@@ -60,7 +62,7 @@ export class AuthController {
   }
 
   @Post('change-password')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AuthRateLimitGuard)
   public async changePassword(
     @CurrentPrincipal() principal: AuthenticatedPrincipal,
     @Body(new ZodValidationPipe(changePasswordInputSchema)) input: ChangePasswordInput,

@@ -17,6 +17,7 @@
     "dev": "echo \"Use os scripts dev de cada app (apps/web, apps/api, apps/worker)\"",
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run build:packages && npm run test --workspaces --if-present",
+    "test:e2e": "playwright test",
     "typecheck": "npm run build:packages && npm run typecheck --workspaces --if-present",
     "dev:up": "docker compose --file docker-compose.dev.yml up --build --detach --renew-anon-volumes",
     "dev:down": "docker compose --file docker-compose.dev.yml down",
@@ -28,6 +29,7 @@
   "packageManager": "npm@10",
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "@playwright/test": "^1.40.0",
     "eslint": "^9.0.0",
     "globals": "^16.0.0",
     "typescript-eslint": "^8.0.0"

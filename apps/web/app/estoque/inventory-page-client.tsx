@@ -16,8 +16,8 @@ import type {
   UnitOfMeasure,
 } from '@arqueia/contracts';
 import { ArqueiaIcon, WorkspaceShell } from '@arqueia/ui';
-import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import { createWorkspacePresentation } from '../presentation';
 
@@ -58,6 +58,11 @@ async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 export function InventoryPageClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedLab = searchParams?.get('laboratory') ?? '';
+  const requestedBatch = searchParams?.get('batch') ?? searchParams?.get('batchId') ?? '';
+  const initialSearch = searchParams?.get('search') ?? requestedBatch ?? '';
+  const requestedAction = searchParams?.get('action') ?? '';
 
   const [pageData, setPageData] = useState<PageData | null>(null);
   const [laboratoryId, setLaboratoryId] = useState<string | null>(null);
@@ -70,13 +75,14 @@ export function InventoryPageClient() {
   const [activeTab, setActiveTab] = useState<'BATCHES' | 'LEDGER'>('BATCHES');
   const [movements, setMovements] = useState<readonly StockMovement[]>([]);
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
 
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const resolvedParamBatchRef = useRef(false);
 
   // Modals
   const [productModalOpen, setProductModalOpen] = useState(false);
@@ -137,6 +143,11 @@ export function InventoryPageClient() {
     }
   }, []);
 
+  const openLedgerModal = useCallback((batch: Batch) => {
+    setLedgerModalBatch(batch);
+    if (laboratoryId) void loadMovements(laboratoryId, batch.id);
+  }, [laboratoryId, loadMovements]);
+
   useEffect(() => {
     void (async () => {
       try {
@@ -144,13 +155,16 @@ export function InventoryPageClient() {
           readJson<{ principal: AuthenticatedPrincipal }>('/api/session'),
           readJson<readonly Laboratory[]>('/api/laboratories'),
         ]);
-        const preferred = laboratories.find((lab) => lab.code === 'CP2b') ?? laboratories[0];
+        const preferred =
+          laboratories.find((lab) => lab.id === requestedLab) ??
+          laboratories.find((lab) => lab.code === 'CP2b') ??
+          laboratories[0];
         if (!preferred) throw new Error('Nenhum laboratório disponível.');
 
         setPageData({ principal: session.principal, laboratories });
         setLaboratoryId(preferred.id);
 
-        await loadData(preferred.id, '', '');
+        await loadData(preferred.id, initialSearch, '');
       } catch (err) {
         if (err instanceof Error && err.message === 'UNAUTHENTICATED') {
           router.replace('/login');
@@ -160,7 +174,30 @@ export function InventoryPageClient() {
         setLoading(false);
       }
     })();
-  }, [router]);
+  }, [router, requestedLab, initialSearch, loadData]);
+
+  // Handle direct batch navigation (from QR code scan or direct link)
+  useEffect(() => {
+    if (!requestedBatch || batches.length === 0 || resolvedParamBatchRef.current) return;
+    const cleanParam = requestedBatch.trim().toLowerCase();
+    const matched = batches.find(
+      (b) =>
+        b.id.toLowerCase() === cleanParam ||
+        b.batchNumber.toLowerCase() === cleanParam ||
+        b.qrCode.toLowerCase() === cleanParam ||
+        b.qrCode.toLowerCase() === `arq-lot-${cleanParam}` ||
+        cleanParam.endsWith(b.id.toLowerCase()),
+    );
+    if (matched) {
+      resolvedParamBatchRef.current = true;
+      if (requestedAction === 'ledger') {
+        openLedgerModal(matched);
+      } else {
+        setSelectedWithdrawBatch(matched);
+        setWithdrawModalOpen(true);
+      }
+    }
+  }, [batches, requestedBatch, requestedAction, openLedgerModal]);
 
   const activeLaboratory = useMemo(
     () => pageData?.laboratories.find((lab) => lab.id === laboratoryId) ?? null,
@@ -168,8 +205,11 @@ export function InventoryPageClient() {
   );
 
   const presentation = useMemo(
-    () => (pageData === null ? null : createWorkspacePresentation(pageData.principal, pageData.laboratories)),
-    [pageData],
+    () =>
+      pageData === null
+        ? null
+        : createWorkspacePresentation(pageData.principal, pageData.laboratories, activeLaboratory?.id),
+    [pageData, activeLaboratory?.id],
   );
 
   const productMap = useMemo(() => {
@@ -281,11 +321,6 @@ export function InventoryPageClient() {
     }
   };
 
-  const openLedgerModal = (batch: Batch) => {
-    setLedgerModalBatch(batch);
-    if (laboratoryId) void loadMovements(laboratoryId, batch.id);
-  };
-
   if (!pageData || !activeLaboratory || !presentation) {
     return (
       <main className="standalone-loading">
@@ -295,12 +330,7 @@ export function InventoryPageClient() {
     );
   }
 
-  const initials = pageData.principal.user.name
-    .split(' ')
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('');
+  const initials = pageData.principal.user.loginCode.replace(/^ARQ-/, '').slice(0, 2);
 
   const laboratoryRail = pageData.laboratories.map((lab) => ({
     href: `/estoque?laboratory=${lab.id}`,
@@ -319,10 +349,10 @@ export function InventoryPageClient() {
       laboratories={laboratoryRail}
       mobileNavigation={presentation.mobileNavigation}
       moduleNavigation={presentation.moduleNavigation}
-      qrAction={{ href: '/qr', label: 'Ler QR Code' }}
+      qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Estoque Operacional"
       userInitials={initials}
-      userLabel={pageData.principal.user.name}
+      userLabel={pageData.principal.user.loginCode}
     >
       <section className="equipment-toolbar">
         <div>
@@ -349,8 +379,8 @@ export function InventoryPageClient() {
       {error && <p aria-live="polite" className="form-error equipment-error">{error}</p>}
 
       {/* Control Bar */}
-      <section className="agenda-control-bar" style={{ display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'space-between', margin: '1rem 0', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      <section className="agenda-control-bar" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', justifyContent: 'space-between', margin: '1rem 0', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', flex: '1 1 320px', minWidth: '0' }}>
           <input
             type="search"
             placeholder="Buscar por lote, produto ou QR Code..."
@@ -359,7 +389,7 @@ export function InventoryPageClient() {
               setSearch(e.target.value);
               if (laboratoryId) void loadData(laboratoryId, e.target.value, selectedCategory);
             }}
-            style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #ccc', minWidth: '260px' }}
+            style={{ padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #ccc', minWidth: '0', flex: '1 1 220px', maxWidth: '100%', minHeight: '44px', fontSize: '0.9rem' }}
           />
 
           <select
@@ -368,7 +398,7 @@ export function InventoryPageClient() {
               setSelectedCategory(e.target.value);
               if (laboratoryId) void loadData(laboratoryId, search, e.target.value);
             }}
-            style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #ccc' }}
+            style={{ padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #ccc', minWidth: '0', flex: '1 1 180px', maxWidth: '100%', minHeight: '44px', fontSize: '0.85rem' }}
           >
             <option value="">Todas as Categorias</option>
             {Object.keys(categoryLabels).map((cat) => (
@@ -384,7 +414,8 @@ export function InventoryPageClient() {
             onClick={() => setActiveTab('BATCHES')}
             type="button"
             style={{
-              padding: '0.4rem 0.8rem',
+              padding: '0.5rem 0.9rem',
+              minHeight: '44px',
               border: 'none',
               background: activeTab === 'BATCHES' ? 'var(--brand-primary, #0052cc)' : 'transparent',
               color: activeTab === 'BATCHES' ? '#fff' : 'inherit',
@@ -401,7 +432,8 @@ export function InventoryPageClient() {
             }}
             type="button"
             style={{
-              padding: '0.4rem 0.8rem',
+              padding: '0.5rem 0.9rem',
+              minHeight: '44px',
               border: 'none',
               background: activeTab === 'LEDGER' ? 'var(--brand-primary, #0052cc)' : 'transparent',
               color: activeTab === 'LEDGER' ? '#fff' : 'inherit',
@@ -409,7 +441,7 @@ export function InventoryPageClient() {
               cursor: 'pointer',
             }}
           >
-            Livro-Razão (Movimentações)
+            Histórico Geral
           </button>
         </div>
       </section>
@@ -469,11 +501,11 @@ export function InventoryPageClient() {
                     {batch.manufacturer && <div><dt>Fabricante</dt><dd>{batch.manufacturer}</dd></div>}
                   </dl>
 
-                  <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid #edf2f7', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                  <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid #edf2f7', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                     <button
                       className="secondary-button"
                       onClick={() => openLedgerModal(batch)}
-                      style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}
+                      style={{ fontSize: '0.85rem', padding: '0.5rem 0.9rem', minHeight: '44px', minWidth: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                       type="button"
                     >
                       Extrato Ledger
@@ -485,7 +517,7 @@ export function InventoryPageClient() {
                           setSelectedWithdrawBatch(batch);
                           setWithdrawModalOpen(true);
                         }}
-                        style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}
+                        style={{ fontSize: '0.85rem', padding: '0.5rem 0.9rem', minHeight: '44px', minWidth: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                         type="button"
                       >
                         Retirar
@@ -499,8 +531,8 @@ export function InventoryPageClient() {
         )
       ) : (
         /* LEDGER TAB */
-        <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', marginTop: '1rem' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+        <div className="overflow-x-auto" style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginTop: '1rem' }}>
+          <table style={{ minWidth: '600px', width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
             <thead style={{ background: '#f7fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
               <tr>
                 <th style={{ padding: '0.75rem 1rem' }}>Data/Hora</th>
@@ -779,28 +811,30 @@ export function InventoryPageClient() {
                 <strong>QR Code:</strong> {ledgerModalBatch.qrCode} | <strong>Saldo Atual:</strong>{' '}
                 {ledgerModalBatch.currentBalance}
               </p>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', marginTop: '0.5rem' }}>
-                <thead>
-                  <tr style={{ background: '#f7fafc', textTransform: 'uppercase' }}>
-                    <th style={{ padding: '0.5rem' }}>Data</th>
-                    <th style={{ padding: '0.5rem' }}>Tipo</th>
-                    <th style={{ padding: '0.5rem' }}>Qtd.</th>
-                    <th style={{ padding: '0.5rem' }}>Saldo</th>
-                    <th style={{ padding: '0.5rem' }}>Detalhes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {movements.map((m) => (
-                    <tr key={m.id} style={{ borderBottom: '1px solid #edf2f7' }}>
-                      <td style={{ padding: '0.4rem' }}>{new Date(m.performedAt).toLocaleDateString('pt-BR')}</td>
-                      <td style={{ padding: '0.4rem' }}>{m.type}</td>
-                      <td style={{ padding: '0.4rem' }}>{m.quantity}</td>
-                      <td style={{ padding: '0.4rem' }}>{m.balanceAfter}</td>
-                      <td style={{ padding: '0.4rem' }}>{m.purpose ?? m.reason ?? '—'}</td>
+              <div className="overflow-x-auto" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginTop: '0.5rem' }}>
+                <table style={{ minWidth: '480px', width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                  <thead>
+                    <tr style={{ background: '#f7fafc', textTransform: 'uppercase' }}>
+                      <th style={{ padding: '0.5rem' }}>Data</th>
+                      <th style={{ padding: '0.5rem' }}>Tipo</th>
+                      <th style={{ padding: '0.5rem' }}>Qtd.</th>
+                      <th style={{ padding: '0.5rem' }}>Saldo</th>
+                      <th style={{ padding: '0.5rem' }}>Detalhes</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {movements.map((m) => (
+                      <tr key={m.id} style={{ borderBottom: '1px solid #edf2f7' }}>
+                        <td style={{ padding: '0.4rem' }}>{new Date(m.performedAt).toLocaleDateString('pt-BR')}</td>
+                        <td style={{ padding: '0.4rem' }}>{m.type}</td>
+                        <td style={{ padding: '0.4rem' }}>{m.quantity}</td>
+                        <td style={{ padding: '0.4rem' }}>{m.balanceAfter}</td>
+                        <td style={{ padding: '0.4rem' }}>{m.purpose ?? m.reason ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
               <div className="equipment-form-actions">
                 <button className="secondary-button" onClick={() => setLedgerModalBatch(null)} type="button">

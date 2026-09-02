@@ -5,8 +5,8 @@
   "description": "API modular (NestJS) — camadas SOLID por bounded context.",
   "type": "module",
   "scripts": {
-    "predev": "npm run build --workspace @arqueia/config && npm run build --workspace @arqueia/contracts && npm run build --workspace @arqueia/database",
-    "dev": "nest start --watch",
+    "predev": "npm run build --workspace @arqueia/config && npm run build --workspace @arqueia/contracts && npm run build --workspace @arqueia/database && npm run build",
+    "dev": "nest start --watch --config nest-cli.dev.json",
     "build": "nest build",
     "lint": "eslint src --max-warnings=0",
     "start": "node dist/main.js",

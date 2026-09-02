@@ -6,16 +6,19 @@ import { IdentityModule } from '../identity/identity.module.js';
 import { PermissionEvaluator } from '../identity/domain/services/permission-evaluator.js';
 import { CancelReservationUseCase } from './application/cancel-reservation.use-case.js';
 import { CancelTechnicalBlockUseCase } from './application/cancel-technical-block.use-case.js';
+import { CheckInReservationUseCase } from './application/check-in-reservation.use-case.js';
+import { CompleteReservationUseCase } from './application/complete-reservation.use-case.js';
 import { CreateReservationUseCase } from './application/create-reservation.use-case.js';
 import { CreateTechnicalBlockUseCase } from './application/create-technical-block.use-case.js';
 import { ListScheduleUseCase } from './application/list-schedule.use-case.js';
+import { ReleaseAbsentReservationsUseCase } from './application/release-absent-reservations.use-case.js';
+import { StartWalkInReservationUseCase } from './application/start-walk-in-reservation.use-case.js';
 import {
   SCHEDULING_REPOSITORY,
   type SchedulingRepository,
 } from './domain/ports/scheduling-repository.port.js';
 import { PostgresSchedulingRepository } from './infrastructure/postgres-scheduling-repository.js';
 import { SchedulingController } from './interface/scheduling.controller.js';
-
 
 @Module({
   imports: [DatabaseModule, IdentityModule],
@@ -37,6 +40,30 @@ import { SchedulingController } from './interface/scheduling.controller.js';
       inject: [SCHEDULING_REPOSITORY, PermissionEvaluator],
       useFactory: (repository: SchedulingRepository, permissions: PermissionEvaluator) =>
         new CreateReservationUseCase(repository, permissions),
+    },
+    {
+      provide: StartWalkInReservationUseCase,
+      inject: [SCHEDULING_REPOSITORY, PermissionEvaluator],
+      useFactory: (repository: SchedulingRepository, permissions: PermissionEvaluator) =>
+        new StartWalkInReservationUseCase(repository, permissions),
+    },
+    {
+      provide: CheckInReservationUseCase,
+      inject: [SCHEDULING_REPOSITORY, PermissionEvaluator],
+      useFactory: (repository: SchedulingRepository, permissions: PermissionEvaluator) =>
+        new CheckInReservationUseCase(repository, permissions),
+    },
+    {
+      provide: CompleteReservationUseCase,
+      inject: [SCHEDULING_REPOSITORY, PermissionEvaluator],
+      useFactory: (repository: SchedulingRepository, permissions: PermissionEvaluator) =>
+        new CompleteReservationUseCase(repository, permissions),
+    },
+    {
+      provide: ReleaseAbsentReservationsUseCase,
+      inject: [SCHEDULING_REPOSITORY, PermissionEvaluator],
+      useFactory: (repository: SchedulingRepository, permissions: PermissionEvaluator) =>
+        new ReleaseAbsentReservationsUseCase(repository, permissions),
     },
     {
       provide: CancelReservationUseCase,

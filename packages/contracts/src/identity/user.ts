@@ -3,30 +3,43 @@ import { z } from 'zod';
 import { entityMetadataSchema, uuidSchema } from '../common/entity.js';
 
 export const userStatusSchema = z.enum(['INVITED', 'ACTIVE', 'SUSPENDED']);
-export const identityProviderSchema = z.enum(['LOCAL', 'OIDC', 'HYBRID']);
+export const academicCategorySchema = z.enum([
+  'IC',
+  'MESTRADO',
+  'DOUTORADO',
+  'POS_DOUTORADO',
+  'PESQUISADOR',
+]);
+export const loginCodeSchema = z
+  .string()
+  .trim()
+  .min(6)
+  .max(32)
+  .regex(/^[A-Za-z0-9-]+$/, 'Use apenas letras, números e hífen.')
+  .transform((value) => value.toUpperCase());
 
 const userFieldsSchema = z.object({
   institutionId: uuidSchema,
-  name: z.string().trim().min(2).max(120),
-  email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
-  supervisorUserId: uuidSchema.nullable(),
+  loginCode: loginCodeSchema,
+  academicCategory: academicCategorySchema,
   status: userStatusSchema,
-  identityProvider: identityProviderSchema,
+  mustChangePassword: z.boolean(),
 });
 
 export const userSchema = entityMetadataSchema.extend(userFieldsSchema.shape).strict();
 
 export const createUserInputSchema = userFieldsSchema
-  .pick({ institutionId: true, name: true, email: true, supervisorUserId: true })
+  .pick({ institutionId: true, academicCategory: true })
   .extend({
-    supervisorUserId: uuidSchema.nullable().optional().default(null),
-    temporaryPassword: z.string().min(12).max(128).optional(),
+    laboratoryId: uuidSchema,
+    temporaryPassword: z.string().min(12).max(128),
   })
   .strict();
 
 export const updateUserInputSchema = userFieldsSchema
-  .pick({ name: true, email: true, supervisorUserId: true, status: true })
+  .pick({ academicCategory: true, status: true })
   .partial()
+  .extend({ laboratoryId: uuidSchema })
   .strict();
 
 export const userParamsSchema = z.object({ userId: uuidSchema }).strict();
@@ -35,4 +48,4 @@ export type User = z.infer<typeof userSchema>;
 export type CreateUserInput = z.input<typeof createUserInputSchema>;
 export type UpdateUserInput = z.input<typeof updateUserInputSchema>;
 export type UserStatus = z.infer<typeof userStatusSchema>;
-export type IdentityProvider = z.infer<typeof identityProviderSchema>;
+export type AcademicCategory = z.infer<typeof academicCategorySchema>;

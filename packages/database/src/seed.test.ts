@@ -151,6 +151,17 @@ describe('development seed execution', () => {
         sourceRowCount: expect.any(Number),
         optionCount: expect.any(Number),
       },
+      fapespCatalog: {
+        sourceId: 'catalog-source-id',
+        sourceCreated: true,
+        sourceRowCount: expect.any(Number),
+        optionCount: expect.any(Number),
+      },
+      preRegistration: {
+        equipmentsCreated: expect.any(Number),
+        productsCreated: expect.any(Number),
+        batchesCreated: expect.any(Number),
+      },
     });
 
     const statements = database.calls.map(({ statement }) => statement).join('\n');
@@ -161,7 +172,7 @@ describe('development seed execution', () => {
     expect(statements).toContain(
       'ON CONFLICT (laboratory_id, code) WHERE archived_at IS NULL',
     );
-    expect(statements).toContain('ON CONFLICT (lower(email)) WHERE archived_at IS NULL');
+    expect(statements).toContain('ON CONFLICT (upper(login_code)) WHERE archived_at IS NULL');
     expect(statements).toContain(
       'ON CONFLICT (user_id, role) WHERE archived_at IS NULL',
     );
@@ -183,7 +194,7 @@ describe('development seed execution', () => {
           parameters: expect.arrayContaining([DEVELOPMENT_SEED.project.code]),
         }),
         expect.objectContaining({
-          parameters: expect.arrayContaining([DEVELOPMENT_SEED.administrator.email]),
+          parameters: expect.arrayContaining([DEVELOPMENT_SEED.administrator.loginCode]),
         }),
       ]),
     );

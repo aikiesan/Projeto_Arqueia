@@ -85,7 +85,7 @@ describe('Scheduling Contracts (Checkpoint A1)', () => {
     expect(parsed.onlyMine).toBe(true);
   });
 
-  it('rejects recurrence until series and laboratory timezone semantics are frozen', () => {
+  it('accepts valid recurrence configuration', () => {
     const recurrentPayload = {
       laboratoryId: labId,
       equipmentId,
@@ -100,8 +100,27 @@ describe('Scheduling Contracts (Checkpoint A1)', () => {
       },
     };
 
-    expect(() => createReservationInputSchema.parse(recurrentPayload)).toThrow(
-      'Recorrência estará disponível após o endurecimento do fluxo de reserva única.',
+    const parsed = createReservationInputSchema.parse(recurrentPayload);
+    expect(parsed.recurrence.frequency).toBe('CUSTOM');
+    expect(parsed.recurrence.untilDate).toBe('2026-09-30T23:59:59.000Z');
+  });
+
+  it('rejects recurrence with missing or past untilDate', () => {
+    const invalidRecurrentPayload = {
+      laboratoryId: labId,
+      equipmentId,
+      projectId,
+      startsAt: '2026-08-20T10:00:00.000Z',
+      endsAt: '2026-08-20T12:00:00.000Z',
+      purpose: 'Ensaio com data limite inválida',
+      recurrence: {
+        frequency: 'WEEKLY' as const,
+        untilDate: '2026-08-19T23:59:59.000Z',
+      },
+    };
+
+    expect(() => createReservationInputSchema.parse(invalidRecurrentPayload)).toThrow(
+      'Para reservas recorrentes, informe uma data limite válida',
     );
   });
 

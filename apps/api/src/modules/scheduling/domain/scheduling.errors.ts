@@ -65,6 +65,24 @@ export class ReservationCancellationNoticeError extends Error {
   }
 }
 
+export class ReservationCheckInError extends Error {
+  public readonly code = 'RESERVATION_CHECK_IN_INVALID' as const;
+
+  public constructor(message: string) {
+    super(message);
+    this.name = 'ReservationCheckInError';
+  }
+}
+
+export class ReservationCompletionError extends Error {
+  public readonly code = 'RESERVATION_COMPLETION_INVALID' as const;
+
+  public constructor(message: string) {
+    super(message);
+    this.name = 'ReservationCompletionError';
+  }
+}
+
 export class TechnicalBlockNotFoundError extends Error {
   public constructor(public readonly technicalBlockId: string) {
     super(`Bloqueio técnico ${technicalBlockId} não foi encontrado.`);

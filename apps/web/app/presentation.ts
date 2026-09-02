@@ -8,8 +8,8 @@ export interface WorkspacePresentation {
   readonly currentContext: string;
   readonly currentUser: {
     readonly id: string;
-    readonly name: string;
-    readonly email: string;
+    readonly loginCode: string;
+    readonly academicCategory: string;
   };
   readonly laboratories: readonly LaboratoryRailItem[];
   readonly mobileNavigation: readonly NavigationItem[];
@@ -27,14 +27,8 @@ function withLaboratoryContext(href: string, laboratoryId: string | undefined): 
   return `${pathname}?${query.toString()}`;
 }
 
-function initials(name: string): string {
-  const derived = name
-    .split(' ')
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+function initials(loginCode: string): string {
+  const derived = loginCode.replace(/^ARQ-/, '').slice(0, 2).toUpperCase();
   return derived || 'A';
 }
 
@@ -108,8 +102,8 @@ export function createWorkspacePresentation(
     currentContext: activeLaboratory?.name ?? 'Arqueia',
     currentUser: {
       id: principal.user.id,
-      name: principal.user.name,
-      email: principal.user.email,
+      loginCode: principal.user.loginCode,
+      academicCategory: principal.user.academicCategory,
     },
     laboratories: railItems,
     mobileNavigation: mobileNavigation.map((item) => ({
@@ -120,6 +114,6 @@ export function createWorkspacePresentation(
       ...item,
       href: withLaboratoryContext(item.href, laboratoryId),
     })),
-    userInitials: initials(principal.user.name),
+    userInitials: initials(principal.user.loginCode),
   };
 }

@@ -48,6 +48,7 @@ import {
   Argon2PasswordVerifier,
 } from './infrastructure/argon2-password-verifier.js';
 import { ConfiguredOidcProvider } from './infrastructure/configured-oidc-provider.js';
+import { AuthRateLimiterService } from './infrastructure/auth-rate-limiter.service.js';
 import { JwtAccessTokenIssuer } from './infrastructure/jwt-access-token-issuer.js';
 import { JwtAccessTokenVerifier } from './infrastructure/jwt-access-token-verifier.js';
 import { PostgresAuditEventWriter } from './infrastructure/postgres-audit-event-writer.js';
@@ -60,6 +61,7 @@ import {
 import { PostgresProjectRepository } from './infrastructure/postgres-project-repository.js';
 import { PostgresUserRepository } from './infrastructure/postgres-user-repository.js';
 import { AccessController } from './interface/access.controller.js';
+import { AuthRateLimitGuard } from './interface/auth-rate-limit.guard.js';
 import { AuthController } from './interface/auth.controller.js';
 import { LaboratoriesController } from './interface/laboratories.controller.js';
 import { JwtAuthGuard } from './interface/jwt-auth.guard.js';
@@ -339,7 +341,7 @@ const POSTGRES_SYSTEM_ROLE_REPOSITORY = Symbol('POSTGRES_SYSTEM_ROLE_REPOSITORY'
     },
     {
       provide: RevokeMembershipUseCase,
-      inject: [MEMBERSHIP_WRITER, PermissionEvaluator, ReauthenticationService],
+      inject: [MEMBERSHIP_READER, MEMBERSHIP_WRITER, PermissionEvaluator, ReauthenticationService],
       useFactory: (...dependencies: ConstructorParameters<typeof RevokeMembershipUseCase>) =>
         new RevokeMembershipUseCase(...dependencies),
     },
@@ -355,7 +357,25 @@ const POSTGRES_SYSTEM_ROLE_REPOSITORY = Symbol('POSTGRES_SYSTEM_ROLE_REPOSITORY'
       useFactory: (...dependencies: ConstructorParameters<typeof RevokeSystemRoleUseCase>) =>
         new RevokeSystemRoleUseCase(...dependencies),
     },
+    {
+      provide: AuthRateLimiterService,
+      useFactory: () => {
+        const environment = loadApiEnvironment();
+        return new AuthRateLimiterService(
+          environment.AUTH_RATE_LIMIT_MAX_ATTEMPTS,
+          environment.AUTH_RATE_LIMIT_WINDOW_SECONDS,
+        );
+      },
+    },
+    AuthRateLimitGuard,
   ],
-  exports: [JwtAuthGuard, ACCESS_TOKEN_VERIFIER, PRINCIPAL_READER, PermissionEvaluator],
+  exports: [
+    JwtAuthGuard,
+    AuthRateLimitGuard,
+    AuthRateLimiterService,
+    ACCESS_TOKEN_VERIFIER,
+    PRINCIPAL_READER,
+    PermissionEvaluator,
+  ],
 })
 export class IdentityModule {}

@@ -1,12 +1,12 @@
 'use client';
 
-import { localLoginInputSchema, type OidcProviderMetadata } from '@arqueia/contracts';
+import { bffPublicLoginResponseSchema, localLoginInputSchema } from '@arqueia/contracts';
 import Image from 'next/image';
 import { useState, type FormEvent } from 'react';
 
 const ERROR_MESSAGES: Record<string, string> = {
-  INVALID_CREDENTIALS: 'E-mail ou senha inválidos.',
-  INVALID_INPUT: 'Revise o e-mail e a senha informados.',
+  INVALID_CREDENTIALS: 'Código de acesso ou senha inválidos.',
+  INVALID_INPUT: 'Revise o código de acesso e a senha informados.',
   INVALID_ORIGIN: 'Origem da requisição não confiável. Recarregue a página.',
   API_UNAVAILABLE: 'Não foi possível entrar agora. Tente novamente em instantes.',
 };
@@ -17,12 +17,10 @@ function messageForCode(code: unknown): string {
 
 export function LoginForm({
   next,
-  oidc,
 }: {
   readonly next: string;
-  readonly oidc: OidcProviderMetadata;
 }) {
-  const [email, setEmail] = useState('');
+  const [loginCode, setLoginCode] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -31,9 +29,9 @@ export function LoginForm({
     event.preventDefault();
     setError(null);
 
-    const parsed = localLoginInputSchema.safeParse({ email, password });
+    const parsed = localLoginInputSchema.safeParse({ loginCode, password });
     if (!parsed.success) {
-      setError(ERROR_MESSAGES.INVALID_INPUT ?? 'Revise o e-mail e a senha informados.');
+      setError(ERROR_MESSAGES.INVALID_INPUT ?? 'Revise o código de acesso e a senha informados.');
       return;
     }
 
@@ -50,8 +48,9 @@ export function LoginForm({
         setSubmitting(false);
         return;
       }
+      const login = bffPublicLoginResponseSchema.parse(await response.json());
       // Force a full navigation so server components re-read the new session cookie.
-      window.location.assign(next);
+      window.location.assign(login.principal.user.mustChangePassword ? '/perfil' : next);
     } catch {
       setError(ERROR_MESSAGES.API_UNAVAILABLE ?? 'Não foi possível entrar agora. Tente novamente em instantes.');
       setSubmitting(false);
@@ -88,22 +87,22 @@ export function LoginForm({
         <h2 id="auth-title">Entrar no Arqueia</h2>
         <p>Use as credenciais da sua conta para continuar.</p>
         <form className="login-form" method="post" noValidate onSubmit={handleSubmit}>
-          <label htmlFor="email">
-            <span>E-mail</span>
+          <label htmlFor="loginCode">
+            <span>Código de acesso</span>
             <input
               autoCapitalize="none"
               autoComplete="username"
               autoCorrect="off"
               autoFocus
-              id="email"
-              inputMode="email"
-              name="email"
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="seu.email@instituicao.br"
+              id="loginCode"
+              inputMode="text"
+              name="loginCode"
+              onChange={(event) => setLoginCode(event.target.value)}
+              placeholder="ARQ-XXXXXXXXXXXX"
               required
               spellCheck="false"
-              type="email"
-              value={email}
+              type="text"
+              value={loginCode}
             />
           </label>
 
@@ -133,9 +132,6 @@ export function LoginForm({
           </button>
         </form>
 
-        {oidc.enabled && oidc.authorizationUrl ? (
-          <a className="secondary-button login-submit" href={oidc.authorizationUrl}>{oidc.displayName}</a>
-        ) : null}
         <p className="login-security">Sua sessão é protegida e as permissões são verificadas no servidor.</p>
         <div className="login-cp2b-mobile">
           <span>Uma iniciativa</span>

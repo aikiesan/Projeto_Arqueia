@@ -9,6 +9,7 @@ const serviceUrl = (protocols: readonly string[]) =>
 
 export const apiEnvironmentSchema = z.object({
   NODE_ENV: nodeEnvironmentSchema.default('development'),
+  API_HOST: z.string().trim().min(1).default('127.0.0.1'),
   API_PORT: z.coerce.number().int().min(1).max(65_535).default(4001),
   DATABASE_URL: serviceUrl(['postgres:', 'postgresql:']),
   REDIS_URL: serviceUrl(['redis:', 'rediss:']),
@@ -18,6 +19,18 @@ export const apiEnvironmentSchema = z.object({
   OIDC_ENABLED: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),
   OIDC_DISPLAY_NAME: z.string().trim().min(1).max(80).default('Entrar com Unicamp'),
   OIDC_AUTHORIZATION_URL: z.string().url().optional().or(z.literal('')),
+  OIDC_ISSUER_URL: z.string().url().optional().or(z.literal('')),
+  OIDC_CLIENT_ID: z.string().trim().optional().or(z.literal('')),
+  OIDC_CLIENT_SECRET: z.string().optional().or(z.literal('')),
+  SMTP_HOST: z.string().trim().optional().or(z.literal('')),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65_535).default(587).optional(),
+  SMTP_USER: z.string().trim().optional().or(z.literal('')),
+  SMTP_PASSWORD: z.string().optional().or(z.literal('')),
+  SMTP_FROM: z.string().trim().optional().or(z.literal('')),
+  AUTH_MAX_FAILED_ATTEMPTS: z.coerce.number().int().min(3).max(20).default(5),
+  AUTH_LOCKOUT_DURATION_SECONDS: z.coerce.number().int().min(60).max(86_400).default(900),
+  AUTH_RATE_LIMIT_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(100).default(10),
+  AUTH_RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(10).max(3600).default(60),
 });
 
 export const workerEnvironmentSchema = z.object({

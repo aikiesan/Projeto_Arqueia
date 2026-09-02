@@ -17,17 +17,40 @@ export class LoginLocalUseCase {
     private readonly passwordVerifier: PasswordVerifier,
     private readonly tokenIssuer: AccessTokenIssuer,
     private readonly auditEvents: AuditEventWriter,
+    private readonly maxFailedAttempts: number = 5,
+    private readonly lockoutDurationSeconds: number = 900,
   ) {}
 
   public async execute(
     input: LocalLoginInput,
     context: LoginRequestContext,
   ): Promise<LoginResponse> {
-    const account = await this.identities.findActiveByEmail(input.email);
+    const account = await this.identities.findActiveByLoginCode(input.loginCode);
     const passwordMatches = await this.passwordVerifier.verify(
       input.password,
       account?.passwordHash ?? null,
     );
+
+    const now = Date.now();
+    const isLocked =
+      account !== null &&
+      account.lockedUntil !== null &&
+      new Date(account.lockedUntil).getTime() > now;
+
+    if (isLocked) {
+      await this.auditEvents.append({
+        actorId: account.principal.user.id,
+        laboratoryId: null,
+        action: 'identity.login.failed',
+        entity: 'User',
+        entityId: account.principal.user.id,
+        before: null,
+        after: { reason: 'account_locked' },
+        origin: context.origin,
+        requestId: context.requestId,
+      });
+      throw new InvalidCredentialsError();
+    }
 
     if (
       account === null ||
@@ -35,9 +58,41 @@ export class LoginLocalUseCase {
       account.principal.user.status !== 'ACTIVE' ||
       account.principal.user.archivedAt !== null
     ) {
+      if (account !== null) {
+        await this.identities.recordLoginFailure(
+          account.principal.user.id,
+          this.maxFailedAttempts,
+          this.lockoutDurationSeconds,
+        );
+        await this.auditEvents.append({
+          actorId: account.principal.user.id,
+          laboratoryId: null,
+          action: 'identity.login.failed',
+          entity: 'User',
+          entityId: account.principal.user.id,
+          before: null,
+          after: { reason: 'invalid_credentials' },
+          origin: context.origin,
+          requestId: context.requestId,
+        });
+      } else {
+        await this.auditEvents.append({
+          actorId: null,
+          laboratoryId: null,
+          action: 'identity.login.failed',
+          entity: 'User',
+          entityId: '00000000-0000-0000-0000-000000000000',
+          before: null,
+          after: { reason: 'invalid_credentials' },
+          origin: context.origin,
+          requestId: context.requestId,
+        });
+      }
+
       throw new InvalidCredentialsError();
     }
 
+    await this.identities.recordLoginSuccess(account.principal.user.id);
     const token = await this.tokenIssuer.issue(account.principal);
 
     await this.auditEvents.append({

@@ -66,12 +66,7 @@ export function GuidePageClient() {
     );
   }
 
-  const userInitials = pageData.principal.user.name
-    .split(' ')
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('');
+  const userInitials = pageData.principal.user.loginCode.replace(/^ARQ-/, '').slice(0, 2);
 
   const laboratoryRail = pageData.laboratories.map((lab) => ({
     href: `/guia?laboratory=${lab.id}`,
@@ -101,10 +96,10 @@ export function GuidePageClient() {
       laboratories={laboratoryRail}
       mobileNavigation={presentation.mobileNavigation}
       moduleNavigation={presentation.moduleNavigation}
-      qrAction={{ href: '/qr', label: 'Ler QR Code' }}
+      qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Guia de Uso"
       userInitials={userInitials}
-      userLabel={pageData.principal.user.name}
+      userLabel={pageData.principal.user.loginCode}
     >
       {/* Editorial Header */}
       <section className="equipment-toolbar" style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
@@ -260,10 +255,10 @@ export function GuidePageClient() {
             <span className="section-kicker">Identificação Física</span>
             <h3 style={{ fontSize: '1.25rem', margin: '0.2rem 0 0.75rem' }}>7. Leituras de QR Code & Dispositivos Móveis</h3>
             <p style={{ lineHeight: 1.6, color: '#2d3748' }}>
-              O Arqueia foi projetado com suporte nativo a etiquetas QR Code (formato <code>ARQ-LOT-uuid</code> ou <code>ARQ-EQP-uuid</code>) fixadas nos recipientes e equipamentos.
+              O Arqueia possui suporte completo a etiquetas QR Code (formato <code>ARQ-LOT-uuid</code> ou <code>ARQ-EQP-uuid</code>) fixadas nos recipientes e equipamentos.
             </p>
-            <div style={{ background: '#fffaf0', border: '1px solid #fbd38d', padding: '0.75rem 1rem', borderRadius: '6px', marginTop: '1rem', fontSize: '0.85rem', color: '#744210' }}>
-              ℹ️ <strong>Funcionalidade Planejada / Em Desenvolvimento:</strong> A leitura direta de QR Code via câmera de smartphone encontra-se em fase de testes finais. Atualmente, é possível utilizar leitores físicos de código de barras/QR de bancada ou acessar os registros diretamente pelos atalhos do sistema.
+            <div style={{ background: '#f0fdf4', border: '1px solid #86efac', padding: '0.75rem 1rem', borderRadius: '6px', marginTop: '1rem', fontSize: '0.85rem', color: '#166534' }}>
+              ✅ <strong>Leitor QR Integrado:</strong> A leitura direta via câmera do smartphone e entrada manual de códigos está disponível na rota <code>/qr</code>, acessível pelo botão central da barra inferior de navegação móvel.
             </div>
           </section>
         )}
@@ -275,8 +270,9 @@ export function GuidePageClient() {
             <p style={{ lineHeight: 1.6, color: '#2d3748' }}>
               Tabela de correspondência entre os termos da interface em Português e as constantes internas do sistema:
             </p>
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem', fontSize: '0.85rem' }}>
-              <thead style={{ background: '#f7fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
+            <div className="overflow-x-auto" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginTop: '1rem' }}>
+              <table style={{ minWidth: '550px', width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead style={{ background: '#f7fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
                 <tr>
                   <th style={{ padding: '0.5rem 0.75rem' }}>Termo na Interface</th>
                   <th style={{ padding: '0.5rem 0.75rem' }}>Constante / Tabela no Código</th>
@@ -311,6 +307,7 @@ export function GuidePageClient() {
                 </tr>
               </tbody>
             </table>
+            </div>
           </section>
         )}
       </article>

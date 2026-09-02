@@ -1,11 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-// Inlined (not imported from lib/api-server) to keep the middleware free of
+// Inlined (not imported from lib/api-server) to keep the proxy free of
 // server-only modules like next/headers.
 const SESSION_COOKIE_NAME = 'arqueia_session';
 const LOGIN_PATH = '/login';
 
-export function middleware(request: NextRequest): NextResponse {
+export function proxy(request: NextRequest): NextResponse {
   const hasSession = request.cookies.has(SESSION_COOKIE_NAME);
   const { pathname, search } = request.nextUrl;
   const isLoginRoute = pathname === LOGIN_PATH;

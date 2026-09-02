@@ -57,7 +57,7 @@ function ContextPanel({ summary }: Pick<HomeDashboardProps, 'summary'>) {
 }
 
 export function HomeDashboard({ presentation, summary }: HomeDashboardProps) {
-  const firstName = presentation.currentUser.name.split(' ')[0] ?? presentation.currentUser.name;
+  const firstName = presentation.currentUser.loginCode;
   const schedulingAction = summary.quickActions.find(({ id }) => id === 'scheduling');
 
   return (
@@ -70,10 +70,13 @@ export function HomeDashboard({ presentation, summary }: HomeDashboardProps) {
       laboratories={presentation.laboratories}
       mobileNavigation={presentation.mobileNavigation}
       moduleNavigation={presentation.moduleNavigation}
-      qrAction={{ href: '/qr', label: 'Ler QR Code' }}
+      qrAction={{
+        href: presentation.activeLaboratoryId ? `/qr?laboratory=${presentation.activeLaboratoryId}` : '/qr',
+        label: 'Ler QR Code',
+      }}
       sectionLabel="Visão geral"
       userInitials={presentation.userInitials}
-      userLabel={presentation.currentUser.name}
+      userLabel={presentation.currentUser.loginCode}
       userMenu={<LogoutButton />}
     >
       <section className="welcome-strip">

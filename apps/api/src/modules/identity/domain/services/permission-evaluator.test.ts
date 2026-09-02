@@ -56,7 +56,8 @@ describe('PermissionEvaluator', () => {
   it('allows a user to operate only in the laboratory of the membership', () => {
     const user = principal('USUARIO');
 
-    expect(evaluator.can(user, 'inventory.withdraw', labA)).toBe(true);
+    expect(evaluator.can(user, 'scheduling.reserve', labA)).toBe(true);
+    expect(evaluator.can(user, 'inventory.withdraw', labA)).toBe(false);
     expect(evaluator.can(user, 'inventory.withdraw', labB)).toBe(false);
     expect(evaluator.can(user, 'inventory.manage', labA)).toBe(false);
   });

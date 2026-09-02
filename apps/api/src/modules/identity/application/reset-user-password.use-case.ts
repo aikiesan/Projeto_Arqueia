@@ -20,7 +20,7 @@ export class ResetUserPasswordUseCase {
     input: ResetUserPasswordInput,
     context: Omit<IdentityMutationContext, 'actorId'>,
   ): Promise<{ success: true }> {
-    this.permissions.assertCan(principal, 'identity.user.manage');
+    this.permissions.assertCan(principal, 'identity.user.manage', input.laboratoryId);
     await this.reauthentication.assertPassword(principal, input.confirmationPassword);
 
     const newHash = await this.passwordHasher.hash(input.newPassword);
