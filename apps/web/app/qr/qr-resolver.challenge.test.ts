@@ -123,7 +123,7 @@ describe('QR Resolver — Adversarial & Stress Challenge Suite', () => {
         "ARQ-LOT-'; DROP TABLE batches; --",
         'ARQ-LOT-<script>alert("xss")</script>',
         'ARQ-EQP-../../../../etc/passwd',
-        'ARQ-LOT-{"json":"injection"}',
+        'ARQ-LOT-[malformed-structure]',
         'ARQ-LOT-%00%0D%0A',
       ];
 
