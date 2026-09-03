@@ -120,10 +120,16 @@ describe.skipIf(databaseUrl === undefined)(
         [challengeLabId, challengeInstitutionId],
       );
       await pool.query(
-        `INSERT INTO users (id, institution_id, name, email, status)
-          VALUES ($1, $2, 'Usuário Desafio M3', $3, 'ACTIVE')
+        `INSERT INTO users (
+           id, institution_id, login_code, name, email, academic_category, status
+         ) VALUES ($1, $2, $3, 'Usuário Desafio M3', $4, 'PESQUISADOR', 'ACTIVE')
           ON CONFLICT (id) DO NOTHING`,
-        [challengeUserId, challengeInstitutionId, `challenger_m3_${fixtureSuffix}@unicamp.br`],
+        [
+          challengeUserId,
+          challengeInstitutionId,
+          `ARQ-M3-${fixtureSuffix.toUpperCase()}`,
+          `challenger_m3_${fixtureSuffix}@unicamp.br`,
+        ],
       );
       await pool.query(
         `INSERT INTO memberships (id, user_id, laboratory_id, role)
