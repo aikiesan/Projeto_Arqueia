@@ -7,7 +7,7 @@ describe('Infrastructure Configuration & Deployment Verification', () => {
   const currentDir = fileURLToPath(new URL('.', import.meta.url));
   const rootDir = resolve(currentDir, '../../..');
 
-  it('verifies PM2 ecosystem configuration and Next.js binary resolution', () => {
+  it('verifies PM2 uses the production data volume and the hoisted Next.js binary', () => {
     const ecosystemPath = resolve(rootDir, 'infrastructure/pm2/ecosystem.config.js');
     expect(existsSync(ecosystemPath)).toBe(true);
 
@@ -16,21 +16,25 @@ describe('Infrastructure Configuration & Deployment Verification', () => {
     expect(content).toContain('arqueia-web');
     expect(content).toContain('arqueia-worker');
 
-    // Verify arqueia-web uses hoisted next binary path relative to apps/web cwd
-    expect(content).toContain("script: '../../node_modules/next/dist/bin/next'");
+    expect(content).toContain("cwd: '/data/arqueia/repo/apps/web'");
+    expect(content).toContain("script: '/data/arqueia/repo/node_modules/next/dist/bin/next'");
+    expect(content).toContain("NEXT_PUBLIC_BASE_PATH: '/arqueia'");
 
-    // Verify the target Next.js binary actually exists at the resolved path
-    const resolvedNextBin = resolve(rootDir, 'apps/web', '../../node_modules/next/dist/bin/next');
+    // The same hoisted dependency must exist in the local installation used to build the release.
+    const resolvedNextBin = resolve(rootDir, 'node_modules/next/dist/bin/next');
     expect(existsSync(resolvedNextBin)).toBe(true);
   });
 
-  it('verifies setup-vm.sh includes remoteip Apache module', () => {
+  it('verifies setup loads protected environment and prepares the /data volume', () => {
     const setupVmPath = resolve(rootDir, 'infrastructure/scripts/setup-vm.sh');
     expect(existsSync(setupVmPath)).toBe(true);
 
     const content = readFileSync(setupVmPath, 'utf-8');
-    expect(content).toMatch(/a2enmod.*remoteip/);
-    expect(content).toContain('sudo a2enmod proxy proxy_http proxy_wstunnel headers ssl rewrite remoteip');
+    expect(content).toContain('/data/arqueia/postgresql');
+    expect(content).toContain('chmod 600 .env');
+    expect(content).toContain('. ./.env');
+    expect(content).toContain('NEXT_PUBLIC_BASE_PATH=/arqueia npm run build');
+    expect(content).not.toContain('certbot');
   });
 
   it('verifies deploy-vm.sh includes resilient retry polling loop for health checks', () => {
@@ -41,17 +45,21 @@ describe('Infrastructure Configuration & Deployment Verification', () => {
     expect(content).toContain('MAX_RETRIES=');
     expect(content).toContain('while [ "$attempt" -le "$MAX_RETRIES" ]');
     expect(content).toContain('http://localhost:4001/api/health');
-    expect(content).toContain('http://localhost:4002/api/health');
+    expect(content).toContain('http://localhost:4002/arqueia/api/health');
+    expect(content).toContain('http://localhost:4002/arqueia/login');
     expect(content).toContain('sleep');
   });
 
-  it('verifies Apache virtual host configuration consistency', () => {
-    const apacheConfPath = resolve(rootDir, 'infrastructure/proxy/arqueia.cp2b.unicamp.br.apache.conf');
+  it('keeps all public Arqueia traffic behind the Next.js BFF path', () => {
+    const apacheConfPath = resolve(rootDir, 'infrastructure/proxy/cp2b-arqueia-path.apache.conf');
     expect(existsSync(apacheConfPath)).toBe(true);
 
     const content = readFileSync(apacheConfPath, 'utf-8');
-    expect(content).toContain('RemoteIPHeader X-Forwarded-For');
-    expect(content).toContain('RemoteIPInternalProxy 127.0.0.1');
-    expect(content).toContain('remoteip');
+    expect(content).toContain('ProxyPass        /arqueia            http://127.0.0.1:4002/arqueia');
+    expect(content).toContain('RequestHeader set X-Forwarded-Proto "https"');
+    expect(content).toContain('RequestHeader set X-Forwarded-Prefix "/arqueia"');
+    expect(content).not.toContain('127.0.0.1:4001');
+    expect(content).not.toContain('<VirtualHost');
+    expect(content).not.toContain('certbot');
   });
 });

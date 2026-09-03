@@ -26,6 +26,8 @@ const principal: AuthenticatedPrincipal = {
     id: '6ba7b810-9dad-11d1-b245-5ffdce74fad2',
     institutionId: laboratory.institutionId,
     loginCode: 'ARQ-LUCAS-001',
+    name: 'Usuário Unicamp',
+    email: 'usuario@unicamp.br',
     academicCategory: 'PESQUISADOR',
     status: 'ACTIVE',
     mustChangePassword: false,

@@ -33,6 +33,9 @@ const stockMovementLedgerConsistencyMigrationPath = fileURLToPath(
 const pseudonymousIdentityMigrationPath = fileURLToPath(
   new URL('../migrations/011_pseudonymous_user_identity.cjs', import.meta.url),
 );
+const institutionalIdentityMigrationPath = fileURLToPath(
+  new URL('../migrations/012_institutional_user_identity.cjs', import.meta.url),
+);
 const require = createRequire(import.meta.url);
 
 function renderMigrationSql(path = migrationPath): string {
@@ -218,6 +221,18 @@ describe('pseudonymous identity migration invariants', () => {
     expect(sql).toContain('DROP COLUMN ip_address');
     expect(sql).toContain('DROP COLUMN user_agent');
     expect(sql).toContain('GESTOR_ACESSO_CP2B');
+  });
+});
+
+describe('institutional identity migration invariants', () => {
+  it('restores required name/email, uniqueness and suspends accounts pending regularization', () => {
+    const sql = renderMigrationSql(institutionalIdentityMigrationPath);
+
+    expect(sql).toContain('ADD COLUMN name');
+    expect(sql).toContain('ADD COLUMN email');
+    expect(sql).toContain("status = 'SUSPENDED'");
+    expect(sql).toContain('users_email_active_uk');
+    expect(sql).toContain('lower(email)');
   });
 });
 

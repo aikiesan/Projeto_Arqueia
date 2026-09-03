@@ -57,7 +57,7 @@ function ContextPanel({ summary }: Pick<HomeDashboardProps, 'summary'>) {
 }
 
 export function HomeDashboard({ presentation, summary }: HomeDashboardProps) {
-  const firstName = presentation.currentUser.loginCode;
+  const firstName = presentation.currentUser.name.split(/\s+/)[0] ?? presentation.currentUser.name;
   const schedulingAction = summary.quickActions.find(({ id }) => id === 'scheduling');
 
   return (
@@ -76,7 +76,7 @@ export function HomeDashboard({ presentation, summary }: HomeDashboardProps) {
       }}
       sectionLabel="Visão geral"
       userInitials={presentation.userInitials}
-      userLabel={presentation.currentUser.loginCode}
+      userLabel={presentation.currentUser.name}
       userMenu={<LogoutButton />}
     >
       <section className="welcome-strip">

@@ -1,75 +1,50 @@
-# Hardening e Segurança do Proxy Reverso Apache2 (Apache Security)
+# Segurança do Apache e do proxy institucional
 
-> **Classificação**: Documento de Infraestrutura e Operação
-> **Controlador Institucional**: Universidade Estadual de Campinas — UNICAMP (CNPJ: 46.068.425/0001-33)
-> **Arquivo de Configuração**: `infrastructure/proxy/arqueia.cp2b.unicamp.br.apache.conf`
+> Configuração de referência: `infrastructure/proxy/cp2b-arqueia-path.apache.conf`
 
----
+## Fronteiras de rede
 
-## 1. Topologia de Proxy Reverso e Roteamento Confiável
+O proxy institucional da Unicamp recebe HTTPS público e encaminha a requisição à porta 80 da VM. O Apache2 local preserva o site CP2B e encaminha o prefixo `/arqueia` ao Next.js/BFF em `127.0.0.1:4002`.
 
-O servidor web Apache2 atua como ponto único de terminação TLS e fronteira de rede pública na VM Debian institucional:
-- **Portas Externas**: 80 (Redirecionamento 301 para HTTPS) e 443 (HTTPS/TLS obrigatório na fronteira pública com certificado Let's Encrypt / institucional).
-- **Cadeia de Roteamento de Aplicação**:
-  1. **Cliente Público (Navegador)** $\rightarrow$ Conecta via HTTPS no Apache (`:443`).
-  2. **Apache (`:443`)** $\rightarrow$ Normaliza o IP do cliente via `mod_remoteip` e faz proxy de **todas as rotas públicas** (`/` e `/api/*`) para o **Next.js BFF (`127.0.0.1:4002`)**.
-  3. **Next.js BFF (`:4002`)** $\rightarrow$ Serve as páginas React, gerencia o cookie `HttpOnly` de sessão (`arqueia_session`), valida a origem (`hasTrustedOrigin`), anexa o token Bearer e faz chamadas internas autorizadas para a **API NestJS (`127.0.0.1:4001`)** via loopback.
-  4. **API NestJS (`:4001`)** $\rightarrow$ Executa os casos de uso de negócio, valida permissões no servidor (`PermissionEvaluator`), acessa PostgreSQL (`:5432`) e Redis (`:6379`).
-
-```mermaid
-flowchart LR
-    Browser[Navegador / Cliente] -- HTTPS :443 --> Apache[Apache2 Proxy Reverso]
-    Apache -- Proxy / --> NextBFF[Next.js BFF :4002]
-    NextBFF -- Internal HTTP :4001 --> NestAPI[NestJS API :4001]
-    NestAPI --> DB[(PostgreSQL :5432)]
-    NestAPI --> Redis[(Redis :6379)]
+```text
+Navegador --HTTPS--> proxy Unicamp --HTTP interno--> Apache2 :80
+                                                   -> Next/BFF :4002
+                                                        -> API :4001
 ```
 
-> **Invariante de Roteamento**: O Apache **NÃO** faz proxy direto de `/api/` para o NestJS. Todo o tráfego de interface passa pelo Next.js BFF para garantir a correta gestão de cookies HttpOnly e origin checks.
+A API NestJS, PostgreSQL e Redis não devem ser expostos publicamente. Confirme os binds em loopback e as regras de firewall com o TI responsável.
 
----
+## Invariantes de roteamento
 
-## 2. Cabeçalhos de Segurança Obrigatórios (Security Headers)
+- Todo `/arqueia`, inclusive `/arqueia/api/*`, passa pelo Next.js/BFF.
+- O Apache nunca encaminha `/arqueia/api/*` diretamente à API NestJS.
+- O bloco `/arqueia` deve vir antes do fallback da SPA do CP2B e de regras genéricas de `/api`.
+- A SPA existente precisa excluir `^/arqueia` de sua regra de reescrita.
+- `ProxyPreserveHost On` deve permanecer ativo no VirtualHost.
 
-A configuração do VirtualHost HTTPS (`:443`) injeta cabeçalhos de segurança em todas as respostas:
+## Cabeçalhos encaminhados
+
+O bloco configura:
 
 ```apache
-# HSTS (HTTP Strict Transport Security) - 1 ano com subdomínios
-Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
-
-# Prevenção de MIME-sniffing
-Header always set X-Content-Type-Options "nosniff"
-
-# Prevenção de Clickjacking
-Header always set X-Frame-Options "SAMEORIGIN"
-
-# Política de Referenciador
-Header always set Referrer-Policy "strict-origin-when-cross-origin"
-
-# Ocultação da versão do servidor
-ServerTokens Prod
-ServerSignature Off
+RequestHeader set X-Forwarded-Proto "https"
+RequestHeader set X-Forwarded-Host "cp2b.unicamp.br"
+RequestHeader set X-Forwarded-Prefix "/arqueia"
 ```
 
----
+O valor `https` representa o protocolo visto pelo usuário na fronteira institucional. A lista de proxies confiáveis e a normalização de `X-Forwarded-For` devem usar apenas os endereços fornecidos pela equipe de rede da Unicamp; não declare toda a Internet como proxy confiável.
 
-## 3. Configurações de TLS e Criptografia em Trânsito
+## Cabeçalhos de resposta
 
-- Certificados gerenciados e renovados automaticamente via **Certbot** (`certbot renew`) ou emitidos pela autoridade certificadora institucional da UNICAMP.
-- Protocolos suportados: **TLSv1.2** e **TLSv1.3** (desativação explícita de SSLv3, TLSv1.0 e TLSv1.1 obsoletos).
-- Conjunto de cifras moderno configurado conforme as recomendações de segurança da UNICAMP e Mozilla Intermediate/Modern.
+Preserve no VirtualHost as políticas já adotadas pelo CP2B, no mínimo `X-Content-Type-Options: nosniff`, `Referrer-Policy` e proteção contra framing. HSTS deve ser definido no ponto que efetivamente termina TLS — o proxy institucional — para evitar uma garantia incorreta no salto HTTP interno.
 
----
+## Validação segura
 
-## 4. Normalização de Headers de Proxy e Prevenção de IP Spoofing
+```bash
+sudo /usr/sbin/apache2ctl configtest
+sudo systemctl reload apache2
+curl -I http://127.0.0.1:4002/arqueia/login
+curl -I https://cp2b.unicamp.br/arqueia/login
+```
 
-1. **Módulo `mod_remoteip` e Neutralização de Headers Arbitrários**:
-   ```apache
-   RemoteIPHeader X-Forwarded-For
-   RemoteIPInternalProxy 127.0.0.1
-   ProxyPreserveHost On
-   ```
-2. **Cadeia de Confiança de IP**:
-   - O Apache inspeciona a conexão TCP direta e adiciona o IP de origem ao cabeçalho `X-Forwarded-For`.
-   - Headers arbitrários de `X-Forwarded-For` enviados diretamente por atacantes na Internet são substituídos ou normalizados pelo Apache.
-   - O Next.js BFF repassa esse cabeçalho confiável para a API NestJS, onde o `AuthRateLimitGuard` extrai o IP real do cliente para aplicação das regras de proteção de força bruta.
+Não instalar Certbot nem criar VirtualHost `*:443` para o Arqueia: os certificados continuam sob gestão da infraestrutura institucional.

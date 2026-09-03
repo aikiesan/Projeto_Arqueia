@@ -16,7 +16,7 @@ import {
   type UserRow,
 } from './postgres-identity-support.js';
 
-const USER_COLUMNS = `id, institution_id, login_code, academic_category, status,
+const USER_COLUMNS = `id, institution_id, login_code, name, email, academic_category, status,
   must_change_password, created_at, updated_at, archived_at`;
 
 export class PostgresUserRepository implements UserReader, UserWriter, UserCredentialWriter {
@@ -35,7 +35,7 @@ export class PostgresUserRepository implements UserReader, UserWriter, UserCrede
     const result = await this.pool.query<UserRow>(
       `SELECT ${USER_COLUMNS} FROM users u
         WHERE u.archived_at IS NULL ${visibility}
-        ORDER BY u.login_code, u.id`,
+        ORDER BY u.name, u.email, u.id`,
       laboratoryIds === null ? [] : [laboratoryIds],
     );
     return result.rows.map(mapUser);
@@ -50,11 +50,11 @@ export class PostgresUserRepository implements UserReader, UserWriter, UserCrede
       return await inTransaction(this.pool, async (client) => {
         const result = await client.query<UserRow>(
           `INSERT INTO users (
-             institution_id, login_code, academic_category, status, must_change_password
+             institution_id, login_code, name, email, academic_category, status, must_change_password
            ) VALUES ($1, 'ARQ-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 12)),
-                     $2, 'ACTIVE', true)
+                     $2, $3, $4, 'ACTIVE', true)
            RETURNING ${USER_COLUMNS}`,
-          [input.institutionId, input.academicCategory],
+          [input.institutionId, input.name, input.email, input.academicCategory],
         );
         const user = mapUser(result.rows[0]!);
 
@@ -104,12 +104,18 @@ export class PostgresUserRepository implements UserReader, UserWriter, UserCrede
 
         const result = await client.query<UserRow>(
           `UPDATE users SET
-             academic_category = CASE WHEN $2::boolean THEN $3 ELSE academic_category END,
-             status = CASE WHEN $4::boolean THEN $5 ELSE status END
+             name = CASE WHEN $2::boolean THEN $3 ELSE name END,
+             email = CASE WHEN $4::boolean THEN $5 ELSE email END,
+             academic_category = CASE WHEN $6::boolean THEN $7 ELSE academic_category END,
+             status = CASE WHEN $8::boolean THEN $9 ELSE status END
            WHERE id = $1 AND archived_at IS NULL
            RETURNING ${USER_COLUMNS}`,
           [
             userId,
+            'name' in input,
+            input.name ?? null,
+            'email' in input,
+            input.email ?? null,
             'academicCategory' in input,
             input.academicCategory ?? null,
             'status' in input,

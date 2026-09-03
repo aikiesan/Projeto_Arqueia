@@ -20,6 +20,8 @@ interface UserRow {
   id: string;
   institution_id: string;
   login_code: string;
+  name: string;
+  email: string;
   academic_category: User['academicCategory'];
   status: User['status'];
   must_change_password: boolean;
@@ -62,17 +64,17 @@ export class PostgresLocalIdentityReader
 {
   public constructor(private readonly pool: DatabasePool) {}
 
-  public async findActiveByLoginCode(loginCode: string): Promise<LocalIdentityAccount | null> {
+  public async findActiveByEmail(email: string): Promise<LocalIdentityAccount | null> {
     const userResult = await this.pool.query<UserCredentialRow>(
-      `SELECT u.id, u.institution_id, u.login_code, u.academic_category,
+      `SELECT u.id, u.institution_id, u.login_code, u.name, u.email, u.academic_category,
               u.status, u.must_change_password, u.created_at, u.updated_at, u.archived_at,
               c.password_hash, c.failed_attempts, c.locked_until
          FROM users u
          JOIN local_credentials c ON c.user_id = u.id
-        WHERE upper(u.login_code) = upper($1)
+        WHERE lower(u.email) = lower($1)
           AND u.archived_at IS NULL
         LIMIT 1`,
-      [loginCode],
+      [email],
     );
     const row = userResult.rows[0];
 
@@ -90,7 +92,7 @@ export class PostgresLocalIdentityReader
 
   public async findActiveById(userId: string): Promise<LocalIdentityAccount | null> {
     const userResult = await this.pool.query<UserCredentialRow>(
-      `SELECT u.id, u.institution_id, u.login_code, u.academic_category,
+      `SELECT u.id, u.institution_id, u.login_code, u.name, u.email, u.academic_category,
               u.status, u.must_change_password, u.created_at, u.updated_at, u.archived_at,
               c.password_hash, c.failed_attempts, c.locked_until
          FROM users u
@@ -168,7 +170,7 @@ export class PostgresLocalIdentityReader
 
   public async findByUserId(userId: string): Promise<AuthenticatedPrincipal | null> {
     const result = await this.pool.query<UserRow>(
-      `SELECT id, institution_id, login_code, academic_category, status,
+      `SELECT id, institution_id, login_code, name, email, academic_category, status,
               must_change_password, created_at, updated_at, archived_at
          FROM users
         WHERE id = $1 AND archived_at IS NULL
@@ -199,6 +201,8 @@ export class PostgresLocalIdentityReader
       id: row.id,
       institutionId: row.institution_id,
       loginCode: row.login_code,
+      name: row.name,
+      email: row.email,
       academicCategory: row.academic_category,
       status: row.status,
       mustChangePassword: row.must_change_password,

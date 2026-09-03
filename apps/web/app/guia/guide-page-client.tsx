@@ -13,7 +13,7 @@ interface PageData {
 }
 
 async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { ...init, cache: 'no-store' });
+  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${url}`, { ...init, cache: 'no-store' });
   if (response.status === 401) throw new Error('UNAUTHENTICATED');
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { message?: string } | null;
@@ -66,7 +66,7 @@ export function GuidePageClient() {
     );
   }
 
-  const userInitials = pageData.principal.user.loginCode.replace(/^ARQ-/, '').slice(0, 2);
+  const userInitials = pageData.principal.user.name.slice(0, 2).toUpperCase();
 
   const laboratoryRail = pageData.laboratories.map((lab) => ({
     href: `/guia?laboratory=${lab.id}`,
@@ -99,7 +99,7 @@ export function GuidePageClient() {
       qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Guia de Uso"
       userInitials={userInitials}
-      userLabel={pageData.principal.user.loginCode}
+      userLabel={pageData.principal.user.name}
     >
       {/* Editorial Header */}
       <section className="equipment-toolbar" style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>

@@ -8,7 +8,7 @@ import { createWorkspacePresentation } from './presentation';
 
 const metadata = { createdAt: '2026-08-14T00:00:00.000Z', updatedAt: '2026-08-14T00:00:00.000Z', archivedAt: null } as const;
 const principal: AuthenticatedPrincipal = {
-  user: { ...metadata, id: '00000000-0000-4000-8000-000000000001', institutionId: '00000000-0000-4000-8000-000000000002', loginCode: 'ARQ-LUCAS-001', academicCategory: 'PESQUISADOR', status: 'ACTIVE', mustChangePassword: false },
+  user: { ...metadata, id: '00000000-0000-4000-8000-000000000001', institutionId: '00000000-0000-4000-8000-000000000002', loginCode: 'ARQ-LUCAS-001', name: 'Lucas Unicamp', email: 'lucas@unicamp.br', academicCategory: 'PESQUISADOR', status: 'ACTIVE', mustChangePassword: false },
   memberships: [],
   systemRoles: [{ ...metadata, id: '00000000-0000-4000-8000-000000000003', userId: '00000000-0000-4000-8000-000000000001', role: 'ADMIN' }],
 };
@@ -31,7 +31,7 @@ describe('home workspace', () => {
   it('renderiza a home e oferece encerramento da sessão', () => {
     const summary = createDashboardSummary(laboratories[0]!.id, []);
     render(<HomeDashboard presentation={createWorkspacePresentation(principal, laboratories)} summary={summary} />);
-    expect(screen.getByRole('heading', { name: 'Olá, ARQ-LUCAS-001.' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Olá, Lucas.' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Reservas de hoje' })).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { name: 'Fonte temporariamente indisponível' })).toHaveLength(2);
     expect(screen.getByRole('button', { name: 'Sair' })).toBeInTheDocument();
@@ -92,7 +92,7 @@ describe('home workspace', () => {
     window.dispatchEvent(new Event('resize'));
     const summary = createDashboardSummary(laboratories[0]!.id, []);
     const { container } = render(<HomeDashboard presentation={createWorkspacePresentation(principal, laboratories)} summary={summary} />);
-    expect(screen.getByRole('heading', { name: 'Olá, ARQ-LUCAS-001.' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Olá, Lucas.' })).toBeInTheDocument();
     expect(container.querySelector('.arqueia-workspace')).toBeInTheDocument();
   });
 
@@ -101,7 +101,7 @@ describe('home workspace', () => {
     window.dispatchEvent(new Event('resize'));
     const summary = createDashboardSummary(laboratories[0]!.id, []);
     const { container } = render(<HomeDashboard presentation={createWorkspacePresentation(principal, laboratories)} summary={summary} />);
-    expect(screen.getByRole('heading', { name: 'Olá, ARQ-LUCAS-001.' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Olá, Lucas.' })).toBeInTheDocument();
     expect(container.querySelector('.arqueia-workspace')).toBeInTheDocument();
   });
 });

@@ -36,6 +36,8 @@ export const DEVELOPMENT_SEED = Object.freeze({
   },
   administrator: {
     loginCode: 'ARQ-ADMIN-LOCAL',
+    name: 'Administrador Arqueia',
+    email: 'admin@unicamp.br',
     academicCategory: 'PESQUISADOR',
   },
   systemRole: 'ADMIN',
@@ -221,16 +223,20 @@ export async function seedDevelopmentData(
       `
         WITH seeded AS (
           INSERT INTO users (
-            institution_id, login_code, academic_category, status, must_change_password
+            institution_id, login_code, name, email, academic_category, status, must_change_password
           )
-          VALUES ($1, $2, $3, 'ACTIVE', false)
+          VALUES ($1, $2, $3, $4, $5, 'ACTIVE', false)
           ON CONFLICT (upper(login_code)) WHERE archived_at IS NULL
           DO UPDATE SET
             institution_id = EXCLUDED.institution_id,
+            name = EXCLUDED.name,
+            email = EXCLUDED.email,
             academic_category = EXCLUDED.academic_category,
             status = EXCLUDED.status,
             must_change_password = EXCLUDED.must_change_password
           WHERE users.institution_id IS DISTINCT FROM EXCLUDED.institution_id
+             OR users.name IS DISTINCT FROM EXCLUDED.name
+             OR users.email IS DISTINCT FROM EXCLUDED.email
              OR users.academic_category IS DISTINCT FROM EXCLUDED.academic_category
              OR users.status IS DISTINCT FROM EXCLUDED.status
              OR users.must_change_password IS DISTINCT FROM EXCLUDED.must_change_password
@@ -244,6 +250,8 @@ export async function seedDevelopmentData(
       [
         institutionId,
         DEVELOPMENT_SEED.administrator.loginCode,
+        DEVELOPMENT_SEED.administrator.name,
+        DEVELOPMENT_SEED.administrator.email,
         DEVELOPMENT_SEED.administrator.academicCategory,
       ],
       'usuário administrador local',

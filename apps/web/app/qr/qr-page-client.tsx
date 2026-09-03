@@ -31,7 +31,7 @@ interface PageData {
 }
 
 async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { ...init, cache: 'no-store' });
+  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${url}`, { ...init, cache: 'no-store' });
   if (response.status === 401) throw new Error('UNAUTHENTICATED');
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { message?: string } | null;
@@ -333,7 +333,7 @@ export function QrPageClient() {
       qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Leitor QR Code"
       userInitials={presentation.userInitials}
-      userLabel={pageData.principal.user.loginCode}
+      userLabel={pageData.principal.user.name}
       userMenu={<LogoutButton />}
     >
       <div className="qr-page-container">

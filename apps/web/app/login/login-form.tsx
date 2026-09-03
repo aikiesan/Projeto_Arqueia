@@ -5,8 +5,8 @@ import Image from 'next/image';
 import { useState, type FormEvent } from 'react';
 
 const ERROR_MESSAGES: Record<string, string> = {
-  INVALID_CREDENTIALS: 'Código de acesso ou senha inválidos.',
-  INVALID_INPUT: 'Revise o código de acesso e a senha informados.',
+  INVALID_CREDENTIALS: 'E-mail institucional ou senha inválidos.',
+  INVALID_INPUT: 'Revise o e-mail institucional e a senha informados.',
   INVALID_ORIGIN: 'Origem da requisição não confiável. Recarregue a página.',
   API_UNAVAILABLE: 'Não foi possível entrar agora. Tente novamente em instantes.',
 };
@@ -20,7 +20,7 @@ export function LoginForm({
 }: {
   readonly next: string;
 }) {
-  const [loginCode, setLoginCode] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -29,15 +29,15 @@ export function LoginForm({
     event.preventDefault();
     setError(null);
 
-    const parsed = localLoginInputSchema.safeParse({ loginCode, password });
+    const parsed = localLoginInputSchema.safeParse({ email, password });
     if (!parsed.success) {
-      setError(ERROR_MESSAGES.INVALID_INPUT ?? 'Revise o código de acesso e a senha informados.');
+      setError(ERROR_MESSAGES.INVALID_INPUT ?? 'Revise o e-mail institucional e a senha informados.');
       return;
     }
 
     setSubmitting(true);
     try {
-      const response = await fetch('/api/session/login', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/api/session/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parsed.data),
@@ -50,7 +50,8 @@ export function LoginForm({
       }
       const login = bffPublicLoginResponseSchema.parse(await response.json());
       // Force a full navigation so server components re-read the new session cookie.
-      window.location.assign(login.principal.user.mustChangePassword ? '/perfil' : next);
+      const destination = login.principal.user.mustChangePassword ? '/perfil' : next;
+      window.location.assign(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${destination}`);
     } catch {
       setError(ERROR_MESSAGES.API_UNAVAILABLE ?? 'Não foi possível entrar agora. Tente novamente em instantes.');
       setSubmitting(false);
@@ -87,22 +88,22 @@ export function LoginForm({
         <h2 id="auth-title">Entrar no Arqueia</h2>
         <p>Use as credenciais da sua conta para continuar.</p>
         <form className="login-form" method="post" noValidate onSubmit={handleSubmit}>
-          <label htmlFor="loginCode">
-            <span>Código de acesso</span>
+          <label htmlFor="email">
+            <span>E-mail institucional</span>
             <input
               autoCapitalize="none"
               autoComplete="username"
               autoCorrect="off"
               autoFocus
-              id="loginCode"
-              inputMode="text"
-              name="loginCode"
-              onChange={(event) => setLoginCode(event.target.value)}
-              placeholder="ARQ-XXXXXXXXXXXX"
+              id="email"
+              inputMode="email"
+              name="email"
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="usuario@unicamp.br"
               required
               spellCheck="false"
-              type="text"
-              value={loginCode}
+              type="email"
+              value={email}
             />
           </label>
 

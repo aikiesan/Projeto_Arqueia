@@ -12,17 +12,19 @@
 sequenceDiagram
     autonumber
     actor User as Pesquisador / Operador
-    participant Apache as Apache2 (HTTPS/TLS Reverse Proxy)
+    participant Proxy as Proxy HTTPS Unicamp
+    participant Apache as Apache2 da VM (:80)
     participant Web as Next.js BFF (:4002)
     participant API as NestJS API (:4001)
     participant DB as PostgreSQL (:5432)
     participant Redis as Redis (:6379)
     participant Audit as Trilha de Auditoria Imutável
 
-    User->>Apache: 1. Acesso HTTPS (arqueia.cp2b.unicamp.br)
-    Apache->>Web: 2. Proxy local (127.0.0.1:4002) + X-Forwarded-For
-    User->>Web: 3. Submissão de login (email + senha)
-    Web->>API: 4. POST /api/auth/login (Origin + X-Forwarded-For)
+    User->>Proxy: 1. Acesso HTTPS (cp2b.unicamp.br/arqueia)
+    Proxy->>Apache: 2. Tráfego institucional para a VM
+    Apache->>Web: 3. Proxy /arqueia (127.0.0.1:4002)
+    User->>Web: 4. Submissão de login (email + senha)
+    Web->>API: 5. POST /api/auth/login (Origin + X-Forwarded-For)
     API->>API: 5. AuthRateLimitGuard (Verificação por IP do cliente)
     API->>DB: 6. Consulta usuário + credencial Argon2id
     API->>API: 7. Verificação de senha + verificação de lockout
@@ -54,7 +56,7 @@ sequenceDiagram
    - Formulários administrativos para cadastro de usuários (nome, e-mail institucional).
    - Telas operacionais de agendamento de equipamentos e retirada de reagentes.
 2. **Trânsito (Rede)**:
-   - Criptografia obrigatória via HTTPS/TLS entre o navegador do usuário e o proxy reverso Apache2.
+   - Criptografia obrigatória via HTTPS/TLS entre o navegador e o proxy institucional da Unicamp.
    - Comunicação local via interface de loopback (`127.0.0.1`) entre Apache2, Next.js, NestJS, PostgreSQL e Redis.
 3. **Processamento e Autorização**:
    - Backend NestJS avalia autorização em nível de domínio (`PermissionEvaluator`).

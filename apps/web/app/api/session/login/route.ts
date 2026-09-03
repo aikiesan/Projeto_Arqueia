@@ -7,6 +7,7 @@ import {
   hasTrustedOrigin,
   noStoreJson,
   SESSION_COOKIE_NAME,
+  SESSION_COOKIE_PATH,
 } from '../../../lib/api-server';
 
 export async function POST(request: Request): Promise<Response> {
@@ -33,7 +34,7 @@ export async function POST(request: Request): Promise<Response> {
     });
     if (!upstream.ok) {
       return noStoreJson(
-        { code: 'INVALID_CREDENTIALS', message: 'Código de acesso ou senha inválidos.' },
+        { code: 'INVALID_CREDENTIALS', message: 'E-mail institucional ou senha inválidos.' },
         upstream.status === 401 ? 401 : 503,
       );
     }
@@ -43,7 +44,7 @@ export async function POST(request: Request): Promise<Response> {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      path: '/',
+      path: SESSION_COOKIE_PATH,
       maxAge: login.expiresInSeconds,
       priority: 'high',
     });
