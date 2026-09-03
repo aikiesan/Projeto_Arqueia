@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import type { DatabaseClient, DatabasePool } from '@arqueia/database';
 import type { WithdrawStockInput } from '@arqueia/contracts';
 
-import { PostgresSchedulingRepository } from './infrastructure/postgres-scheduling-repository.js';
+import {
+  isEquipmentOccupationConflict,
+  PostgresSchedulingRepository,
+} from './infrastructure/postgres-scheduling-repository.js';
 import { PostgresInventoryRepository } from '../inventory/infrastructure/postgres-inventory-repository.js';
 import { ReservationConflictError } from './domain/scheduling.errors.js';
 import { InsufficientStockError } from '../inventory/domain/inventory.errors.js';
@@ -52,6 +55,22 @@ describe('Concurrency & Integrity Empirical Challenge Suite (M3 & M4)', () => {
 
   describe('1. PostgreSQL btree_gist Exclusion Constraints & Booking Concurrency', () => {
     const schedulingFilter = new SchedulingExceptionFilter();
+
+    it('classifies only occupation-related exclusion deadlocks as scheduling conflicts', () => {
+      expect(
+        isEquipmentOccupationConflict({
+          code: '40P01',
+          where: 'while checking exclusion constraint on relation "equipment_occupations"',
+        }),
+      ).toBe(true);
+      expect(
+        isEquipmentOccupationConflict({
+          code: '40P01',
+          detail: 'Process 10 waits for ShareLock on transaction 20.',
+          where: 'while updating relation "audit_events"',
+        }),
+      ).toBe(false);
+    });
 
     it('simultaneous bookings on DIFFERENT machines at the exact same hour must BOTH SUCCEED without collision', async () => {
       const occupations: Array<{
@@ -203,7 +222,23 @@ describe('Concurrency & Integrity Empirical Challenge Suite (M3 & M4)', () => {
       expect(occupations[1]?.equipment_id).toBe(machineBId);
     });
 
-    it('overlapping bookings on the SAME machine must trigger PostgreSQL 23P01 exclusion violation and yield HTTP 409 Conflict', async () => {
+    it.each([
+      {
+        databaseError: {
+          code: '23P01',
+          message: 'conflicting key value violates exclusion constraint "equipment_occupations_no_overlap_excl"',
+        },
+        scenario: '23P01 exclusion violation',
+      },
+      {
+        databaseError: {
+          code: '40P01',
+          message: 'deadlock detected',
+          where: 'while checking exclusion constraint on relation "equipment_occupations"',
+        },
+        scenario: '40P01 occupation exclusion deadlock',
+      },
+    ])('overlapping bookings on the SAME machine must turn $scenario into HTTP 409 Conflict', async ({ databaseError }) => {
       const occupations: Array<{
         id: string;
         equipment_id: string;
@@ -252,8 +287,7 @@ describe('Concurrency & Integrity Empirical Challenge Suite (M3 & M4)', () => {
             });
 
             if (hasConflict) {
-              const err = new Error('conflicting key value violates exclusion constraint "equipment_occupations_no_overlap_excl"');
-              (err as { code?: string }).code = '23P01';
+              const err = Object.assign(new Error(databaseError.message), databaseError);
               return Promise.reject(err);
             }
             return Promise.resolve({ rows: [] });

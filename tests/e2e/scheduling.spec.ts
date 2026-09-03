@@ -1,6 +1,6 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
-const administratorEmail = process.env.E2E_ADMIN_EMAIL ?? 'admin@arqueia.local';
+const administratorEmail = process.env.E2E_ADMIN_EMAIL ?? 'admin@unicamp.br';
 const administratorPassword =
   process.env.E2E_ADMIN_PASSWORD ?? process.env.DEV_SEED_ADMIN_PASSWORD ?? 'change-this-dev-password';
 const apiBaseUrl = process.env.E2E_API_BASE_URL ?? 'http://127.0.0.1:4001';
@@ -150,7 +150,7 @@ test.describe('Agenda multi-equipment', () => {
 
     const tabs = tablist.getByRole('tab');
     expect(await tabs.count()).toBeGreaterThan(1);
-    expect(await page.locator('.schedule-day-lane-column').count()).toBeGreaterThan(0);
+    await expect(page.locator('.schedule-day-lane-column').first()).toBeVisible();
 
     const equipmentTab = tabs.nth(1);
     await equipmentTab.click();
@@ -206,21 +206,26 @@ test.describe('Agenda multi-equipment', () => {
       createReservation(page, fixture, input),
     ]);
     const responseBodies = await Promise.all(responses.map((response) => response.json()));
-    expect(
-      responses.map((response) => response.status()).sort(),
-      JSON.stringify(responseBodies),
-    ).toEqual([201, 409]);
-    const conflict = responses.find((response) => response.status() === 409)!;
-    const createdIndex = responses.findIndex((response) => response.status() === 201);
-    const result = responseBodies[createdIndex] as { createdReservations: Array<{ id: string }> };
-    const reservationId = result.createdReservations[0]?.id;
-    expect(reservationId, 'one concurrent request must create a reservation').toBeTruthy();
+    const createdReservationIds = responseBodies.flatMap((body) => {
+      const result = body as { createdReservations?: Array<{ id: string }> };
+      return result.createdReservations?.map((reservation) => reservation.id) ?? [];
+    });
 
     try {
+      expect(
+        responses.map((response) => response.status()).sort(),
+        JSON.stringify(responseBodies),
+      ).toEqual([201, 409]);
+      expect(createdReservationIds, 'one concurrent request must create a reservation').toHaveLength(1);
+      const conflict = responses.find((response) => response.status() === 409)!;
       const conflictIndex = responses.indexOf(conflict);
       expect(responseBodies[conflictIndex]).toMatchObject({ code: 'RESERVATION_SLOT_CONFLICT' });
     } finally {
-      await cancelReservation(page, fixture, reservationId!);
+      await Promise.all(
+        createdReservationIds.map((reservationId) =>
+          cancelReservation(page, fixture, reservationId),
+        ),
+      );
     }
   });
 });
