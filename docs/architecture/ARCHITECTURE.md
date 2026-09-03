@@ -5,26 +5,30 @@
 Monorepo TypeScript com três aplicações que compartilham contratos, executadas **nativamente** (sem Docker) na VM Debian do CP2b, atrás do Apache2 já existente.
 
 ```
-                      Internet (TLS via Let's Encrypt, cert já existente)
+                      Internet (TLS no proxy institucional Unicamp)
                                      │
-                          ┌──────────┴───────────┐
-                          │   Apache2 (proxy)     │   VirtualHosts:
-                          │   na VM Debian        │   cp2b.unicamp.br        → site atual (inalterado)
-                          └──────────┬───────────┘   arqueia.cp2b.unicamp.br → Arqueia
-                     ┌───────────────┼────────────────┐
-              ProxyPass /api/   ProxyPass /           (WebSocket upgrade p/ Next)
-                     │               │
-             ┌───────▼──────┐  ┌─────▼───────┐   ┌──────────────┐
-             │  api (Nest)  │  │  web (Next) │   │ worker (Node)│   ← todos via PM2
-             │  :4001       │  │  :4002      │   │  filas       │
-             └──────┬───────┘  └─────────────┘   └──────┬───────┘
-                    │                                    │
-            ┌───────▼─────────────────────────────┬─────▼──────┐
-            │ PostgreSQL (:5432, nativo apt)       │ Redis (:6379, nativo apt) │
-            └─────────────────────────────────────┴───────────────────────────┘
+                          ┌──────────▼───────────┐
+                          │ Apache2 :80 na VM    │ cp2b.unicamp.br
+                          │ Proxy /arqueia       │ site atual preservado
+                          └──────────┬───────────┘
+                                     │
+                              ┌──────▼──────┐       ┌──────────────┐
+                              │ web + BFF   │       │ worker (Node)│ ← PM2
+                              │ Next :4002  │       │ filas        │
+                              └──────┬──────┘       └──────┬───────┘
+                                     │ HTTP interno        │
+                              ┌──────▼──────┐              │
+                              │ API Nest    │              │
+                              │ :4001       │              │
+                              └──────┬──────┘              │
+                                     │                     │
+                              ┌──────▼─────────┐     ┌─────▼────────┐
+                              │ PostgreSQL     │     │ Redis        │
+                              │ :5432          │     │ :6379        │
+                              └────────────────┘     └──────────────┘
 ```
 
-Portas propostas (evitam colisão com o cp2b, que usa 3001): **api 4001**, **web 4002**, worker sem porta pública. Ajustar em `infrastructure/pm2/ecosystem.config.js`.
+Portas reservadas (sem colisão com o CP2B, que usa 3001): **API 4001**, **Web/BFF 4002**, worker sem porta pública. A API fica em loopback e somente o BFF é publicado sob `https://cp2b.unicamp.br/arqueia`.
 
 ## 2. Aplicações
 

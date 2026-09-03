@@ -23,6 +23,8 @@ const principal = {
     id: '6ba7b810-9dad-11d1-b245-5ffdce74fad2',
     institutionId: laboratory.institutionId,
     loginCode: 'ARQ-LUCAS-001',
+    name: 'Lucas Unicamp',
+    email: 'lucas@unicamp.br',
     academicCategory: 'PESQUISADOR',
     status: 'ACTIVE',
     mustChangePassword: false,
@@ -50,6 +52,8 @@ const userList: User[] = [
     id: 'user-2',
     institutionId: laboratory.institutionId,
     loginCode: 'ARQ-MARIANA-002',
+    name: 'Mariana Unicamp',
+    email: 'mariana@unicamp.br',
     academicCategory: 'DOUTORADO',
     status: 'ACTIVE',
     mustChangePassword: true,
@@ -78,8 +82,8 @@ describe('UsersPageClient', () => {
     render(<UsersPageClient />);
 
     expect(await screen.findByRole('heading', { name: 'Equipe & Controle de Acessos' })).toBeInTheDocument();
-    expect(screen.getAllByText('ARQ-LUCAS-001').length).toBeGreaterThan(0);
-    expect(screen.getByText('ARQ-MARIANA-002')).toBeInTheDocument();
+    expect(screen.getAllByText('Lucas Unicamp').length).toBeGreaterThan(0);
+    expect(screen.getByText('Mariana Unicamp')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Novo Usuário' })).toBeInTheDocument();
 
   });

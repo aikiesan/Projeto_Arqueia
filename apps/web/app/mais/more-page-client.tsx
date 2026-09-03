@@ -14,7 +14,7 @@ interface PageData {
 }
 
 async function readJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, { cache: 'no-store' });
+  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${url}`, { cache: 'no-store' });
   if (response.status === 401) throw new Error('UNAUTHENTICATED');
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { message?: string } | null;
@@ -142,7 +142,7 @@ export function MorePageClient() {
       qrAction={{ href: qrHref, label: 'Ler QR Code' }}
       sectionLabel="Mais opções"
       userInitials={presentation.userInitials}
-      userLabel={presentation.currentUser.loginCode}
+      userLabel={presentation.currentUser.name}
       userMenu={<LogoutButton />}
     >
       <section className="more-hub-intro">

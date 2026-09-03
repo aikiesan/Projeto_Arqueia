@@ -34,7 +34,7 @@ function getDefaultPeriod(): { startsAt: string; endsAt: string } {
 }
 
 async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { ...init, cache: 'no-store' });
+  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${url}`, { ...init, cache: 'no-store' });
   if (response.status === 401) throw new Error('UNAUTHENTICATED');
   if (response.status === 403) throw new Error('FORBIDDEN');
   if (response.status === 404) throw new Error('NOT_FOUND');
@@ -354,7 +354,7 @@ export function ManagementPageClient() {
     );
   }
 
-  const userInitials = pageData.principal.user.loginCode.replace(/^ARQ-/, '').slice(0, 2);
+  const userInitials = pageData.principal.user.name.slice(0, 2).toUpperCase();
 
   const laboratoryRail = pageData.laboratories.map((lab) => ({
     href: `/gestao?laboratory=${lab.id}`,
@@ -378,7 +378,7 @@ export function ManagementPageClient() {
       qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Painel de Gestão & Administração"
       userInitials={userInitials}
-      userLabel={pageData.principal.user.loginCode}
+      userLabel={pageData.principal.user.name}
     >
       {/* Header & Main Info */}
       <section className="equipment-toolbar" style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
@@ -843,7 +843,7 @@ export function ManagementPageClient() {
                 <tbody style={{ fontSize: '0.85rem' }}>
                   {users.map((u) => (
                     <tr key={u.id} style={{ borderBottom: '1px solid #edf2f7' }}>
-                      <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>{u.loginCode}</td>
+                      <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>{u.name}<br /><small>{u.email}</small></td>
                       <td style={{ padding: '0.75rem 1rem' }}><code>{u.academicCategory}</code></td>
                       <td style={{ padding: '0.75rem 1rem' }}>
                         <span

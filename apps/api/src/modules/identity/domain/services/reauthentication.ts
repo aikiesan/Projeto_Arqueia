@@ -19,7 +19,7 @@ export class ReauthenticationService {
     principal: AuthenticatedPrincipal,
     password: string,
   ): Promise<void> {
-    const account = await this.identities.findActiveByLoginCode(principal.user.loginCode);
+    const account = await this.identities.findActiveById(principal.user.id);
     const matches = await this.passwordVerifier.verify(password, account?.passwordHash ?? null);
 
     if (account === null || !matches) {

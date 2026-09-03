@@ -49,7 +49,7 @@ const blockReasonLabels: Record<TechnicalBlockReason, string> = {
 };
 
 async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { ...init, cache: 'no-store' });
+  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${url}`, { ...init, cache: 'no-store' });
   if (response.status === 401) throw new Error('UNAUTHENTICATED');
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { message?: string; code?: string } | null;
@@ -646,7 +646,7 @@ export function AgendaPageClient() {
     );
   }
 
-  const initials = pageData.principal.user.loginCode.replace(/^ARQ-/, '').slice(0, 2);
+  const initials = pageData.principal.user.name.slice(0, 2).toUpperCase();
 
   const laboratoryRail = pageData.laboratories.map((lab) => ({
     href: `/agenda?laboratory=${lab.id}`,
@@ -668,7 +668,7 @@ export function AgendaPageClient() {
       qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Agenda Operacional"
       userInitials={initials}
-      userLabel={pageData.principal.user.loginCode}
+      userLabel={pageData.principal.user.name}
     >
       <section className="equipment-toolbar">
         <div>

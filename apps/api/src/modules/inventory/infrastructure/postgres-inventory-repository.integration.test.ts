@@ -41,9 +41,15 @@ describe.skipIf(databaseUrl === undefined)('PostgresInventoryRepository concurre
       [laboratoryId, institutionId],
     );
     await pool.query(
-      `INSERT INTO users (id, institution_id, name, email, status)
-       VALUES ($1, $2, 'Inventory integration user', $3, 'ACTIVE')`,
-      [userId, institutionId, `inventory-${suffix}@example.test`],
+      `INSERT INTO users (
+         id, institution_id, login_code, name, email, academic_category, status
+       ) VALUES ($1, $2, $3, 'Inventory integration user', $4, 'PESQUISADOR', 'ACTIVE')`,
+      [
+        userId,
+        institutionId,
+        `ARQ-INV-${suffix.toUpperCase()}`,
+        `inventory-${suffix}@unicamp.br`,
+      ],
     );
 
     const product = await repository.createProduct(

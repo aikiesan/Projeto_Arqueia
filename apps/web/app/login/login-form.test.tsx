@@ -12,7 +12,7 @@ describe('LoginForm Component', () => {
     const { container } = render(<LoginForm next="/" />);
 
     expect(screen.getByRole('heading', { name: 'Entrar no Arqueia' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Código de acesso')).toBeInTheDocument();
+    expect(screen.getByLabelText('E-mail institucional')).toBeInTheDocument();
     expect(screen.getByLabelText('Senha')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Entrar' })).toBeInTheDocument();
     expect(container.querySelector('form')).toHaveAttribute('method', 'post');
@@ -27,17 +27,17 @@ describe('LoginForm Component', () => {
     expect(screen.getByText('Uma iniciativa')).toBeInTheDocument();
   });
 
-  it('shows error when submitting an invalid login code', async () => {
+  it('shows error when submitting a non-institutional email', async () => {
     render(<LoginForm next="/" />);
 
-    const loginCodeInput = screen.getByLabelText('Código de acesso');
+    const emailInput = screen.getByLabelText('E-mail institucional');
     const submitButton = screen.getByRole('button', { name: 'Entrar' });
 
-    fireEvent.change(loginCodeInput, { target: { value: 'inválido!' } });
+    fireEvent.change(emailInput, { target: { value: 'usuario@gmail.com' } });
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('Revise o código de acesso e a senha informados.');
+      expect(screen.getByRole('alert')).toHaveTextContent('Revise o e-mail institucional e a senha informados.');
     });
   });
 

@@ -43,6 +43,8 @@ function principal(admin = false): AuthenticatedPrincipal {
       id: '44444444-4444-4444-a444-444444444444',
       institutionId: lab1.institutionId,
       loginCode: 'ARQ-MARIA-001',
+      name: 'Usuário Unicamp',
+      email: 'usuario@unicamp.br',
       academicCategory: 'PESQUISADOR',
       status: 'ACTIVE',
       mustChangePassword: false,

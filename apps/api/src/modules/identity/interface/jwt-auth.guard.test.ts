@@ -15,6 +15,8 @@ function principal(mustChangePassword: boolean): AuthenticatedPrincipal {
       id: userId,
       institutionId: '6ba7b811-9dad-11d1-80b4-00c04fd430c8',
       loginCode: 'ARQ-PESSOA-01',
+      name: 'Usuário Unicamp',
+      email: 'usuario@unicamp.br',
       academicCategory: 'PESQUISADOR',
       status: 'ACTIVE',
       mustChangePassword,

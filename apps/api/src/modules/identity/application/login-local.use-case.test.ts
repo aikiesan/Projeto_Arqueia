@@ -16,6 +16,8 @@ const principal: AuthenticatedPrincipal = {
     id: userId,
     institutionId: '6ba7b811-9dad-11d1-80b4-00c04fd430c8',
     loginCode: 'ARQ-ADMIN-LOCAL',
+    name: 'Usuário Unicamp',
+    email: 'usuario@unicamp.br',
     academicCategory: 'PESQUISADOR',
     status: 'ACTIVE',
     mustChangePassword: false,
@@ -30,7 +32,7 @@ const principal: AuthenticatedPrincipal = {
 describe('LoginLocalUseCase & Security Hardening', () => {
   it('issues a token, resets failed attempts, and appends identity.login.succeeded audit after valid login', async () => {
     const identities: LocalIdentityReader = {
-      findActiveByLoginCode: vi.fn().mockResolvedValue({
+      findActiveByEmail: vi.fn().mockResolvedValue({
         principal,
         passwordHash: 'hash',
         failedAttempts: 2,
@@ -48,7 +50,7 @@ describe('LoginLocalUseCase & Security Hardening', () => {
     const useCase = new LoginLocalUseCase(identities, passwords, tokens, audit, 5, 900);
 
     const response = await useCase.execute(
-      { loginCode: 'ARQ-ADMIN-LOCAL', password: 'secret' },
+      { email: 'admin@unicamp.br', password: 'secret' },
       { origin: 'web', requestId: '11111111-1111-4111-a111-111111111111' },
     );
 
@@ -68,7 +70,7 @@ describe('LoginLocalUseCase & Security Hardening', () => {
 
   it('records failure and emits identity.login.failed audit when password is incorrect on existing account', async () => {
     const identities: LocalIdentityReader = {
-      findActiveByLoginCode: vi.fn().mockResolvedValue({
+      findActiveByEmail: vi.fn().mockResolvedValue({
         principal,
         passwordHash: 'hash',
         failedAttempts: 1,
@@ -85,7 +87,7 @@ describe('LoginLocalUseCase & Security Hardening', () => {
 
     await expect(
       useCase.execute(
-        { loginCode: 'ARQ-ADMIN-LOCAL', password: 'wrong-password' },
+        { email: 'admin@unicamp.br', password: 'wrong-password' },
         { origin: 'web', requestId: '22222222-2222-4222-a222-222222222222' },
       ),
     ).rejects.toBeInstanceOf(InvalidCredentialsError);
@@ -105,7 +107,7 @@ describe('LoginLocalUseCase & Security Hardening', () => {
 
   it('performs constant-time dummy verification and emits anonymized audit for unknown code without leaking existence', async () => {
     const identities: LocalIdentityReader = {
-      findActiveByLoginCode: vi.fn().mockResolvedValue(null),
+      findActiveByEmail: vi.fn().mockResolvedValue(null),
       findActiveById: vi.fn(),
       recordLoginSuccess: vi.fn(),
       recordLoginFailure: vi.fn(),
@@ -117,7 +119,7 @@ describe('LoginLocalUseCase & Security Hardening', () => {
 
     await expect(
       useCase.execute(
-        { loginCode: 'ARQ-NOT-FOUND', password: 'secret' },
+        { email: 'naoexiste@unicamp.br', password: 'secret' },
         { origin: 'web', requestId: null },
       ),
     ).rejects.toBeInstanceOf(InvalidCredentialsError);
@@ -144,7 +146,7 @@ describe('LoginLocalUseCase & Security Hardening', () => {
       lockedUntil: lockedUntilFuture,
     };
     const identities: LocalIdentityReader = {
-      findActiveByLoginCode: vi.fn().mockResolvedValue(lockedAccount),
+      findActiveByEmail: vi.fn().mockResolvedValue(lockedAccount),
       findActiveById: vi.fn(),
       recordLoginSuccess: vi.fn(),
       recordLoginFailure: vi.fn(),
@@ -156,7 +158,7 @@ describe('LoginLocalUseCase & Security Hardening', () => {
 
     await expect(
       useCase.execute(
-        { loginCode: 'ARQ-ADMIN-LOCAL', password: 'secret' },
+        { email: 'admin@unicamp.br', password: 'secret' },
         { origin: 'web', requestId: '33333333-3333-4333-a333-333333333333' },
       ),
     ).rejects.toBeInstanceOf(InvalidCredentialsError);
@@ -183,7 +185,7 @@ describe('LoginLocalUseCase & Security Hardening', () => {
       lockedUntil: lockedUntilPast,
     };
     const identities: LocalIdentityReader = {
-      findActiveByLoginCode: vi.fn().mockResolvedValue(expiredLockAccount),
+      findActiveByEmail: vi.fn().mockResolvedValue(expiredLockAccount),
       findActiveById: vi.fn(),
       recordLoginSuccess: vi.fn().mockResolvedValue(undefined),
       recordLoginFailure: vi.fn(),
@@ -196,7 +198,7 @@ describe('LoginLocalUseCase & Security Hardening', () => {
     const useCase = new LoginLocalUseCase(identities, passwords, tokens, audit, 5, 900);
 
     const response = await useCase.execute(
-      { loginCode: 'ARQ-ADMIN-LOCAL', password: 'correct-secret' },
+      { email: 'admin@unicamp.br', password: 'correct-secret' },
       { origin: 'web', requestId: null },
     );
 

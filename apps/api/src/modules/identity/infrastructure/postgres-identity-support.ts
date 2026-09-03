@@ -14,6 +14,8 @@ export interface UserRow {
   id: string;
   institution_id: string;
   login_code: string;
+  name: string;
+  email: string;
   academic_category: User['academicCategory'];
   status: User['status'];
   must_change_password: boolean;
@@ -73,6 +75,8 @@ export function mapUser(row: UserRow): User {
     id: row.id,
     institutionId: row.institution_id,
     loginCode: row.login_code,
+    name: row.name,
+    email: row.email,
     academicCategory: row.academic_category,
     status: row.status,
     mustChangePassword: row.must_change_password,

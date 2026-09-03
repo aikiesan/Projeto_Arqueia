@@ -1,80 +1,53 @@
-# Procedimentos de Backup e Restauração (Backup & Restore Runbook)
+# Backup e restauração
 
-> **Classificação**: Documento Operacional e de Continuidade de Negócio
-> **Controlador Institucional**: Universidade Estadual de Campinas — UNICAMP (CNPJ: 46.068.425/0001-33)
-> **Princípio de Segurança**: Garantia de Disponibilidade, Integridade e Recuperabilidade (Art. 6º, VII e VIII LGPD).
+> Finalidade: disponibilidade, integridade e recuperabilidade dos dados operacionais e da trilha de auditoria.
 
----
+## Política mínima
 
-## 1. Política de Backup
+| Componente | Frequência | Retenção local | Destino |
+|---|---|---:|---|
+| PostgreSQL `arqueia` | diária, antes de deploy | 30 dias | `/data/arqueia/backups` + cópia institucional segura |
+| `.env` e configuração Apache | após alteração | 5 versões | cofre/backup institucional criptografado |
+| auditoria | conforme temporalidade aprovada | definida pela coordenação | storage institucional protegido |
 
-| Componente | Frequência | Tipo de Backup | Retenção | Destino |
-| :--- | :--- | :--- | :--- | :--- |
-| **Banco de Dados PostgreSQL (`arqueia`)** | Diário (Madrugada) | Dump Completo Lógico (`pg_dump -Fc`) | 30 dias locais + retenção em storage seguro | Disco local `/var/backups/arqueia` + Storage Seguro Unicamp |
-| **Arquivos de Configuração (`.env`, Apache)** | Semanal ou a cada alteração | Snapshot de arquivos criptografado | Versão corrente + 5 versões históricas | Repositório de infraestrutura seguro |
-| **Trilha de Auditoria Histórica** | Mensal | Export comprimido append-only | Conforme Tabela de Temporalidade institucional da UNICAMP | Cold storage institucional imutável |
+O backup no mesmo disco não cobre perda da VM. O responsável de TI deve copiar e testar os dumps em armazenamento institucional separado.
 
----
+## Criar e verificar backup
 
-## 2. Script de Execução de Backup Automatizado
-
-Localização recomendada na VM: `/opt/arqueia/scripts/backup-db.sh`
+O script versionado usa `DATABASE_URL` do ambiente ou carrega `/data/arqueia/repo/.env`, aplica `umask 077`, gera SHA-256 e verifica o catálogo do dump.
 
 ```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-BACKUP_DIR="/var/backups/arqueia"
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-BACKUP_FILE="${BACKUP_DIR}/arqueia_db_${TIMESTAMP}.dump"
-
-mkdir -p "${BACKUP_DIR}"
-chmod 700 "${BACKUP_DIR}"
-
-echo "[$(date)] Iniciando backup do banco de dados Arqueia..."
-pg_dump -U arqueia -d arqueia -h 127.0.0.1 -Fc -f "${BACKUP_FILE}"
-
-echo "[$(date)] Backup concluído com sucesso: ${BACKUP_FILE}"
-# Remove backups com mais de 30 dias no disco local
-find "${BACKUP_DIR}" -type f -name "arqueia_db_*.dump" -mtime +30 -delete
+cd /data/arqueia/repo
+bash infrastructure/scripts/backup-vm.sh
+ls -lh /data/arqueia/backups
 ```
 
----
+Agendamento sugerido pelo TI, fora do repositório:
 
-## 3. Procedimento de Restauração (Disaster Recovery)
+```cron
+15 2 * * * cd /data/arqueia/repo && bash infrastructure/scripts/backup-vm.sh >>/data/arqueia/logs/backup.log 2>&1
+```
 
-### Pré-requisitos
-- Acesso SSH administrativo à VM Debian.
-- Serviço da API parado para evitar escritas concorrentes durante a restauração:
-  ```bash
-  pm2 stop arqueia-api arqueia-worker
-  ```
+## Restauração
 
-### Passo a Passo de Restauração
+Restauração é destrutiva. Faça primeiro em homologação e confirme o arquivo e seu checksum.
 
-1. **Identificar o arquivo de backup a ser restaurado**:
-   ```bash
-   ls -la /var/backups/arqueia/
-   ```
-2. **Restaurar o banco de dados**:
-   ```bash
-   pg_restore -U arqueia -d arqueia -h 127.0.0.1 --clean --if-exists /var/backups/arqueia/arqueia_db_YYYYMMDD_HHMMSS.dump
-   ```
-3. **Executar migrações pendentes (se houver)**:
-   ```bash
-   cd /opt/arqueia
-   npm run db:migrate
-   ```
-4. **Reiniciar as aplicações**:
-   ```bash
-   pm2 restart ecosystem.config.js
-   ```
-5. **Validar integridade dos serviços**:
-   - Testar endpoint de saúde: `curl -I http://127.0.0.1:4001/api/health`
-   - Verificar logs do PM2: `pm2 logs --lines 50`
+```bash
+cd /data/arqueia/backups
+sha256sum --check arqueia_YYYYMMDD_HHMMSS.dump.sha256
+pg_restore --list arqueia_YYYYMMDD_HHMMSS.dump >/dev/null
+```
 
----
+Na janela autorizada de recuperação:
 
-## 4. Teste Periódico de Restauração (Drill de Recuperação)
+```bash
+pm2 stop arqueia-api arqueia-worker
+pg_restore --dbname="$DATABASE_URL" --clean --if-exists --no-owner \
+  /data/arqueia/backups/arqueia_YYYYMMDD_HHMMSS.dump
+cd /data/arqueia/repo
+npm run db:migrate
+pm2 startOrReload infrastructure/pm2/ecosystem.config.js
+curl -f http://127.0.0.1:4001/api/health
+```
 
-Recomenda-se a realização semestral de um teste de restauração em ambiente isolado (staging/homologação) para validar a integridade dos arquivos de dump e o tempo de recuperação objetivo (RTO < 2 horas, RPO < 24 horas).
+Registre responsável, motivo, backup utilizado, horário, resultado e validações. Execute um drill semestral em homologação; metas iniciais: RPO de até 24 horas e RTO de até 2 horas, sujeitas à aprovação institucional.

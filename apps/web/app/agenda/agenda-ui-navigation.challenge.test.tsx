@@ -49,6 +49,8 @@ const principalUser: AuthenticatedPrincipal = {
     id: 'user-maria-1',
     institutionId: 'inst-unicamp',
     loginCode: 'ARQ-MARIA-001',
+    name: 'Usuário Unicamp',
+    email: 'usuario@unicamp.br',
     academicCategory: 'PESQUISADOR',
     status: 'ACTIVE',
     mustChangePassword: false,

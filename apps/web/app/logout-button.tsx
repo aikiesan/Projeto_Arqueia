@@ -8,7 +8,7 @@ export function LogoutButton() {
   async function handleLogout(): Promise<void> {
     setBusy(true);
     try {
-      await fetch('/api/session/logout', { method: 'POST' });
+      await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/api/session/logout`, { method: 'POST' });
     } finally {
       window.location.assign('/login');
     }

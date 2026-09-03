@@ -1,16 +1,18 @@
 # Ambientes — Arqueia
 
-Três ambientes separados. Nada vai a produção sem passar por homologação.
+Nada vai a produção sem passar por homologação.
 
-| Ambiente | Onde | Banco | URL | Uso |
-|---|---|---|---|---|
-| **dev** | máquina do desenvolvedor | Postgres/Redis locais | localhost:4002 | desenvolvimento e testes locais |
-| **homolog** | VM (instância separada ou porta/DB distintos) | DB `arqueia_homolog` | ex.: `homolog.arqueia.cp2b.unicamp.br` ou porta interna | validação antes de produção |
-| **prod** | VM | DB `arqueia` | `arqueia.cp2b.unicamp.br` | produção |
+| Ambiente | Execução | Banco | URL |
+|---|---|---|---|
+| dev | Docker/local | `arqueia` local | `http://localhost:4002` |
+| homolog | VM ou instância/portas isoladas | `arqueia_homolog` | endereço interno definido pelo TI |
+| prod | VM CP2B, PM2 | `arqueia` | `https://cp2b.unicamp.br/arqueia` |
 
 ## Regras
-- Credenciais, segredos e URLs **distintos** por ambiente. Só `.env.example` é versionado.
-- Migrações são aplicadas em dev → homolog → prod, nesta ordem. Migração já aplicada em homolog/prod nunca é editada; cria-se uma nova.
-- Seeds de exemplo só em dev/homolog.
-- Versões de Node/Postgres/Redis documentadas e iguais entre homolog e prod (paridade). Node fixado em `.nvmrc`.
-- Backups automáticos em prod (e, idealmente, homolog); restauração testada periodicamente.
+
+- Credenciais, segredos, bancos e Redis distintos por ambiente; somente `.env.example` é versionado.
+- Migrações seguem `dev -> homolog -> prod`. Migração aplicada nunca é editada: crie outra.
+- Seeds de demonstração são proibidos em produção.
+- O build de Web deve usar `NEXT_PUBLIC_BASE_PATH=/arqueia` em homologação equivalente e produção.
+- Produção usa `/data/arqueia` para repositório, logs e backups; o banco usa o tablespace `arqueia_data`.
+- Backup precede deploy; restauração é testada periodicamente em ambiente isolado.

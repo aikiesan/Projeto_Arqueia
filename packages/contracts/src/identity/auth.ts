@@ -2,17 +2,11 @@ import { z } from 'zod';
 
 import { uuidSchema } from '../common/entity.js';
 import { membershipSchema, systemRoleAssignmentSchema } from './membership.js';
-import { userSchema } from './user.js';
+import { institutionalEmailSchema, userSchema } from './user.js';
 
 export const localLoginInputSchema = z
   .object({
-    loginCode: z
-      .string()
-      .trim()
-      .min(6)
-      .max(32)
-      .regex(/^[A-Za-z0-9-]+$/)
-      .transform((value) => value.toUpperCase()),
+    email: institutionalEmailSchema,
     password: z.string().min(1).max(128),
   })
   .strict();

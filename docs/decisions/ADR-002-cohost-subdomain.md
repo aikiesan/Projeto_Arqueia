@@ -1,10 +1,12 @@
 # ADR-002 — Co-hospedagem no cp2b com subdomínio próprio
 
-- **Status:** Aceito
+- **Status:** Substituído pelo ADR-010
 - **Data:** 2026-08-14
 
 ## Contexto
 Já existe uma VM servindo cp2b.unicamp.br (Apache2, certificado Let's Encrypt funcionando, carga baixa), ampliada para 16 GB/8–12 CPU/100+ GB. Arqueia é um sistema novo (operação de laboratório do NIPE), distinto da plataforma de biogás do cp2b.
+
+> Esta decisão histórica não representa mais a implantação escolhida. O diagnóstico posterior confirmou HTTPS no proxy institucional e publicação do Arqueia no caminho `/arqueia`; consulte o ADR-010.
 
 ## Decisão
 Hospedar Arqueia na **mesma VM**, sob **subdomínio próprio** (ex.: `arqueia.cp2b.unicamp.br`):

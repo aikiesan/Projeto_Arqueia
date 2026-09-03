@@ -9,6 +9,8 @@ export interface WorkspacePresentation {
   readonly currentUser: {
     readonly id: string;
     readonly loginCode: string;
+    readonly name: string;
+    readonly email: string;
     readonly academicCategory: string;
   };
   readonly laboratories: readonly LaboratoryRailItem[];
@@ -27,8 +29,8 @@ function withLaboratoryContext(href: string, laboratoryId: string | undefined): 
   return `${pathname}?${query.toString()}`;
 }
 
-function initials(loginCode: string): string {
-  const derived = loginCode.replace(/^ARQ-/, '').slice(0, 2).toUpperCase();
+function initials(name: string): string {
+  const derived = name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
   return derived || 'A';
 }
 
@@ -103,6 +105,8 @@ export function createWorkspacePresentation(
     currentUser: {
       id: principal.user.id,
       loginCode: principal.user.loginCode,
+      name: principal.user.name,
+      email: principal.user.email,
       academicCategory: principal.user.academicCategory,
     },
     laboratories: railItems,
@@ -114,6 +118,6 @@ export function createWorkspacePresentation(
       ...item,
       href: withLaboratoryContext(item.href, laboratoryId),
     })),
-    userInitials: initials(principal.user.loginCode),
+    userInitials: initials(principal.user.name),
   };
 }

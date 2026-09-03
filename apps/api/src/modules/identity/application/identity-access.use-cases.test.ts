@@ -45,6 +45,8 @@ function principal(
       id: actorId,
       institutionId,
       loginCode: 'ARQ-PESSOA-01',
+      name: 'Usuário Unicamp',
+      email: 'usuario@unicamp.br',
       academicCategory: 'PESQUISADOR',
       status: 'ACTIVE',
       mustChangePassword: false,
@@ -105,8 +107,8 @@ function reauthentication(admin: AuthenticatedPrincipal): ReauthenticationServic
     lockedUntil: null,
   };
   const reader: LocalIdentityReader = {
-    findActiveByLoginCode: vi.fn(async (loginCode: string) =>
-      loginCode === admin.user.loginCode ? account : null,
+    findActiveByEmail: vi.fn(async (email: string) =>
+      email === admin.user.email ? account : null,
     ),
     findActiveById: vi.fn(async (id: string) =>
       id === admin.user.id ? account : null,

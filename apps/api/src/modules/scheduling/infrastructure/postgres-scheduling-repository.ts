@@ -41,6 +41,33 @@ import type {
 
 interface PgError {
   code?: string;
+  constraint?: string;
+  detail?: string;
+  where?: string;
+}
+
+export function isEquipmentOccupationConflict(error: unknown): boolean {
+  if (error instanceof ReservationConflictError) {
+    return true;
+  }
+
+  const pgError = error as PgError;
+  if (pgError.code === '23P01') {
+    return true;
+  }
+
+  if (pgError.code !== '40P01') {
+    return false;
+  }
+
+  const diagnostics = [pgError.constraint, pgError.detail, pgError.where]
+    .filter((value): value is string => typeof value === 'string')
+    .join(' ');
+
+  return (
+    /equipment_occupations_no_overlap_excl/i.test(diagnostics) ||
+    (/equipment_occupations/i.test(diagnostics) && /exclusion constraint/i.test(diagnostics))
+  );
 }
 
 interface EquipmentRow {
@@ -292,7 +319,7 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
 
         createdReservations.push(reservation);
       } catch (err) {
-        if ((err as PgError).code === '23P01' || err instanceof ReservationConflictError) {
+        if (isEquipmentOccupationConflict(err)) {
           conflictingSlots.push({
             startsAt: slot.startsAt,
             endsAt: slot.endsAt,
@@ -405,7 +432,7 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
         return res;
       });
     } catch (err) {
-      if ((err as PgError).code === '23P01') {
+      if (isEquipmentOccupationConflict(err)) {
         const now = new Date();
         throw new ReservationConflictError(
           now.toISOString(),
@@ -759,7 +786,7 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
         return block;
       });
     } catch (error) {
-      if ((error as PgError).code === '23P01') {
+      if (isEquipmentOccupationConflict(error)) {
         throw new ReservationConflictError(input.startsAt, input.endsAt);
       }
       throw error;

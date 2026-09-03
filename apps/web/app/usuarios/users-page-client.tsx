@@ -42,7 +42,7 @@ const statusLabels: Record<UserStatus, string> = {
 };
 
 async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, { ...init, cache: 'no-store' });
+  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${url}`, { ...init, cache: 'no-store' });
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { message?: string; code?: string } | null;
     if (response.status === 401 && body?.code === 'INVALID_CREDENTIALS') {
@@ -142,7 +142,8 @@ export function UsersPageClient() {
     if (!search.trim()) return users;
     const term = search.toLowerCase();
     return users.filter((u) =>
-      u.loginCode.toLowerCase().includes(term)
+      u.name.toLowerCase().includes(term)
+      || u.email.toLowerCase().includes(term)
       || categoryLabels[u.academicCategory].toLowerCase().includes(term),
     );
   }, [users, search]);
@@ -164,13 +165,15 @@ export function UsersPageClient() {
         body: JSON.stringify({
           institutionId: pageData.principal.user.institutionId,
           laboratoryId,
+          name: form.get('name'),
+          email: form.get('email'),
           academicCategory: form.get('academicCategory'),
           temporaryPassword: tempPass,
         }),
       });
 
       setNewUserModalOpen(false);
-      setNotice(`✅ Usuário criado. Código de acesso: ${created.loginCode}`);
+      setNotice(`✅ Usuário criado para ${created.email}.`);
       await loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao criar usuário.');
@@ -193,6 +196,8 @@ export function UsersPageClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           laboratoryId,
+          name: form.get('name'),
+          email: form.get('email'),
           academicCategory: form.get('academicCategory'),
           status: form.get('status'),
         }),
@@ -327,7 +332,7 @@ export function UsersPageClient() {
     );
   }
 
-  const userInitials = pageData.principal.user.loginCode.replace(/^ARQ-/, '').slice(0, 2);
+  const userInitials = pageData.principal.user.name.slice(0, 2).toUpperCase();
 
   const laboratoryRail = pageData.laboratories.map((lab) => ({
     href: `/usuarios?laboratory=${lab.id}`,
@@ -349,7 +354,7 @@ export function UsersPageClient() {
       qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Gestão de Usuários"
       userInitials={userInitials}
-      userLabel={pageData.principal.user.loginCode}
+      userLabel={pageData.principal.user.name}
     >
       <section className="equipment-toolbar">
         <div>
@@ -376,7 +381,7 @@ export function UsersPageClient() {
       <section className="agenda-control-bar" style={{ display: 'flex', gap: '1rem', alignItems: 'center', margin: '1rem 0' }}>
         <input
           type="search"
-          placeholder="Buscar por código ou categoria..."
+          placeholder="Buscar por nome, e-mail ou categoria..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #ccc', minWidth: '300px' }}
@@ -411,8 +416,9 @@ export function UsersPageClient() {
                   <span>{statusLabels[u.status]}</span>
                   {isSelf && <span style={{ fontSize: '0.75rem', background: '#e2e8f0', padding: '0.1rem 0.4rem', borderRadius: '4px', marginLeft: 'auto' }}>Você</span>}
                 </div>
-                <h3>{u.loginCode}</h3>
-                <code>{categoryLabels[u.academicCategory]}</code>
+                <h3>{u.name}</h3>
+                <code>{u.email}</code>
+                <p>{categoryLabels[u.academicCategory]}</p>
 
                 <dl style={{ marginTop: '0.5rem' }}>
                   <div>
@@ -475,6 +481,8 @@ export function UsersPageClient() {
               </button>
             </div>
             <form className="equipment-form" onSubmit={handleCreateUser}>
+              <label className="field-wide"><span>Nome completo *</span><input name="name" minLength={2} maxLength={120} required /></label>
+              <label className="field-wide"><span>E-mail institucional *</span><input name="email" type="email" placeholder="usuario@unicamp.br" required /></label>
               <label className="field-wide">
                 <span>Categoria acadêmica *</span>
                 <select name="academicCategory" defaultValue="IC" required>
@@ -523,6 +531,8 @@ export function UsersPageClient() {
               </button>
             </div>
             <form className="equipment-form" onSubmit={handleUpdateStatus}>
+              <label className="field-wide"><span>Nome completo *</span><input name="name" defaultValue={editUserModal.name} minLength={2} maxLength={120} required /></label>
+              <label className="field-wide"><span>E-mail institucional *</span><input name="email" type="email" defaultValue={editUserModal.email} required /></label>
               <label className="field-wide">
                 <span>Categoria acadêmica *</span>
                 <select name="academicCategory" defaultValue={editUserModal.academicCategory} required>
@@ -563,7 +573,7 @@ export function UsersPageClient() {
             <div className="equipment-dialog-heading">
               <div>
                 <span className="section-kicker">Controle de Permissões RBAC</span>
-                <h2 id="access-title">Gerenciar Papéis de {accessModalUser.loginCode}</h2>
+                <h2 id="access-title">Gerenciar Papéis de {accessModalUser.name}</h2>
               </div>
               <button aria-label="Fechar" onClick={() => {
                 setAccessModalUser(null);
@@ -700,7 +710,7 @@ export function UsersPageClient() {
             <div className="equipment-dialog-heading">
               <div>
                 <span className="section-kicker">Segurança & Credenciais</span>
-                <h2 id="reset-pass-title">Redefinir Senha de {resetPassModalUser.loginCode}</h2>
+                <h2 id="reset-pass-title">Redefinir Senha de {resetPassModalUser.name}</h2>
               </div>
               <button aria-label="Fechar" onClick={() => setResetPassModalUser(null)} type="button">
                 ×

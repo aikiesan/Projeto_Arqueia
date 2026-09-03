@@ -34,10 +34,12 @@ describe('identity contract', () => {
     ).toThrow();
   });
 
-  it('validates pseudonymous user creation and normalizes laboratory code', () => {
+  it('validates institutional user creation and normalizes laboratory code', () => {
     const user = createUserInputSchema.parse({
       institutionId: uuid,
       laboratoryId: otherUuid,
+      name: 'Ana Pesquisadora',
+      email: 'ANA@UNICAMP.BR',
       academicCategory: 'DOUTORADO',
       temporaryPassword: 'temporary-password',
     });
@@ -50,6 +52,8 @@ describe('identity contract', () => {
     expect(user).toMatchObject({
       laboratoryId: otherUuid,
       academicCategory: 'DOUTORADO',
+      name: 'Ana Pesquisadora',
+      email: 'ana@unicamp.br',
     });
     expect(laboratory).toMatchObject({
       code: 'CP2b-LAB',
@@ -91,11 +95,11 @@ describe('identity contract', () => {
     expect(result.success).toBe(false);
   });
 
-  it('normalizes local login code without weakening password validation', () => {
+  it('normalizes institutional email without weakening password validation', () => {
     expect(
-      localLoginInputSchema.parse({ loginCode: ' arq-admin-local ', password: 'valid-password' }),
-    ).toEqual({ loginCode: 'ARQ-ADMIN-LOCAL', password: 'valid-password' });
-    expect(() => localLoginInputSchema.parse({ loginCode: 'ARQ-ADMIN-LOCAL', password: '' })).toThrow();
+      localLoginInputSchema.parse({ email: ' ADMIN@UNICAMP.BR ', password: 'valid-password' }),
+    ).toEqual({ email: 'admin@unicamp.br', password: 'valid-password' });
+    expect(() => localLoginInputSchema.parse({ email: 'admin@gmail.com', password: '' })).toThrow();
   });
 
   it('validates password management inputs without accepting password reuse', () => {
@@ -179,6 +183,8 @@ describe('identity contract', () => {
           id: uuid,
           institutionId: otherUuid,
           loginCode: 'ARQ-ANA-001',
+          name: 'Usuário Unicamp',
+          email: 'usuario@unicamp.br',
           academicCategory: 'DOUTORADO',
           status: 'ACTIVE',
           mustChangePassword: false,

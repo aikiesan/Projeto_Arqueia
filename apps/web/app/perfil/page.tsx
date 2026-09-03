@@ -35,12 +35,12 @@ export default async function ProfilePage() {
       }}
       sectionLabel="Meu perfil"
       userInitials={presentation.userInitials}
-      userLabel={presentation.currentUser.loginCode}
+      userLabel={presentation.currentUser.name}
       userMenu={<LogoutButton />}
     >
       <section className="profile-card">
         <div className="profile-avatar" aria-hidden="true">{presentation.userInitials}</div>
-        <div><span className="section-kicker">Conta Arqueia</span><h2>{principal.user.loginCode}</h2><p>Identificador pseudonimizado</p></div>
+        <div><span className="section-kicker">Conta Arqueia</span><h2>{principal.user.name}</h2><p>{principal.user.email}</p></div>
       </section>
       <section className="profile-details">
         <div><span>Categoria</span><strong>{categoryLabels[principal.user.academicCategory]}</strong></div>
