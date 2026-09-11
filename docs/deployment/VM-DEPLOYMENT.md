@@ -87,7 +87,7 @@ set -a
 set +a
 NEXT_PUBLIC_BASE_PATH=/arqueia npm run build
 npm run db:migrate
-pm2 startOrReload infrastructure/pm2/ecosystem.config.js --update-env
+pm2 startOrRestart infrastructure/pm2/ecosystem.config.js --update-env
 pm2 save
 pm2 startup
 ```
@@ -178,5 +178,5 @@ set -a
 . ./.env
 set +a
 NEXT_PUBLIC_BASE_PATH=/arqueia npm run build
-pm2 startOrReload infrastructure/pm2/ecosystem.config.js --update-env
+pm2 startOrRestart infrastructure/pm2/ecosystem.config.js --update-env
 ```

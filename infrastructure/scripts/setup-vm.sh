@@ -66,7 +66,7 @@ cat <<'NEXT'
       ao VirtualHost :80 existente e adicione RewriteCond para /arqueia.
    4. Valide: sudo /usr/sbin/apache2ctl configtest
    5. PM2 (usuário lucas, com .env já carregado):
-      pm2 startOrReload infrastructure/pm2/ecosystem.config.js --update-env && pm2 save
+      pm2 startOrRestart infrastructure/pm2/ecosystem.config.js --update-env && pm2 save
    6. Banco novo: crie o primeiro ADMIN com `npm run db:bootstrap-admin` seguindo
       docs/deployment/VM-DEPLOYMENT.md. Não execute o seed em produção.
 NEXT
