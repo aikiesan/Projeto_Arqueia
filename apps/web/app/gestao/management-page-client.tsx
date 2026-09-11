@@ -16,6 +16,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 
 import { createWorkspacePresentation } from '../presentation';
+import { BASE_PATH, withBasePath } from '../lib/base-path';
 
 interface PageData {
   principal: AuthenticatedPrincipal;
@@ -34,7 +35,7 @@ function getDefaultPeriod(): { startsAt: string; endsAt: string } {
 }
 
 async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${url}`, { ...init, cache: 'no-store' });
+  const response = await fetch(withBasePath(url), { ...init, cache: 'no-store' });
   if (response.status === 401) throw new Error('UNAUTHENTICATED');
   if (response.status === 403) throw new Error('FORBIDDEN');
   if (response.status === 404) throw new Error('NOT_FOUND');
@@ -371,6 +372,7 @@ export function ManagementPageClient() {
       activeLaboratoryId={activeLaboratory.id}
       activeModuleHref="/gestao"
       appName="Arqueia"
+      basePath={BASE_PATH}
       currentContext={activeLaboratory.name}
       laboratories={laboratoryRail}
       mobileNavigation={presentation.mobileNavigation}

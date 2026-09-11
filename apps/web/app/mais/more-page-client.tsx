@@ -5,6 +5,7 @@ import { ArqueiaIcon, WorkspaceShell, type NavigationItem } from '@arqueia/ui';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
+import { BASE_PATH, withBasePath } from '../lib/base-path';
 import { LogoutButton } from '../logout-button';
 import { createWorkspacePresentation } from '../presentation';
 
@@ -14,7 +15,7 @@ interface PageData {
 }
 
 async function readJson<T>(url: string): Promise<T> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${url}`, { cache: 'no-store' });
+  const response = await fetch(withBasePath(url), { cache: 'no-store' });
   if (response.status === 401) throw new Error('UNAUTHENTICATED');
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { message?: string } | null;
@@ -135,6 +136,7 @@ export function MorePageClient() {
       activeLaboratoryId={activeLaboratory.id}
       activeModuleHref="/mais"
       appName="Arqueia"
+      basePath={BASE_PATH}
       currentContext={activeLaboratory.name}
       laboratories={laboratoryRail}
       mobileNavigation={presentation.mobileNavigation}
@@ -201,7 +203,7 @@ export function MorePageClient() {
           </div>
         </div>
         <div className="more-account-actions">
-          <a className="more-module-card" href="/perfil">
+          <a className="more-module-card" href={withBasePath('/perfil')}>
             <span className="more-module-icon">
               <ArqueiaIcon name="usuarios" size={23} />
             </span>

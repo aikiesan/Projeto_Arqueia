@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import '@arqueia/ui/styles.css';
 import './globals.css';
 
+import { withBasePath } from './lib/base-path';
 import { PwaRegistration } from './pwa-registration';
 import { InteractionFeedbackProvider } from './interaction-feedback';
 
@@ -16,10 +17,10 @@ export const metadata: Metadata = {
   },
   description: 'Gestão, rastreabilidade e compartilhamento de infraestrutura laboratorial.',
   icons: {
-    apple: [{ url: '/icons/arqueia-maskable.svg' }],
-    icon: [{ type: 'image/svg+xml', url: '/icons/arqueia.svg' }],
+    apple: [{ url: withBasePath('/icons/arqueia-maskable.svg') }],
+    icon: [{ type: 'image/svg+xml', url: withBasePath('/icons/arqueia.svg') }],
   },
-  manifest: '/manifest.webmanifest',
+  manifest: withBasePath('/manifest.webmanifest'),
   title: {
     default: 'Arqueia',
     template: '%s · Arqueia',

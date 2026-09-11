@@ -1,3 +1,4 @@
+export { joinBasePath, normalizeBasePath } from './base-path';
 export { ArqueiaIcon, type ArqueiaIconName, type ArqueiaIconProps } from './icons';
 export {
   WorkspaceShell,

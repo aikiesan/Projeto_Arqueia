@@ -47,6 +47,8 @@ sudo -u postgres psql -d arqueia -c 'CREATE EXTENSION IF NOT EXISTS btree_gist;'
 
 Se role, banco ou tablespace já existirem, inspecione-os em vez de repetir a criação. A senha digitada no prompt deve ser exclusiva de produção.
 
+> **Ordem importa.** Esta seção precisa ser concluída **antes** de `setup-vm.sh`: o script apenas *imprime* os comandos de tablespace e `btree_gist`, mas executa `npm run db:migrate` logo em seguida, e as migrações de agendamento dependem da extensão. Em banco novo, pular esta seção faz a migração falhar.
+
 ## 3. Código e configuração
 
 ```bash
@@ -124,6 +126,8 @@ sudoedit /etc/apache2/sites-available/ARQUIVO-ATUAL-DO-CP2B.conf
 
 Insira o bloco antes das regras genéricas da SPA e de qualquer `ProxyPass /api`. Na regra de fallback da SPA, exclua `/arqueia` conforme o comentário do arquivo. Depois:
 
+> **`ProxyPreserveHost On` é carga estrutural.** Sem ela o mod_proxy entrega `Host: 127.0.0.1:4002` enquanto o browser envia `Origin: https://cp2b.unicamp.br`, e a checagem anti-CSRF do BFF rejeita login, logout e troca de senha com **403** — sem que o health check perceba, porque ele só faz `GET`. A diretiva vale para o **VirtualHost inteiro**: confirme no vhost real do CP2b que `/pilar2b`, `/abiove` e `/api/` continuam funcionando depois de ativá-la. Se houver dano colateral, a alternativa é comparar a origem contra `PUBLIC_ORIGIN` em vez do header `Host`.
+
 ```bash
 sudo /usr/sbin/apache2ctl configtest
 sudo systemctl reload apache2
@@ -137,7 +141,15 @@ ss -ltnp | grep -E ':4001|:4002|:5432|:6379'
 curl -f http://127.0.0.1:4001/api/health
 curl -I http://127.0.0.1:4002/arqueia/login
 curl -I https://cp2b.unicamp.br/arqueia/login
+
+# A checagem de origem só falha em mutações; o GET acima não a exercita.
+curl -s -o /dev/null -w '%{http_code}
+' -X POST   -H 'Origin: https://cp2b.unicamp.br' -H 'Content-Type: application/json'   -d '{"email":"invalido@unicamp.br","password":"senha-invalida-proposital"}'   https://cp2b.unicamp.br/arqueia/api/session/login
 ```
+
+O POST acima deve responder **401** (credencial inválida). Se responder **403**, `ProxyPreserveHost On` não está ativo no VirtualHost.
+
+No browser, confirme também: nenhum link da navegação sai de `/arqueia`, os logos carregam, `DevTools → Application → Manifest` reporta `scope: /arqueia/` sem erro de escopo, e o service worker instala sem `SecurityError`.
 
 As portas 4001/4002/5432/6379 devem aceitar somente loopback. Confirme também login por e-mail `@unicamp.br`, logout, permissões, criação e conflito de reserva.
 

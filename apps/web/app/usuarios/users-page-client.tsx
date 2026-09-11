@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 
 import { createWorkspacePresentation } from '../presentation';
+import { BASE_PATH, withBasePath } from '../lib/base-path';
 
 interface PageData {
   principal: AuthenticatedPrincipal;
@@ -42,7 +43,7 @@ const statusLabels: Record<UserStatus, string> = {
 };
 
 async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${url}`, { ...init, cache: 'no-store' });
+  const response = await fetch(withBasePath(url), { ...init, cache: 'no-store' });
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { message?: string; code?: string } | null;
     if (response.status === 401 && body?.code === 'INVALID_CREDENTIALS') {
@@ -347,6 +348,7 @@ export function UsersPageClient() {
       activeLaboratoryId={activeLaboratory.id}
       activeModuleHref="/usuarios"
       appName="Arqueia"
+      basePath={BASE_PATH}
       currentContext={activeLaboratory.name}
       laboratories={laboratoryRail}
       mobileNavigation={presentation.mobileNavigation}

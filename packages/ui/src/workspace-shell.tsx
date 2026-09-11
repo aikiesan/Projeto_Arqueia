@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { joinBasePath } from './base-path';
 import { ArqueiaIcon, type ArqueiaIconName } from './icons';
 
 export interface LaboratoryRailItem {
@@ -22,6 +23,8 @@ export interface WorkspaceShellProps {
   readonly activeLaboratoryId: string;
   readonly activeModuleHref: string;
   readonly appName: string;
+  /** Prefixo de implantação (ex.: `/arqueia`). Vazio em implantação na raiz. */
+  readonly basePath?: string | undefined;
   readonly children: ReactNode;
   readonly contextualPanel?: ReactNode;
   readonly currentContext: string;
@@ -35,19 +38,22 @@ export interface WorkspaceShellProps {
   readonly userMenu?: ReactNode;
 }
 
-function NavigationLink({ activeHref, compact = false, item }: {
+function NavigationLink({ activeHref, basePath, compact = false, item }: {
   readonly activeHref: string;
+  readonly basePath?: string | undefined;
   readonly compact?: boolean;
   readonly item: NavigationItem;
 }) {
-  const navigationPath = (href: string) => href.split(/[?#]/, 1)[0] || '/';
+  // Compara os dois lados já prefixados: `activeModuleHref` e `item.href` vêm da
+  // mesma origem, mas o chamador pode passar um deles já com o prefixo.
+  const navigationPath = (href: string) => joinBasePath(basePath, href).split(/[?#]/, 1)[0] || '/';
   const isActive = navigationPath(item.href) === navigationPath(activeHref);
 
   return (
     <a
       aria-current={isActive ? 'page' : undefined}
       className={compact ? 'arqueia-mobile-link' : 'arqueia-module-link'}
-      href={item.href}
+      href={joinBasePath(basePath, item.href)}
     >
       <ArqueiaIcon name={item.icon} size={compact ? 22 : 19} />
       <span className="arqueia-nav-copy">
@@ -63,6 +69,7 @@ export function WorkspaceShell({
   activeLaboratoryId,
   activeModuleHref,
   appName,
+  basePath,
   children,
   contextualPanel,
   currentContext,
@@ -86,9 +93,9 @@ export function WorkspaceShell({
       <a className="arqueia-skip-link" href="#conteudo-principal">Ir para o conteúdo</a>
 
       <aside className="arqueia-lab-rail" aria-label="Laboratórios">
-        <a className="arqueia-brand-mark" href="/" aria-label={appName}>
+        <a className="arqueia-brand-mark" href={joinBasePath(basePath, '/')} aria-label={appName}>
           {activeLaboratory?.logoSrc ? (
-            <img alt="" className="arqueia-brand-logo" height={46} src={activeLaboratory.logoSrc} width={46} />
+            <img alt="" className="arqueia-brand-logo" height={46} src={joinBasePath(basePath, activeLaboratory.logoSrc)} width={46} />
           ) : (
             <ArqueiaIcon name="laboratorio" size={26} />
           )}
@@ -99,12 +106,12 @@ export function WorkspaceShell({
               aria-current={laboratory.id === activeLaboratoryId ? 'page' : undefined}
               aria-label={laboratory.name}
               className="arqueia-lab-link"
-              href={laboratory.href}
+              href={joinBasePath(basePath, laboratory.href)}
               key={laboratory.id}
               title={laboratory.name}
             >
               {laboratory.logoSrc ? (
-                <img alt="" className="arqueia-lab-logo" height={42} src={laboratory.logoSrc} width={42} />
+                <img alt="" className="arqueia-lab-logo" height={42} src={joinBasePath(basePath, laboratory.logoSrc)} width={42} />
               ) : laboratory.shortName}
             </a>
           ))}
@@ -121,7 +128,7 @@ export function WorkspaceShell({
         </div>
         <nav aria-label="Módulos" className="arqueia-module-list">
           {moduleNavigation.map((item) => (
-            <NavigationLink activeHref={activeModuleHref} item={item} key={item.href} />
+            <NavigationLink activeHref={activeModuleHref} basePath={basePath} item={item} key={item.href} />
           ))}
         </nav>
         <div className="arqueia-sidebar-footer">
@@ -135,7 +142,7 @@ export function WorkspaceShell({
           <div className="arqueia-mobile-brand">
             <span className="arqueia-mobile-brand-mark">
               {activeLaboratory?.logoSrc ? (
-                <img alt="" className="arqueia-lab-logo" height={38} src={activeLaboratory.logoSrc} width={38} />
+                <img alt="" className="arqueia-lab-logo" height={38} src={joinBasePath(basePath, activeLaboratory.logoSrc)} width={38} />
               ) : (
                 <ArqueiaIcon name="laboratorio" size={20} />
               )}
@@ -153,8 +160,8 @@ export function WorkspaceShell({
               <span aria-hidden="true" className="arqueia-profile-chevron">⌄</span>
             </summary>
             <div className="arqueia-user-dropdown" role="menu">
-              <a href="/guia" role="menuitem"><ArqueiaIcon name="guia" size={16} /><span>Guia de Uso</span></a>
-              <a href="/perfil" role="menuitem"><ArqueiaIcon name="usuarios" size={16} /><span>Perfil</span></a>
+              <a href={joinBasePath(basePath, '/guia')} role="menuitem"><ArqueiaIcon name="guia" size={16} /><span>Guia de Uso</span></a>
+              <a href={joinBasePath(basePath, '/perfil')} role="menuitem"><ArqueiaIcon name="usuarios" size={16} /><span>Perfil</span></a>
               {userMenu}
             </div>
           </details>
@@ -179,14 +186,14 @@ export function WorkspaceShell({
 
       <nav aria-label="Navegação principal" className="arqueia-mobile-nav">
         {mobileBeforeQr.map((item) => (
-          <NavigationLink activeHref={activeModuleHref} compact item={item} key={item.href} />
+          <NavigationLink activeHref={activeModuleHref} basePath={basePath} compact item={item} key={item.href} />
         ))}
-        <a className="arqueia-qr-action" href={qrAction.href} aria-label={qrAction.label}>
+        <a className="arqueia-qr-action" href={joinBasePath(basePath, qrAction.href)} aria-label={qrAction.label}>
           <ArqueiaIcon name="qr" size={25} />
           <span>QR</span>
         </a>
         {mobileAfterQr.map((item) => (
-          <NavigationLink activeHref={activeModuleHref} compact item={item} key={item.href} />
+          <NavigationLink activeHref={activeModuleHref} basePath={basePath} compact item={item} key={item.href} />
         ))}
       </nav>
     </div>

@@ -42,8 +42,20 @@ export const workerEnvironmentSchema = z.object({
 export const webEnvironmentSchema = z.object({
   NODE_ENV: nodeEnvironmentSchema.default('development'),
   WEB_PORT: z.coerce.number().int().min(1).max(65_535).default(4002),
-  NEXT_PUBLIC_API_URL: z.string().url(),
-  API_INTERNAL_URL: z.string().url().optional(),
+  // O BFF fala com a API por loopback; NEXT_PUBLIC_API_URL e apenas um fallback
+  // legado, conforme apps/web/app/lib/api-server.ts.
+  API_INTERNAL_URL: z.string().url(),
+  NEXT_PUBLIC_API_URL: z.string().url().optional(),
+  // Prefixo publico da implantacao. Vazio na raiz; '/arqueia' na VM do CP2b.
+  // Um valor sem barra inicial ou com barra final produz um build quebrado
+  // em silencio, por isso a validacao.
+  NEXT_PUBLIC_BASE_PATH: z
+    .string()
+    .trim()
+    .default('')
+    .refine((value) => value === '' || (value.startsWith('/') && !value.endsWith('/')), {
+      message: 'NEXT_PUBLIC_BASE_PATH deve ser vazio ou comecar com "/" sem barra final.',
+    }),
 });
 
 export type ApiEnvironment = z.infer<typeof apiEnvironmentSchema>;

@@ -56,6 +56,9 @@ describe('Infrastructure Configuration & Deployment Verification', () => {
 
     const content = readFileSync(apacheConfPath, 'utf-8');
     expect(content).toContain('ProxyPass        /arqueia            http://127.0.0.1:4002/arqueia');
+    // Carga estrutural: sem isto o Host chega como 127.0.0.1:4002 e a checagem
+    // anti-CSRF do BFF derruba todo login com 403.
+    expect(content).toContain('ProxyPreserveHost On');
     expect(content).toContain('RequestHeader set X-Forwarded-Proto "https"');
     expect(content).toContain('RequestHeader set X-Forwarded-Prefix "/arqueia"');
     expect(content).not.toContain('127.0.0.1:4001');

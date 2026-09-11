@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { navigateTo, withBasePath } from '../lib/base-path';
 
 export function ProfileSecurityClient({ required = false }: { readonly required?: boolean }) {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -27,7 +28,7 @@ export function ProfileSecurityClient({ required = false }: { readonly required?
 
     setPending(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/api/auth/change-password`, {
+      const res = await fetch(withBasePath('/api/auth/change-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -48,7 +49,7 @@ export function ProfileSecurityClient({ required = false }: { readonly required?
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      if (required) window.location.assign('/');
+      if (required) navigateTo('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao alterar senha.');
     } finally {
