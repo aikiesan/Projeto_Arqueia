@@ -31,3 +31,27 @@ describe('web API boundary', () => {
     expect(forwardedClientIp(request)).toBe('203.0.113.7');
   });
 });
+
+describe('hasTrustedOrigin sob proxy reverso', () => {
+  function requestWith(headers: Record<string, string>): Request {
+    return new Request('http://127.0.0.1:4002/arqueia/api/session/login', { headers, method: 'POST' });
+  }
+
+  it('aceita a origem quando o Apache preserva o Host original', () => {
+    expect(
+      hasTrustedOrigin(
+        requestWith({ host: 'cp2b.unicamp.br', origin: 'https://cp2b.unicamp.br' }),
+      ),
+    ).toBe(true);
+  });
+
+  it('rejeita quando o proxy reescreve o Host para o backend', () => {
+    // Documenta por que `ProxyPreserveHost On` é obrigatório no VirtualHost:
+    // sem ele o Host vira 127.0.0.1:4002 e todo login responde 403.
+    expect(
+      hasTrustedOrigin(
+        requestWith({ host: '127.0.0.1:4002', origin: 'https://cp2b.unicamp.br' }),
+      ),
+    ).toBe(false);
+  });
+});

@@ -228,6 +228,35 @@ describe('Milestone 1 Empirical Challenge: Environment Config Parsing & Validati
       });
       expect(parsed.WEB_PORT).toBe(4002);
       expect(parsed.API_INTERNAL_URL).toBe('http://127.0.0.1:4001');
+      expect(parsed.NEXT_PUBLIC_BASE_PATH).toBe('');
+    });
+
+    it('exige API_INTERNAL_URL: o BFF fala com a API por loopback', () => {
+      expect(() =>
+        webEnvironmentSchema.parse({
+          WEB_PORT: '4002',
+          NEXT_PUBLIC_API_URL: 'http://localhost:4002/api',
+        }),
+      ).toThrow();
+    });
+
+    it('aceita o base path da VM do CP2b', () => {
+      const parsed = webEnvironmentSchema.parse({
+        API_INTERNAL_URL: 'http://127.0.0.1:4001',
+        NEXT_PUBLIC_BASE_PATH: '/arqueia',
+      });
+      expect(parsed.NEXT_PUBLIC_BASE_PATH).toBe('/arqueia');
+    });
+
+    it('rejeita base path sem barra inicial ou com barra final', () => {
+      for (const value of ['arqueia', '/arqueia/', '/']) {
+        expect(() =>
+          webEnvironmentSchema.parse({
+            API_INTERNAL_URL: 'http://127.0.0.1:4001',
+            NEXT_PUBLIC_BASE_PATH: value,
+          }),
+        ).toThrow();
+      }
     });
 
     it('validates worker environment configuration', () => {
