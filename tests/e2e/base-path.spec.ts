@@ -16,36 +16,54 @@ const administratorEmail = process.env.E2E_ADMIN_EMAIL ?? 'admin@unicamp.br';
 const administratorPassword =
   process.env.E2E_ADMIN_PASSWORD ?? process.env.DEV_SEED_ADMIN_PASSWORD ?? 'change-this-dev-password';
 
-const prefixed = (path: string) => (path === '/' ? basePath || '/' : `${basePath}${path}`);
+const prefixed = (path: string) => `${basePath}${path}`;
 
-async function login(page: Page): Promise<void> {
-  await page.goto(prefixed('/login'));
+/**
+ * O destino é obrigatório e verificado: o login termina com uma navegação dura
+ * (`window.location.assign`), e seguir antes dela ora encontra a tela de login
+ * ainda montada, ora aborta o `goto` seguinte.
+ */
+async function login(page: Page, destination: string): Promise<void> {
+  await page.goto(`${prefixed('/login')}?next=${encodeURIComponent(destination)}`);
   await page.getByLabel('E-mail').fill(administratorEmail);
   await page.getByLabel('Senha').fill(administratorPassword);
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect.poll(() => new URL(page.url()).pathname.startsWith(prefixed('/'))).toBe(true);
+  await expect.poll(() => new URL(page.url()).pathname).toBe(prefixed(destination));
 }
 
 test.describe('navegação sob o base path da implantação', () => {
-  test('nenhuma navegação da barra mobile sai do prefixo', async ({ page }) => {
-    await login(page);
+  test('nenhum link interno escapa do prefixo', async ({ page }) => {
+    await login(page, '/mais');
 
-    const navigation = page.getByRole('navigation', { name: 'Navegação principal' });
-    const links = await navigation.getByRole('link').all();
-    expect(links.length).toBeGreaterThan(0);
+    const hrefs = await page
+      .locator('a[href]')
+      .evaluateAll((anchors) => anchors.map((anchor) => anchor.getAttribute('href') ?? ''));
 
-    for (const link of links) {
-      const href = await link.getAttribute('href');
-      expect(href, 'todo link da navegação precisa de href').not.toBeNull();
-      expect(href as string).toMatch(new RegExp(`^${basePath}(/|[?]|$)`));
+    const internal = hrefs.filter(
+      (href) => href.startsWith('/') && !href.startsWith('//'),
+    );
+    expect(internal.length).toBeGreaterThan(0);
+
+    for (const href of internal) {
+      expect(
+        href === basePath || href.startsWith(`${basePath}/`),
+        `href fora do prefixo "${basePath}": ${href}`,
+      ).toBe(true);
     }
+  });
 
-    for (const label of ['Agenda', 'Estoque']) {
-      await navigation.getByRole('link', { name: label }).click();
-      await expect.poll(() => new URL(page.url()).pathname).toMatch(
-        new RegExp(`^${basePath}/`),
-      );
-      await expect(page.getByRole('navigation', { name: 'Navegação principal' })).toBeVisible();
+  test('a navegação principal permanece dentro do app', async ({ page }) => {
+    // O shell renderiza a barra lateral no desktop e a barra inferior no mobile;
+    // apenas a visível entra na árvore de acessibilidade, então o mesmo seletor
+    // serve aos dois projetos do Playwright.
+    await login(page, '/mais');
+
+    for (const [label, path] of [
+      [/Agenda/, '/agenda'],
+      [/Estoque/, '/estoque'],
+    ] as const) {
+      await page.getByRole('link', { name: label }).first().click();
+      await expect.poll(() => new URL(page.url()).pathname).toBe(prefixed(path));
     }
   });
 
@@ -53,10 +71,10 @@ test.describe('navegação sob o base path da implantação', () => {
     const notFound: string[] = [];
     page.on('response', (response) => {
       const { pathname } = new URL(response.url());
-      if (response.status() === 404 && !pathname.startsWith('/api')) notFound.push(pathname);
+      if (response.status() === 404 && !pathname.startsWith(prefixed('/api'))) notFound.push(pathname);
     });
 
-    await login(page);
+    await login(page, '/mais');
 
     const manifestHref = await page.locator('link[rel="manifest"]').getAttribute('href');
     expect(manifestHref).toBe(prefixed('/manifest.webmanifest'));
@@ -70,11 +88,13 @@ test.describe('navegação sob o base path da implantação', () => {
     expect(notFound, `assets ausentes: ${notFound.join(', ')}`).toEqual([]);
   });
 
-  test('a sessão sobrevive a uma navegação dura e o logout volta ao login', async ({ page }) => {
-    await login(page);
+  test('o logout volta para o login dentro do prefixo', async ({ page }) => {
+    await login(page, '/mais');
 
-    await page.goto(prefixed('/mais'));
-    await expect(page.getByRole('link', { name: 'Perfil' })).toHaveAttribute('href', prefixed('/perfil'));
+    await expect(page.getByRole('link', { name: /Perfil/ }).first()).toHaveAttribute(
+      'href',
+      prefixed('/perfil'),
+    );
 
     await page.getByRole('button', { name: 'Sair' }).click();
     await expect.poll(() => new URL(page.url()).pathname).toBe(prefixed('/login'));
