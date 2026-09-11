@@ -20,6 +20,7 @@
     "migrate:down": "node-pg-migrate down --migrations-dir migrations --migrations-table arqueia_migrations --count 1",
     "bootstrap-admin": "tsx src/bootstrap-admin.ts",
     "seed": "tsx src/seed.ts",
+    "import-equipment": "tsx src/import-equipment-catalog.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
