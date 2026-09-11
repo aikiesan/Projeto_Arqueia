@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { LogoutButton } from '../logout-button';
 import { createWorkspacePresentation } from '../presentation';
 import { lookupAndResolveQr, type QrResolutionResult } from './qr-resolver';
-import { BASE_PATH, withBasePath } from '../lib/base-path';
+import { BASE_PATH, basePathFetch, withBasePath } from '../lib/base-path';
 
 interface DetectedBarcode {
   readonly rawValue: string;
@@ -141,7 +141,7 @@ export function QrPageClient() {
       setScannerError(null);
 
       try {
-        const result = await lookupAndResolveQr(trimmed, laboratoryId ?? undefined);
+        const result = await lookupAndResolveQr(trimmed, laboratoryId ?? undefined, basePathFetch);
         setResolvedResult(result);
       } catch (err) {
         setScannerError(err instanceof Error ? err.message : 'Não foi possível consultar o código.');
@@ -543,7 +543,7 @@ export function QrPageClient() {
             <div className="qr-result-actions">
               <a
                 className="qr-action-btn-primary"
-                href={resolvedResult.entity?.directActionHref ?? resolvedResult.destinationUrl}
+                href={withBasePath(resolvedResult.entity?.directActionHref ?? resolvedResult.destinationUrl)}
               >
                 <ArqueiaIcon name="inicio" size={16} />
                 {resolvedResult.entity?.directActionLabel ??
@@ -557,7 +557,7 @@ export function QrPageClient() {
               {resolvedResult.entity?.secondaryActionHref && (
                 <a
                   className="qr-action-btn-secondary"
-                  href={resolvedResult.entity.secondaryActionHref}
+                  href={withBasePath(resolvedResult.entity.secondaryActionHref)}
                 >
                   {resolvedResult.entity.secondaryActionLabel ?? 'Ver Detalhes'}
                 </a>
