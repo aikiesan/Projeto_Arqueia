@@ -48,7 +48,10 @@ set -a
 set +a
 
 echo ">> Instalando dependências e buildando…"
-npm ci
+# --include=dev e obrigatorio: o .env define NODE_ENV=production, e o npm usa
+# isso para omitir devDependencies. O build depende de tsc, next e nest, que
+# sao devDependencies — sem a flag o deploy morre com "tsc: not found".
+npm ci --include=dev
 NEXT_PUBLIC_BASE_PATH=/arqueia npm run build
 
 echo ">> Migrações"
