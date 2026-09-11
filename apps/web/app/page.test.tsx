@@ -68,7 +68,7 @@ describe('home workspace', () => {
       },
     };
 
-    render(
+    const { container } = render(
       <HomeDashboard
         presentation={createWorkspacePresentation(principal, laboratories)}
         summary={summary}
@@ -76,7 +76,12 @@ describe('home workspace', () => {
     );
 
     expect(screen.getByText('Cromatógrafo HPLC')).toBeInTheDocument();
-    expect(screen.getByText('11:30')).toBeInTheDocument();
+    // Escopado ao <time> da reserva: o painel também renderiza o horário de
+    // geração do resumo, que é o relógio de parede. Um getByText('11:30')
+    // global quebra quando o CI roda as 14:30 UTC — 11:30 em Sao Paulo.
+    expect(container.querySelector('time[datetime="2026-08-14T14:30:00.000Z"]')).toHaveTextContent(
+      '11:30',
+    );
     expect(screen.getByRole('link', { name: 'Agenda e reservas' })).toHaveAttribute(
       'href',
       `/agenda?laboratory=${laboratories[0]!.id}`,
