@@ -65,4 +65,14 @@ describe('Infrastructure Configuration & Deployment Verification', () => {
     expect(content).not.toContain('<VirtualHost');
     expect(content).not.toContain('certbot');
   });
+  it('instala devDependencies apesar de NODE_ENV=production no .env', () => {
+    // Os dois scripts dão source no .env antes do npm ci. Com NODE_ENV=production
+    // o npm omite devDependencies, e o build morre com "tsc: not found" — tsc,
+    // next e nest são todos devDependencies.
+    for (const script of ['infrastructure/scripts/deploy-vm.sh', 'infrastructure/scripts/setup-vm.sh']) {
+      const content = readFileSync(resolve(rootDir, script), 'utf-8');
+      expect(content, script).toContain('npm ci --include=dev');
+      expect(content, script).not.toMatch(/^npm ci$/m);
+    }
+  });
 });

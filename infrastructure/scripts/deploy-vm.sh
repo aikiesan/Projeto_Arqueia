@@ -21,7 +21,10 @@ echo ">> git pull"
 git pull origin main
 
 echo ">> install + build"
-npm ci
+# --include=dev e obrigatorio: o .env define NODE_ENV=production, e o npm usa
+# isso para omitir devDependencies. O build depende de tsc, next e nest, que
+# sao devDependencies — sem a flag o deploy morre com "tsc: not found".
+npm ci --include=dev
 NEXT_PUBLIC_BASE_PATH=/arqueia npm run build
 
 echo ">> migrações"
@@ -49,7 +52,7 @@ while [ "$attempt" -le "$MAX_RETRIES" ]; do
   if [ "$code_web" != "200" ]; then
     code_web=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4002/arqueia/login || true)
   fi
-  echo "   [Tentativa ${attempt}/${MAX_RETRIES}] api:4001/api/health -> ${code_api} | web:4002/api/health -> ${code_web}"
+  echo "   [Tentativa ${attempt}/${MAX_RETRIES}] api:4001/api/health -> ${code_api} | web:4002/arqueia/api/health -> ${code_web}"
 
   if [ "$code_api" = "200" ] && [ "$code_web" = "200" ]; then
     healthy=true
