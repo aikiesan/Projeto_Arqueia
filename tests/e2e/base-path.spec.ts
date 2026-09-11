@@ -8,6 +8,14 @@ import { expect, test, type Page } from '@playwright/test';
  *
  *   NEXT_PUBLIC_BASE_PATH=/arqueia E2E_BASE_PATH=/arqueia npm run test:e2e
  *
+ * Contra uma pilha que já está no ar (a VM do CP2b, por exemplo), aponte
+ * PLAYWRIGHT_TEST_BASE_URL para ela — isso também desliga os servidores de dev
+ * do playwright.config.ts, que senão colidem com as portas do PM2:
+ *
+ *   E2E_BASE_PATH=/arqueia E2E_ADMIN_EMAIL=... E2E_ADMIN_PASSWORD=...  *     PLAYWRIGHT_TEST_BASE_URL=https://cp2b.unicamp.br  *     npx playwright test tests/e2e/base-path.spec.ts
+ *
+ * Rode só este spec ao mirar produção: scheduling.spec.ts cria reservas reais.
+ *
  * Sem `E2E_BASE_PATH` o prefixo é vazio e o mesmo roteiro valida a implantação
  * na raiz, que continua suportada.
  */
