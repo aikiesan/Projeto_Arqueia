@@ -25,7 +25,8 @@
     "dev:config": "docker compose --file docker-compose.dev.yml config",
     "db:migrate": "npm run migrate --workspace @arqueia/database --if-present",
     "db:bootstrap-admin": "npm run bootstrap-admin --workspace @arqueia/database",
-    "db:seed": "npm run seed --workspace @arqueia/database --if-present"
+    "db:seed": "npm run seed --workspace @arqueia/database --if-present",
+    "db:import-equipment": "npm run import-equipment --workspace @arqueia/database"
   },
   "packageManager": "npm@10",
   "devDependencies": {
