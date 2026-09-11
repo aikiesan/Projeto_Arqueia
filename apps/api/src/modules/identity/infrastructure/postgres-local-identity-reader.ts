@@ -132,16 +132,27 @@ export class PostgresLocalIdentityReader
     maxFailedAttempts: number,
     lockoutDurationSeconds: number,
   ): Promise<{ failedAttempts: number; isLocked: boolean; lockedUntil: string | null }> {
+    // O caso de uso só chega aqui quando a conta não está bloqueada, então um
+    // `locked_until` presente é sempre de um bloqueio já vencido. Nesse caso o
+    // contador recomeça do zero: mantê-lo saturado faria cada erro isolado
+    // rebloquear na hora, transformando a suspensão temporária em permanente.
     const result = await this.pool.query<{ failed_attempts: number; locked_until: Date | null }>(
-      `UPDATE local_credentials
-          SET failed_attempts = failed_attempts + 1,
+      `WITH previous AS (
+         SELECT user_id,
+                CASE WHEN locked_until IS NOT NULL THEN 0 ELSE failed_attempts END AS attempts
+           FROM local_credentials
+          WHERE user_id = $1
+       )
+       UPDATE local_credentials c
+          SET failed_attempts = previous.attempts + 1,
               locked_until = CASE
-                WHEN failed_attempts + 1 >= $2 THEN now() + ($3 || ' seconds')::interval
-                ELSE locked_until
+                WHEN previous.attempts + 1 >= $2 THEN now() + ($3 || ' seconds')::interval
+                ELSE NULL
               END,
               updated_at = now()
-        WHERE user_id = $1
-        RETURNING failed_attempts, locked_until`,
+         FROM previous
+        WHERE c.user_id = previous.user_id
+        RETURNING c.failed_attempts, c.locked_until`,
       [userId, maxFailedAttempts, lockoutDurationSeconds],
     );
     const updated = result.rows[0];
