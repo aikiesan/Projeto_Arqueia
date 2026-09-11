@@ -46,7 +46,7 @@ pg_restore --dbname="$DATABASE_URL" --clean --if-exists --no-owner \
   /data/arqueia/backups/arqueia_YYYYMMDD_HHMMSS.dump
 cd /data/arqueia/repo
 npm run db:migrate
-pm2 startOrReload infrastructure/pm2/ecosystem.config.js
+pm2 startOrRestart infrastructure/pm2/ecosystem.config.js
 curl -f http://127.0.0.1:4001/api/health
 ```
 

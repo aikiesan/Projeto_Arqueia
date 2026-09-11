@@ -75,4 +75,14 @@ describe('Infrastructure Configuration & Deployment Verification', () => {
       expect(content, script).not.toMatch(/^npm ci$/m);
     }
   });
+  it('reinicia o PM2 de fato, para o novo .env valer', () => {
+    // pm2 reload em modo cluster reaproveita o processo e nao renova o
+    // ambiente, mesmo com --update-env: apos trocar DATABASE_URL a API seguiu
+    // com a URL antiga e respondeu 503 ate um restart real.
+    for (const script of ['infrastructure/scripts/deploy-vm.sh', 'infrastructure/scripts/setup-vm.sh']) {
+      const content = readFileSync(resolve(rootDir, script), 'utf-8');
+      expect(content, script).toContain('pm2 startOrRestart infrastructure/pm2/ecosystem.config.js --update-env');
+      expect(content, script).not.toContain('pm2 startOrReload infrastructure/pm2/ecosystem.config.js');
+    }
+  });
 });

@@ -31,7 +31,11 @@ echo ">> migrações"
 npm run db:migrate
 
 echo ">> restart PM2"
-pm2 startOrReload infrastructure/pm2/ecosystem.config.js --update-env
+# startOrRestart, nao startOrReload: o reload em modo cluster reaproveita o
+# processo e nao renova o ambiente de forma confiavel, mesmo com --update-env.
+# Observado na VM: apos trocar DATABASE_URL no .env, a API continuou usando a
+# URL antiga e respondeu 503 com database:disconnected ate um restart real.
+pm2 startOrRestart infrastructure/pm2/ecosystem.config.js --update-env
 pm2 save
 
 echo ">> health checks (polling com retry)"
