@@ -33,6 +33,7 @@ import {
   type ScheduleSlotSelection,
 } from '../components/scheduling';
 import { createWorkspacePresentation } from '../presentation';
+import { BASE_PATH, withBasePath } from '../lib/base-path';
 
 type ViewMode = 'DAY' | 'WEEK';
 
@@ -49,7 +50,7 @@ const blockReasonLabels: Record<TechnicalBlockReason, string> = {
 };
 
 async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${url}`, { ...init, cache: 'no-store' });
+  const response = await fetch(withBasePath(url), { ...init, cache: 'no-store' });
   if (response.status === 401) throw new Error('UNAUTHENTICATED');
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { message?: string; code?: string } | null;
@@ -661,6 +662,7 @@ export function AgendaPageClient() {
       activeLaboratoryId={activeLaboratory.id}
       activeModuleHref="/agenda"
       appName="Arqueia"
+      basePath={BASE_PATH}
       currentContext={activeLaboratory.name}
       laboratories={laboratoryRail}
       mobileNavigation={presentation.mobileNavigation}

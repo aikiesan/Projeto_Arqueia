@@ -5,6 +5,7 @@ import { LogoutButton } from '../logout-button';
 import { loadLaboratories, loadPrincipal } from '../lib/session';
 import { createWorkspacePresentation } from '../presentation';
 import { ProfileSecurityClient } from './profile-security-client';
+import { BASE_PATH } from '../lib/base-path';
 
 const categoryLabels = {
   IC: 'Iniciação científica',
@@ -25,6 +26,7 @@ export default async function ProfilePage() {
       activeLaboratoryId={presentation.activeLaboratoryId}
       activeModuleHref=""
       appName="Arqueia"
+      basePath={BASE_PATH}
       currentContext={presentation.currentContext}
       laboratories={presentation.laboratories}
       mobileNavigation={presentation.mobileNavigation}

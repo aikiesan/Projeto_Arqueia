@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
 import { createWorkspacePresentation } from '../presentation';
+import { BASE_PATH, withBasePath } from '../lib/base-path';
 
 interface PageData {
   principal: AuthenticatedPrincipal;
@@ -13,7 +14,7 @@ interface PageData {
 }
 
 async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${url}`, { ...init, cache: 'no-store' });
+  const response = await fetch(withBasePath(url), { ...init, cache: 'no-store' });
   if (response.status === 401) throw new Error('UNAUTHENTICATED');
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { message?: string } | null;
@@ -92,6 +93,7 @@ export function GuidePageClient() {
       activeLaboratoryId={activeLaboratory.id}
       activeModuleHref="/guia"
       appName="Arqueia"
+      basePath={BASE_PATH}
       currentContext={activeLaboratory.name}
       laboratories={laboratoryRail}
       mobileNavigation={presentation.mobileNavigation}

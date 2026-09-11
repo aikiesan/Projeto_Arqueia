@@ -86,4 +86,48 @@ describe('WorkspaceShell', () => {
       'page',
     );
   });
+  describe('sob base path de implantação', () => {
+    it('prefixa navegação, logos, menu de usuário e ação de QR', () => {
+      const { container } = render(<WorkspaceShell {...props} basePath="/arqueia" />);
+
+      const mobileNavigation = screen.getByRole('navigation', { name: 'Navegação principal' });
+      expect(within(mobileNavigation).getByRole('link', { name: 'Estoque' })).toHaveAttribute(
+        'href',
+        '/arqueia/estoque',
+      );
+      expect(within(mobileNavigation).getByRole('link', { name: 'Início' })).toHaveAttribute('href', '/arqueia');
+      expect(within(mobileNavigation).getByRole('link', { name: 'Ler QR Code' })).toHaveAttribute(
+        'href',
+        '/arqueia/qr',
+      );
+
+      const laboratoryNavigation = screen.getByRole('complementary', { name: 'Laboratórios' });
+      expect(within(laboratoryNavigation).getByRole('link', { name: 'Laboratório CP2b' })).toHaveAttribute(
+        'href',
+        '/arqueia/?lab=cp2b',
+      );
+      expect(screen.getByRole('menuitem', { name: 'Guia de Uso' })).toHaveAttribute('href', '/arqueia/guia');
+      expect(screen.getByRole('menuitem', { name: 'Perfil' })).toHaveAttribute('href', '/arqueia/perfil');
+      expect(container.querySelector('.arqueia-brand-logo')).toHaveAttribute(
+        'src',
+        '/arqueia/brand/cp2b-avatar.svg',
+      );
+    });
+
+    it('mantém o item ativo mesmo com o prefixo aplicado', () => {
+      render(<WorkspaceShell {...props} activeModuleHref="/estoque" basePath="/arqueia" />);
+
+      const moduleNavigation = screen.getByRole('navigation', { name: 'Módulos' });
+      expect(within(moduleNavigation).getByRole('link', { name: /Estoque/ })).toHaveAttribute(
+        'aria-current',
+        'page',
+      );
+    });
+
+    it('não prefixa o atalho para o conteúdo principal', () => {
+      const { container } = render(<WorkspaceShell {...props} basePath="/arqueia" />);
+
+      expect(container.querySelector('.arqueia-skip-link')).toHaveAttribute('href', '#conteudo-principal');
+    });
+  });
 });

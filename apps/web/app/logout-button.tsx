@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { navigateTo, withBasePath } from './lib/base-path';
 
 export function LogoutButton() {
   const [busy, setBusy] = useState(false);
@@ -8,9 +9,9 @@ export function LogoutButton() {
   async function handleLogout(): Promise<void> {
     setBusy(true);
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/api/session/logout`, { method: 'POST' });
+      await fetch(withBasePath('/api/session/logout'), { method: 'POST' });
     } finally {
-      window.location.assign('/login');
+      navigateTo('/login');
     }
   }
 

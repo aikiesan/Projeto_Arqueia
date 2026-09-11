@@ -10,6 +10,7 @@ import {
 } from './components/home';
 import { LogoutButton } from './logout-button';
 import type { WorkspacePresentation } from './presentation';
+import { BASE_PATH } from './lib/base-path';
 
 interface HomeDashboardProps {
   readonly presentation: WorkspacePresentation;
@@ -65,6 +66,7 @@ export function HomeDashboard({ presentation, summary }: HomeDashboardProps) {
       activeLaboratoryId={presentation.activeLaboratoryId}
       activeModuleHref="/"
       appName="Arqueia"
+      basePath={BASE_PATH}
       contextualPanel={<ContextPanel summary={summary} />}
       currentContext={presentation.currentContext}
       laboratories={presentation.laboratories}

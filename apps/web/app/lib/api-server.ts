@@ -1,7 +1,9 @@
 import { cookies } from 'next/headers';
 
+import { BASE_PATH } from './base-path';
+
 export const SESSION_COOKIE_NAME = 'arqueia_session';
-export const SESSION_COOKIE_PATH = process.env.NEXT_PUBLIC_BASE_PATH?.trim() || '/';
+export const SESSION_COOKIE_PATH = BASE_PATH || '/';
 const MAX_BODY_BYTES = 65_536;
 
 export function apiBaseUrl(): string {

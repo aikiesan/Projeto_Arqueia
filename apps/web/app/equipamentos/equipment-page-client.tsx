@@ -20,6 +20,7 @@ import { useInteractionFeedback } from '../interaction-feedback';
 import { principalCan } from '../lib/permissions';
 import { createWorkspacePresentation } from '../presentation';
 import { EquipmentFormDialog, type EquipmentFormValue } from './equipment-form-dialog';
+import { BASE_PATH, withBasePath } from '../lib/base-path';
 
 const statusLabels: Readonly<Record<EquipmentStatus, string>> = {
   AVAILABLE: 'Disponível', UNDER_EVALUATION: 'Em avaliação', UNAVAILABLE: 'Indisponível', MAINTENANCE: 'Em manutenção',
@@ -29,7 +30,7 @@ interface PageData { readonly principal: AuthenticatedPrincipal; readonly labora
 interface CatalogData { readonly models: readonly CatalogOption[]; readonly spaces: readonly CatalogOption[]; readonly benches: readonly CatalogOption[] }
 
 async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${url}`, { ...init, cache: 'no-store' });
+  const response = await fetch(withBasePath(url), { ...init, cache: 'no-store' });
   if (response.status === 401) throw new Error('UNAUTHENTICATED');
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { message?: string; code?: string } | null;
@@ -185,6 +186,7 @@ export function EquipmentPageClient() {
       {...presentation}
       activeModuleHref="/equipamentos"
       appName="Arqueia"
+      basePath={BASE_PATH}
       currentContext={activeLaboratory.name}
       qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Equipamentos"

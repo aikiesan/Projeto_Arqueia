@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { LogoutButton } from '../logout-button';
 import { createWorkspacePresentation } from '../presentation';
 import { lookupAndResolveQr, type QrResolutionResult } from './qr-resolver';
+import { BASE_PATH, withBasePath } from '../lib/base-path';
 
 interface DetectedBarcode {
   readonly rawValue: string;
@@ -31,7 +32,7 @@ interface PageData {
 }
 
 async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${url}`, { ...init, cache: 'no-store' });
+  const response = await fetch(withBasePath(url), { ...init, cache: 'no-store' });
   if (response.status === 401) throw new Error('UNAUTHENTICATED');
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { message?: string } | null;
@@ -326,6 +327,7 @@ export function QrPageClient() {
       activeLaboratoryId={activeLaboratory.id}
       activeModuleHref=""
       appName="Arqueia"
+      basePath={BASE_PATH}
       currentContext={activeLaboratory.name}
       laboratories={laboratoryRail}
       mobileNavigation={presentation.mobileNavigation}

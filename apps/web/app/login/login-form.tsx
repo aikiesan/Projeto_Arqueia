@@ -3,6 +3,7 @@
 import { bffPublicLoginResponseSchema, localLoginInputSchema } from '@arqueia/contracts';
 import Image from 'next/image';
 import { useState, type FormEvent } from 'react';
+import { navigateTo, withBasePath } from '../lib/base-path';
 
 const ERROR_MESSAGES: Record<string, string> = {
   INVALID_CREDENTIALS: 'E-mail institucional ou senha inválidos.',
@@ -37,7 +38,7 @@ export function LoginForm({
 
     setSubmitting(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/api/session/login`, {
+      const response = await fetch(withBasePath('/api/session/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parsed.data),
@@ -51,7 +52,7 @@ export function LoginForm({
       const login = bffPublicLoginResponseSchema.parse(await response.json());
       // Force a full navigation so server components re-read the new session cookie.
       const destination = login.principal.user.mustChangePassword ? '/perfil' : next;
-      window.location.assign(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}${destination}`);
+      navigateTo(destination);
     } catch {
       setError(ERROR_MESSAGES.API_UNAVAILABLE ?? 'Não foi possível entrar agora. Tente novamente em instantes.');
       setSubmitting(false);
