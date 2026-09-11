@@ -65,13 +65,13 @@ export function LoginForm({
         <div className="login-brand-lockup">
           <div className="login-product-lockup">
             <span className="login-product-mark" aria-hidden="true">
-              <Image alt="" height={34} src="/brand/cp2b-avatar.svg" width={34} />
+              <Image alt="" height={34} src={withBasePath('/brand/cp2b-avatar.svg')} width={34} />
             </span>
             <div><strong>Arqueia</strong><small>gestão de infraestrutura laboratorial</small></div>
           </div>
           <div className="login-cp2b-endorsement">
             <span>Uma plataforma</span>
-            <Image alt="CP2b" height={63} priority src="/brand/cp2b-logo.svg" width={166} />
+            <Image alt="CP2b" height={63} priority src={withBasePath('/brand/cp2b-logo.svg')} width={166} />
           </div>
         </div>
         <div className="login-brand-message">
@@ -137,7 +137,7 @@ export function LoginForm({
         <p className="login-security">Sua sessão é protegida e as permissões são verificadas no servidor.</p>
         <div className="login-cp2b-mobile">
           <span>Uma iniciativa</span>
-          <Image alt="CP2b" height={50} src="/brand/cp2b-logo.svg" width={132} />
+          <Image alt="CP2b" height={50} src={withBasePath('/brand/cp2b-logo.svg')} width={132} />
         </div>
       </section>
     </main>

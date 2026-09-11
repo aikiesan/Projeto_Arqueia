@@ -1,12 +1,18 @@
 /* global Response, URL, caches, fetch, self */
 
-const STATIC_CACHE = 'arqueia-static-v3';
+const STATIC_CACHE = 'arqueia-static-v4';
 const OFFLINE_CACHE = 'arqueia-offline-v1';
+
+// Arquivo estatico: nao passa pelo build do Next, entao nao ha NEXT_PUBLIC_*.
+// O prefixo vem da propria URL do script ('/arqueia/sw.js' -> '/arqueia').
+const SCOPE_PATH = new URL('./', self.location).pathname.replace(/\/$/, '');
+const scoped = (path) => `${SCOPE_PATH}${path}`;
+
 const STATIC_PATHS = [
-  '/icons/arqueia.svg',
-  '/icons/arqueia-maskable.svg',
-  '/brand/cp2b-avatar.svg',
-  '/manifest.webmanifest',
+  scoped('/icons/arqueia.svg'),
+  scoped('/icons/arqueia-maskable.svg'),
+  scoped('/brand/cp2b-avatar.svg'),
+  scoped('/manifest.webmanifest'),
 ];
 
 const OFFLINE_HTML = `<!DOCTYPE html>
@@ -92,13 +98,13 @@ self.addEventListener('fetch', (event) => {
 
   // Never cache API or non-GET requests to preserve ledger and audit security
   if (event.request.method !== 'GET') return;
-  if (requestUrl.pathname.startsWith('/api/')) return;
+  if (requestUrl.pathname.startsWith(scoped('/api/'))) return;
 
   const isStaticAsset =
     requestUrl.origin === self.location.origin &&
-    (requestUrl.pathname.startsWith('/icons/') ||
-      requestUrl.pathname.startsWith('/brand/') ||
-      requestUrl.pathname === '/manifest.webmanifest');
+    (requestUrl.pathname.startsWith(scoped('/icons/')) ||
+      requestUrl.pathname.startsWith(scoped('/brand/')) ||
+      requestUrl.pathname === scoped('/manifest.webmanifest'));
 
   if (isStaticAsset) {
     event.respondWith(
