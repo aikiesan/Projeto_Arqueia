@@ -35,6 +35,11 @@ test.describe('navegação sob o base path da implantação', () => {
   test('nenhum link interno escapa do prefixo', async ({ page }) => {
     await login(page, '/mais');
 
+    // `evaluateAll` não espera por elementos: sem esta âncora o teste varre o
+    // DOM antes de o React montar os links, e o viewport emulado é lento o
+    // bastante para isso acontecer de verdade.
+    await page.locator('a[href^="/"]').first().waitFor({ state: 'attached' });
+
     const hrefs = await page
       .locator('a[href]')
       .evaluateAll((anchors) => anchors.map((anchor) => anchor.getAttribute('href') ?? ''));
