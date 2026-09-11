@@ -24,7 +24,7 @@ export interface WorkspaceShellProps {
   readonly activeModuleHref: string;
   readonly appName: string;
   /** Prefixo de implantação (ex.: `/arqueia`). Vazio em implantação na raiz. */
-  readonly basePath?: string;
+  readonly basePath?: string | undefined;
   readonly children: ReactNode;
   readonly contextualPanel?: ReactNode;
   readonly currentContext: string;
@@ -40,7 +40,7 @@ export interface WorkspaceShellProps {
 
 function NavigationLink({ activeHref, basePath, compact = false, item }: {
   readonly activeHref: string;
-  readonly basePath?: string;
+  readonly basePath?: string | undefined;
   readonly compact?: boolean;
   readonly item: NavigationItem;
 }) {
