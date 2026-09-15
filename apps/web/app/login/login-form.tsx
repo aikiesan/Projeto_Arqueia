@@ -135,6 +135,10 @@ export function LoginForm({
         </form>
 
         <p className="login-security">Sua sessão é protegida e as permissões são verificadas no servidor.</p>
+
+        <a className="login-public-agenda" href={withBasePath('/agenda-publica')}>
+          Ver agenda da semana sem entrar
+        </a>
         <div className="login-cp2b-mobile">
           <span>Uma iniciativa</span>
           <Image alt="CP2b" height={50} src={withBasePath('/brand/cp2b-logo.svg')} width={132} />

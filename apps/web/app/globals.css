@@ -3567,3 +3567,180 @@ a:active {
   line-height: 1.45;
   margin: 0;
 }
+
+/* ---- Agenda pública (sem login) ---- */
+
+.login-public-agenda {
+  color: var(--arqueia-brand-900, #14532d);
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-top: 0.75rem;
+  text-align: center;
+  text-decoration: underline;
+}
+
+.public-agenda {
+  margin: 0 auto;
+  max-width: 1100px;
+  padding: 1.25rem 1rem 3rem;
+}
+
+.public-agenda-header {
+  align-items: center;
+  border-bottom: 1px solid var(--arqueia-ink-200, #e2e8f0);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding-bottom: 0.9rem;
+}
+
+.public-agenda-brand {
+  align-items: center;
+  color: inherit;
+  display: flex;
+  gap: 0.6rem;
+  text-decoration: none;
+}
+
+.public-agenda-brand-mark {
+  background: var(--arqueia-brand-900, #14532d);
+  border-radius: 9px;
+  display: block;
+  height: 30px;
+  width: 30px;
+}
+
+.public-agenda-brand small {
+  color: var(--arqueia-ink-500, #64748b);
+  display: block;
+  font-size: 0.72rem;
+}
+
+.public-agenda-login {
+  background: var(--arqueia-brand-900, #14532d);
+  border-radius: 8px;
+  color: white;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 0.6rem 0.9rem;
+  text-decoration: none;
+}
+
+.public-agenda-controls {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1.1rem 0;
+}
+
+.public-agenda-controls h1 {
+  font-size: 1.35rem;
+  margin: 0;
+}
+
+.public-agenda-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.public-agenda-nav button {
+  background: white;
+  border: 1px solid var(--arqueia-ink-200, #e2e8f0);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.45rem 0.7rem;
+}
+
+.public-agenda-nav button:disabled {
+  color: var(--arqueia-ink-500, #64748b);
+  cursor: default;
+}
+
+.public-agenda-range {
+  color: var(--arqueia-ink-500, #64748b);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.public-agenda-week {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}
+
+.public-agenda-day {
+  background: white;
+  border: 1px solid var(--arqueia-ink-200, #e2e8f0);
+  border-radius: 12px;
+  padding: 0.8rem;
+}
+
+.public-agenda-day h2 {
+  font-size: 0.8rem;
+  margin: 0 0 0.6rem;
+  text-transform: capitalize;
+}
+
+.public-agenda-day ul {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.public-agenda-day li {
+  border-left: 3px solid var(--arqueia-brand-900, #14532d);
+  display: grid;
+  gap: 0.1rem;
+  padding-left: 0.55rem;
+}
+
+.public-agenda-day li.is-block {
+  border-left-color: #ea580c;
+}
+
+.public-agenda-time {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.public-agenda-equipment {
+  font-size: 0.74rem;
+}
+
+.public-agenda-who {
+  color: var(--arqueia-ink-500, #64748b);
+  font-size: 0.72rem;
+}
+
+.public-agenda-who em {
+  color: #166534;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.public-agenda-free,
+.public-agenda-loading,
+.public-agenda-error {
+  color: var(--arqueia-ink-500, #64748b);
+  font-size: 0.76rem;
+  margin: 0;
+}
+
+.public-agenda-error {
+  color: #b91c1c;
+}
+
+.public-agenda-footer {
+  border-top: 1px solid var(--arqueia-ink-200, #e2e8f0);
+  color: var(--arqueia-ink-500, #64748b);
+  font-size: 0.74rem;
+  line-height: 1.5;
+  margin-top: 1.5rem;
+  padding-top: 0.9rem;
+}
