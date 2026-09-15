@@ -2,6 +2,8 @@ import type { DashboardPendingAction } from '@arqueia/contracts';
 
 import { DashboardSectionState } from './dashboard-section-state';
 
+import { withBasePath } from '../../lib/base-path';
+
 export interface PendingActionsCardProps {
   readonly actions: readonly DashboardPendingAction[];
   readonly available: boolean;
@@ -60,7 +62,7 @@ export function PendingActionsCard({
               <strong>{action.title}</strong>
               <span>{action.detail}</span>
             </div>
-            <a href={action.href}>Acessar</a>
+            <a href={withBasePath(action.href)}>Acessar</a>
           </article>
         ))}
       </div>

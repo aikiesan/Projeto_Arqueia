@@ -10,7 +10,8 @@ import {
 } from './components/home';
 import { LogoutButton } from './logout-button';
 import type { WorkspacePresentation } from './presentation';
-import { BASE_PATH } from './lib/base-path';
+import { BASE_PATH, withBasePath } from './lib/base-path';
+
 
 interface HomeDashboardProps {
   readonly presentation: WorkspacePresentation;
@@ -91,7 +92,7 @@ export function HomeDashboard({ presentation, summary }: HomeDashboardProps) {
           </p>
         </div>
         {schedulingAction ? (
-          <a className="scan-shortcut" href={schedulingAction.href}>
+          <a className="scan-shortcut" href={withBasePath(schedulingAction.href)}>
             <ArqueiaIcon name="agenda" size={22} />
             <span>{schedulingAction.label}</span>
           </a>

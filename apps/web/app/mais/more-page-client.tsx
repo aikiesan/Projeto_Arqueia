@@ -30,7 +30,7 @@ function pathnameOf(href: string): string {
 
 function navigationCard(item: NavigationItem) {
   return (
-    <a className="more-module-card" href={item.href} key={item.href}>
+    <a className="more-module-card" href={withBasePath(item.href)} key={item.href}>
       <span className="more-module-icon">
         <ArqueiaIcon name={item.icon} size={23} />
       </span>
@@ -178,7 +178,7 @@ export function MorePageClient() {
               <a
                 aria-current={isActive ? 'page' : undefined}
                 className="more-laboratory-card"
-                href={`/mais?laboratory=${laboratory.id}`}
+                href={withBasePath(`/mais?laboratory=${laboratory.id}`)}
                 key={laboratory.id}
               >
                 <span className="more-laboratory-mark">

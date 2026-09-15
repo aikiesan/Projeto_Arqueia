@@ -1,5 +1,7 @@
 import type { DashboardQuickAction } from '@arqueia/contracts';
 
+import { withBasePath } from '../../lib/base-path';
+
 export interface QuickActionsProps {
   readonly actions: readonly DashboardQuickAction[];
 }
@@ -13,7 +15,7 @@ export function QuickActions({ actions }: QuickActionsProps) {
     <section aria-label="Acesso rápido">
       <span className="section-kicker">Acesso rápido</span>
       {actions.map((action) => (
-        <a className="quiet-link" href={action.href} key={action.id}>
+        <a className="quiet-link" href={withBasePath(action.href)} key={action.id}>
           <span>Ação</span>
           <strong>{action.label}</strong>
         </a>

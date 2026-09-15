@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { ArqueiaIcon } from '@arqueia/ui';
 
+import { withBasePath } from '../../lib/base-path';
+
 export interface DashboardSectionStateProps {
   readonly title: string;
   readonly kicker?: string;
@@ -43,7 +45,7 @@ export function DashboardSectionState({
           <h2>{title}</h2>
         </div>
         {showAction && actionHref && actionLabel ? (
-          <a href={actionHref}>{actionLabel}</a>
+          <a href={withBasePath(actionHref)}>{actionLabel}</a>
         ) : null}
       </div>
 
