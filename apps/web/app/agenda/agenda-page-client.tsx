@@ -7,7 +7,6 @@ import type {
   Equipment,
   EquipmentPage,
   Laboratory,
-  Project,
   RecurrenceRule,
   ScheduleCapabilities,
   ScheduleItem,
@@ -71,7 +70,6 @@ export function AgendaPageClient() {
   const [pageData, setPageData] = useState<PageData | null>(null);
   const [laboratoryId, setLaboratoryId] = useState<string | null>(null);
   const [equipments, setEquipments] = useState<readonly Equipment[]>([]);
-  const [projects, setProjects] = useState<readonly Project[]>([]);
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string>(urlEquipmentId);
   const [viewMode, setViewMode] = useState<ViewMode>('WEEK');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -184,18 +182,14 @@ export function AgendaPageClient() {
         setScheduleItems([]);
         setCapabilities({ canReserve: false, canManageBlocks: false });
 
-        const [eqPage, projList] = await Promise.all([
-          readJson<EquipmentPage>(`/api/equipment?${new URLSearchParams({ laboratoryId: preferred.id, limit: '50' })}`),
-          readJson<readonly Project[]>('/api/projects'),
-        ]);
+        // Projeto virou texto livre no formulário: a agenda não precisa mais
+        // carregar a lista de projetos cadastrados.
+        const eqPage = await readJson<EquipmentPage>(
+          `/api/equipment?${new URLSearchParams({ laboratoryId: preferred.id, limit: '50' })}`,
+        );
         if (initializationId !== initializationRequestId.current) return;
 
         setEquipments(eqPage.items);
-        setProjects(
-          projList.filter(
-            (project) => project.laboratoryId === preferred.id && project.status === 'ACTIVE',
-          ),
-        );
 
         const activeEqId = urlEquipmentId || '';
         setSelectedEquipmentId(activeEqId);
@@ -410,10 +404,10 @@ export function AgendaPageClient() {
         body: JSON.stringify({
           laboratoryId,
           equipmentId: form.get('equipmentId'),
-          projectId: form.get('projectId'),
+          projectLabel: String(form.get('projectLabel') ?? '').trim() || null,
           startsAt,
           endsAt,
-          purpose: form.get('purpose'),
+          purpose: String(form.get('purpose') ?? '').trim() || null,
           sampleCount: sampleCountVal ? Number(sampleCountVal) : null,
           notes: String(form.get('notes') ?? '').trim() || null,
           recurrence: recurrencePayload,
@@ -465,9 +459,9 @@ export function AgendaPageClient() {
         body: JSON.stringify({
           laboratoryId,
           equipmentId: form.get('equipmentId'),
-          projectId: form.get('projectId'),
+          projectLabel: String(form.get('projectLabel') ?? '').trim() || null,
           durationMinutes: Number(walkInDuration),
-          purpose: form.get('purpose'),
+          purpose: String(form.get('purpose') ?? '').trim() || null,
           sampleCount: sampleCountVal ? Number(sampleCountVal) : null,
           notes: String(form.get('notes') ?? '').trim() || null,
         }),
@@ -868,15 +862,13 @@ export function AgendaPageClient() {
               </label>
 
               <label className="field-wide">
-                <span>Projeto *</span>
-                <select name="projectId" required>
-                  <option value="">Selecione o projeto</option>
-                  {projects.map((pr) => (
-                    <option key={pr.id} value={pr.id}>
-                      {pr.code} — {pr.name}
-                    </option>
-                  ))}
-                </select>
+                <span>Projeto</span>
+                <input
+                  type="text"
+                  name="projectLabel"
+                  placeholder="Opcional — ex.: FAPESP 2019-006 ou Mestrado biogás"
+                  maxLength={200}
+                />
               </label>
 
               <label>
@@ -910,12 +902,11 @@ export function AgendaPageClient() {
               </div>
 
               <label className="field-wide">
-                <span>O que você vai fazer? *</span>
+                <span>O que você vai fazer?</span>
                 <input
                   type="text"
                   name="purpose"
-                  placeholder="Ex.: Análise de amostras"
-                  required
+                  placeholder="Opcional — ex.: Análise de amostras"
                   minLength={2}
                   maxLength={500}
                 />
@@ -1116,24 +1107,21 @@ export function AgendaPageClient() {
               </label>
 
               <label className="field-wide">
-                <span>Projeto *</span>
-                <select name="projectId" required>
-                  <option value="">Selecione o projeto</option>
-                  {projects.map((pr) => (
-                    <option key={pr.id} value={pr.id}>
-                      {pr.code} — {pr.name}
-                    </option>
-                  ))}
-                </select>
+                <span>Projeto</span>
+                <input
+                  type="text"
+                  name="projectLabel"
+                  placeholder="Opcional — ex.: FAPESP 2019-006 ou Mestrado biogás"
+                  maxLength={200}
+                />
               </label>
 
               <label className="field-wide">
-                <span>O que você vai fazer? *</span>
+                <span>O que você vai fazer?</span>
                 <input
                   type="text"
                   name="purpose"
-                  placeholder="Ex.: Análise rápida de amostras"
-                  required
+                  placeholder="Opcional — ex.: Análise rápida de amostras"
                   minLength={2}
                   maxLength={500}
                 />

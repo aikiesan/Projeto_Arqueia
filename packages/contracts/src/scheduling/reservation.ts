@@ -48,11 +48,12 @@ export const reservationFieldsSchema = z.object({
   laboratoryId: uuidSchema,
   equipmentId: uuidSchema,
   userId: uuidSchema,
-  projectId: uuidSchema,
+  projectId: uuidSchema.nullable().default(null),
+  projectLabel: z.string().trim().min(1).max(200).nullable().default(null),
   startsAt: timestampSchema,
   endsAt: timestampSchema,
   status: reservationStatusSchema,
-  purpose: z.string().trim().min(2).max(500),
+  purpose: z.string().trim().min(2).max(500).nullable().default(null),
   sampleCount: z.coerce.number().int().min(1).max(10_000).nullable().default(null),
   notes: z.string().trim().max(2_000).nullable().default(null),
   startedAt: timestampSchema.nullable().default(null),
@@ -74,10 +75,13 @@ export const createReservationInputSchema = z
   .object({
     laboratoryId: uuidSchema,
     equipmentId: uuidSchema,
-    projectId: uuidSchema,
+    // Projeto virou texto livre; projectId segue aceito para não quebrar
+    // integrações e o histórico já vinculado a projetos cadastrados.
+    projectId: uuidSchema.nullable().optional().default(null),
+    projectLabel: z.string().trim().min(1).max(200).nullable().optional().default(null),
     startsAt: timestampSchema,
     endsAt: timestampSchema,
-    purpose: z.string().trim().min(2).max(500),
+    purpose: z.string().trim().min(2).max(500).nullable().optional().default(null),
     sampleCount: z.coerce.number().int().min(1).max(10_000).nullable().optional().default(null),
     notes: z.string().trim().max(2_000).nullable().optional().default(null),
     recurrence: recurrenceRuleSchema.optional().default({ frequency: 'NONE', weekdays: [], untilDate: null }),
@@ -110,9 +114,10 @@ export const startWalkInReservationInputSchema = z
   .object({
     laboratoryId: uuidSchema,
     equipmentId: uuidSchema,
-    projectId: uuidSchema,
+    projectId: uuidSchema.nullable().optional().default(null),
+    projectLabel: z.string().trim().min(1).max(200).nullable().optional().default(null),
     durationMinutes: z.coerce.number().int().min(15).max(1440),
-    purpose: z.string().trim().min(2).max(500),
+    purpose: z.string().trim().min(2).max(500).nullable().optional().default(null),
     sampleCount: z.coerce.number().int().min(1).max(10_000).nullable().optional().default(null),
     notes: z.string().trim().max(2_000).nullable().optional().default(null),
   })
