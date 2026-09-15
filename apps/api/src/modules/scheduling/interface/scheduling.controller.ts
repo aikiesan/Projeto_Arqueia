@@ -1,10 +1,12 @@
 import {
   cancelReservationInputSchema,
   cancelTechnicalBlockInputSchema,
+  checkInByEquipmentInputSchema,
   checkInReservationInputSchema,
   completeReservationInputSchema,
   createReservationInputSchema,
   createTechnicalBlockInputSchema,
+  equipmentParamsSchema,
   listScheduleQuerySchema,
   releaseAbsentReservationsInputSchema,
   reservationParamsSchema,
@@ -40,6 +42,7 @@ import { CurrentPrincipal } from '../../identity/interface/current-principal.dec
 import { JwtAuthGuard } from '../../identity/interface/jwt-auth.guard.js';
 import { CancelReservationUseCase } from '../application/cancel-reservation.use-case.js';
 import { CancelTechnicalBlockUseCase } from '../application/cancel-technical-block.use-case.js';
+import { CheckInReservationByEquipmentUseCase } from '../application/check-in-reservation-by-equipment.use-case.js';
 import { CheckInReservationUseCase } from '../application/check-in-reservation.use-case.js';
 import { CompleteReservationUseCase } from '../application/complete-reservation.use-case.js';
 import { CreateReservationUseCase } from '../application/create-reservation.use-case.js';
@@ -51,6 +54,7 @@ import { SchedulingExceptionFilter } from './scheduling-exception.filter.js';
 
 type ReservationParams = z.output<typeof reservationParamsSchema>;
 type TechnicalBlockParams = z.output<typeof technicalBlockParamsSchema>;
+type EquipmentCheckInParams = z.output<typeof equipmentParamsSchema>;
 const cancelReservationBodySchema = cancelReservationInputSchema.omit({ reservationId: true });
 const cancelTechnicalBlockBodySchema = cancelTechnicalBlockInputSchema.omit({
   technicalBlockId: true,
@@ -84,6 +88,8 @@ export class SchedulingController {
     private readonly createTechnicalBlock: CreateTechnicalBlockUseCase,
     @Inject(CancelTechnicalBlockUseCase)
     private readonly cancelTechnicalBlock: CancelTechnicalBlockUseCase,
+    @Inject(CheckInReservationByEquipmentUseCase)
+    private readonly checkInReservationByEquipment: CheckInReservationByEquipmentUseCase,
   ) {}
 
   @Get()
@@ -124,6 +130,27 @@ export class SchedulingController {
     return this.checkInReservation.execute(
       principal,
       { laboratoryId: body.laboratoryId, reservationId: params.reservationId },
+      requestContext(requestId),
+    );
+  }
+
+  /**
+   * Check-in pela leitura do QR físico do equipamento.
+   *
+   * O reservationId não vem do cliente: o repositório re-resolve a reserva ativa
+   * do ator sob FOR UPDATE, na mesma transação da transição de status.
+   */
+  @Post('equipment/:equipmentId/check-in')
+  public checkInByEquipment(
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Param(new ZodValidationPipe(equipmentParamsSchema)) params: EquipmentCheckInParams,
+    @Body(new ZodValidationPipe(checkInByEquipmentInputSchema.omit({ equipmentId: true })))
+    body: { laboratoryId: string },
+    @Headers('x-request-id') requestId?: string,
+  ): Promise<Reservation> {
+    return this.checkInReservationByEquipment.execute(
+      principal,
+      { equipmentId: params.equipmentId, laboratoryId: body.laboratoryId },
       requestContext(requestId),
     );
   }

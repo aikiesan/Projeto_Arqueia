@@ -20,6 +20,7 @@ import { useInteractionFeedback } from '../interaction-feedback';
 import { principalCan } from '../lib/permissions';
 import { createWorkspacePresentation } from '../presentation';
 import { EquipmentFormDialog, type EquipmentFormValue } from './equipment-form-dialog';
+import { EquipmentQrDialog } from '../components/equipment/equipment-qr-dialog';
 import { BASE_PATH, withBasePath } from '../lib/base-path';
 
 const statusLabels: Readonly<Record<EquipmentStatus, string>> = {
@@ -70,6 +71,7 @@ export function EquipmentPageClient() {
   const [pending, setPending] = useState(false);
   const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [qrEquipment, setQrEquipment] = useState<Equipment | null>(null);
 
   const loadEquipment = useCallback(async (nextLaboratoryId: string, cursor: string | null, nextStatus: EquipmentStatus | '', nextSearch: string) => {
     setLoading(true); setError(null);
@@ -301,9 +303,18 @@ export function EquipmentPageClient() {
 
                 {item.notes ? <p className="equipment-card-notes">{item.notes}</p> : null}
 
-                <a className="equipment-reserve-link" href={`/agenda?equipmentId=${item.id}`}>
-                  Reservar Horário
-                </a>
+                <div className="equipment-card-actions">
+                  <a className="equipment-reserve-link" href={`/agenda?equipmentId=${item.id}`}>
+                    Reservar Horário
+                  </a>
+                  <button
+                    className="secondary-button equipment-qr-btn"
+                    onClick={() => setQrEquipment(item)}
+                    type="button"
+                  >
+                    <ArqueiaIcon name="qr" size={16} /> Etiqueta QR
+                  </button>
+                </div>
               </article>
             ))}
           </div>
@@ -338,6 +349,15 @@ export function EquipmentPageClient() {
           </nav>
         </>
       )}
+      {qrEquipment ? (
+        <EquipmentQrDialog
+          equipmentCode={qrEquipment.code}
+          equipmentId={qrEquipment.id}
+          equipmentName={qrEquipment.name}
+          onClose={() => setQrEquipment(null)}
+        />
+      ) : null}
+
       {formEquipment !== undefined ? <EquipmentFormDialog catalog={catalog} equipment={formEquipment} laboratoryId={activeLaboratory.id} onClose={() => setFormEquipment(undefined)} onSave={saveEquipment} pending={pending} /> : null}
     </WorkspaceShell>
   );

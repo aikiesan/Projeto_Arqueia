@@ -6,6 +6,7 @@ import { IdentityModule } from '../identity/identity.module.js';
 import { PermissionEvaluator } from '../identity/domain/services/permission-evaluator.js';
 import { CancelReservationUseCase } from './application/cancel-reservation.use-case.js';
 import { CancelTechnicalBlockUseCase } from './application/cancel-technical-block.use-case.js';
+import { CheckInReservationByEquipmentUseCase } from './application/check-in-reservation-by-equipment.use-case.js';
 import { CheckInReservationUseCase } from './application/check-in-reservation.use-case.js';
 import { CompleteReservationUseCase } from './application/complete-reservation.use-case.js';
 import { CreateReservationUseCase } from './application/create-reservation.use-case.js';
@@ -52,6 +53,12 @@ import { SchedulingController } from './interface/scheduling.controller.js';
       inject: [SCHEDULING_REPOSITORY, PermissionEvaluator],
       useFactory: (repository: SchedulingRepository, permissions: PermissionEvaluator) =>
         new CheckInReservationUseCase(repository, permissions),
+    },
+    {
+      provide: CheckInReservationByEquipmentUseCase,
+      inject: [SCHEDULING_REPOSITORY, PermissionEvaluator],
+      useFactory: (repository: SchedulingRepository, permissions: PermissionEvaluator) =>
+        new CheckInReservationByEquipmentUseCase(repository, permissions),
     },
     {
       provide: CompleteReservationUseCase,

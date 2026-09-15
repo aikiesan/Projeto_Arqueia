@@ -1,5 +1,7 @@
 import {
   CANCELLATION_MINIMUM_NOTICE_MINUTES,
+  CHECK_IN_EARLY_TOLERANCE_MINUTES,
+  CHECK_IN_LOOKUP_WINDOW_HOURS,
   SCHEDULE_ITEM_LIMIT,
   reservationSchema,
   scheduleResponseSchema,
@@ -20,6 +22,7 @@ import {
 import { inTransaction, type DatabaseClient, type DatabasePool } from '@arqueia/database';
 
 import {
+  EquipmentCheckInRefusedError,
   EquipmentUnavailableError,
   EquipmentTrainingRequiredError,
   InvalidReservationProjectError,
@@ -30,6 +33,7 @@ import {
   ReservationNotFoundError,
   ReservationApprovalRequiredError,
   ScheduleResultLimitExceededError,
+  SchedulingEquipmentNotFoundError,
   TechnicalBlockNotFoundError,
 } from '../domain/scheduling.errors.js';
 import { generateRecurrentSlots } from '../domain/recurrence.js';
@@ -170,6 +174,76 @@ function mapReservation(row: ReservationRow): Reservation {
     updatedAt: timestamp(row.updated_at),
     archivedAt: row.archived_at ? timestamp(row.archived_at) : null,
   });
+}
+
+/**
+ * Escolhe a recusa mais útil quando nenhuma reserva do ator está elegível.
+ *
+ * Ordem: primeiro o que explica a situação do próprio ator (e que cobre o
+ * instante atual), depois a ocupação por terceiros. Nunca expõe o nome de quem
+ * reservou.
+ */
+function refusalFor(
+  mine: readonly ReservationRow[],
+  rows: readonly ReservationRow[],
+  now: number,
+  toleranceMs: number,
+): EquipmentCheckInRefusedError {
+  const startsAt = (row: ReservationRow): number => new Date(row.starts_at).getTime();
+  const endsAt = (row: ReservationRow): number => new Date(row.ends_at).getTime();
+  const coversNow = (row: ReservationRow): boolean => startsAt(row) <= now && now < endsAt(row);
+
+  const released = mine.find((row) => row.status === 'RELEASED_ABSENCE' && coversNow(row));
+  if (released) {
+    return new EquipmentCheckInRefusedError(
+      'RESERVATION_RELEASED_ABSENCE',
+      'Sua reserva foi liberada por ausência. Registre um uso imediato (walk-in) ou faça uma nova reserva.',
+      null,
+      timestamp(released.ends_at),
+    );
+  }
+
+  const cancelled = mine.find((row) => row.status === 'CANCELLED' && coversNow(row));
+  if (cancelled) {
+    return new EquipmentCheckInRefusedError(
+      'RESERVATION_CANCELLED',
+      'Sua reserva para este horário foi cancelada.',
+      null,
+      null,
+    );
+  }
+
+  const upcoming = mine.find(
+    (row) => row.status === 'CONFIRMED' && now < startsAt(row) - toleranceMs,
+  );
+  if (upcoming) {
+    return new EquipmentCheckInRefusedError(
+      'RESERVATION_NOT_STARTED_YET',
+      `Sua reserva ainda não começou. O check-in é liberado ${CHECK_IN_EARLY_TOLERANCE_MINUTES} minutos antes do horário de início.`,
+      timestamp(upcoming.starts_at),
+      null,
+    );
+  }
+
+  const occupied = rows.find(
+    (row) =>
+      (row.status === 'CONFIRMED' || row.status === 'IN_PROGRESS') && coversNow(row),
+  );
+  if (occupied) {
+    return new EquipmentCheckInRefusedError(
+      'RESERVATION_OF_ANOTHER_USER',
+      'Este equipamento está reservado por outro usuário no momento.',
+      null,
+      timestamp(occupied.ends_at),
+    );
+  }
+
+  return new EquipmentCheckInRefusedError(
+    'NO_ACTIVE_RESERVATION',
+    'Você não possui reserva ativa para este equipamento agora.',
+    null,
+    null,
+  );
 }
 
 function mapTechnicalBlock(row: TechnicalBlockRow): TechnicalBlock {
@@ -503,6 +577,123 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
       const before = mapReservation(beforeRow);
       const after = mapReservation(afterRow);
 
+      await appendAudit(
+        client,
+        context,
+        after.laboratoryId,
+        'scheduling.reservation.checked_in',
+        'Reservation',
+        after.id,
+        before,
+        after,
+      );
+
+      return after;
+    });
+  }
+
+  public async checkInReservationByEquipment(
+    laboratoryId: string,
+    equipmentId: string,
+    context: SchedulingMutationContext,
+  ): Promise<Reservation> {
+    return inTransaction(this.pool, async (client) => {
+      // Equipamento fica fora do join de baixo e é travado apenas com FOR SHARE:
+      // não queremos que a leitura do QR bloqueie escritas no cadastro dele.
+      const equipmentResult = await client.query<{ id: string }>(
+        `SELECT id FROM equipment
+          WHERE id = $1 AND laboratory_id = $2 AND archived_at IS NULL
+          FOR SHARE`,
+        [equipmentId, laboratoryId],
+      );
+
+      if (!equipmentResult.rows[0]) {
+        throw new SchedulingEquipmentNotFoundError(equipmentId);
+      }
+
+      // Traz TODAS as ocupações da janela, inclusive CANCELLED e RELEASED_ABSENCE
+      // (que a constraint de exclusão permite sobrepor linhas vivas) — é isso que
+      // permite recusas específicas numa única ida ao banco. `period` é coluna
+      // gerada com índice GiST, então `&&` é indexado.
+      const windowResult = await client.query<ReservationRow>(
+        `SELECT r.id, r.laboratory_id, r.equipment_id, r.user_id, r.project_id, r.purpose,
+                r.sample_count, r.notes, r.started_at, r.completed_at, r.cancelled_at, r.cancelled_by_user_id, r.cancellation_reason,
+                r.created_at, r.updated_at, r.archived_at,
+                o.starts_at, o.ends_at, o.status
+           FROM reservations r
+           JOIN equipment_occupations o ON o.id = r.id
+          WHERE o.equipment_id = $1
+            AND o.laboratory_id = $2
+            AND o.archived_at IS NULL
+            AND r.archived_at IS NULL
+            AND o.period && tstzrange(now() - interval '1 hour', now() + ($3 || ' hours')::interval, '[)')
+          ORDER BY o.starts_at ASC
+          FOR UPDATE`,
+        [equipmentId, laboratoryId, String(CHECK_IN_LOOKUP_WINDOW_HOURS)],
+      );
+
+      const rows = windowResult.rows;
+      const now = Date.now();
+      const toleranceMs = CHECK_IN_EARLY_TOLERANCE_MINUTES * 60_000;
+      const startsAt = (row: ReservationRow): number => new Date(row.starts_at).getTime();
+      const endsAt = (row: ReservationRow): number => new Date(row.ends_at).getTime();
+      const mine = rows.filter((row) => row.user_id === context.actorId);
+
+      // 1. Já estou usando este equipamento: idempotente, sem nova auditoria.
+      const running = mine.find((row) => row.status === 'IN_PROGRESS' && now < endsAt(row));
+      if (running) {
+        return mapReservation(running);
+      }
+
+      // 2. Minha reserva confirmada, dentro da janela de tolerância.
+      const eligible = mine.find(
+        (row) =>
+          row.status === 'CONFIRMED' && now >= startsAt(row) - toleranceMs && now < endsAt(row),
+      );
+
+      if (!eligible) {
+        throw refusalFor(mine, rows, now, toleranceMs);
+      }
+
+      // Check-in antecipado não pode atropelar quem ainda está na bancada.
+      if (now < startsAt(eligible)) {
+        const previous = rows.find(
+          (row) => row.id !== eligible.id && row.status === 'IN_PROGRESS' && now < endsAt(row),
+        );
+        if (previous) {
+          throw new EquipmentCheckInRefusedError(
+            'EQUIPMENT_BUSY_WITH_PREVIOUS',
+            'O usuário anterior ainda não finalizou o uso. Aguarde o horário de início da sua reserva.',
+            timestamp(eligible.starts_at),
+            timestamp(previous.ends_at),
+          );
+        }
+      }
+
+      await client.query(
+        `UPDATE equipment_occupations
+            SET status = 'IN_PROGRESS', updated_at = now()
+          WHERE id = $1 AND laboratory_id = $2`,
+        [eligible.id, laboratoryId],
+      );
+
+      const updateResult = await client.query<ReservationRow>(
+        `UPDATE reservations
+            SET started_at = now(), updated_at = now()
+          WHERE id = $1 AND laboratory_id = $2
+          RETURNING id, laboratory_id, equipment_id, user_id, project_id, purpose, sample_count, notes, started_at, completed_at, cancelled_at, cancelled_by_user_id, cancellation_reason, created_at, updated_at, archived_at`,
+        [eligible.id, laboratoryId],
+      );
+
+      const afterRow = {
+        ...eligible,
+        ...updateResult.rows[0]!,
+        status: 'IN_PROGRESS',
+      };
+      const before = mapReservation(eligible);
+      const after = mapReservation(afterRow);
+
+      // Mesma ação de auditoria do check-in explícito, para não quebrar relatórios.
       await appendAudit(
         client,
         context,

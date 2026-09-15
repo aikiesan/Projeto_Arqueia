@@ -1,3 +1,5 @@
+import type { CheckInRefusalReason } from '@arqueia/contracts';
+
 export class ReservationConflictError extends Error {
   public readonly code = 'RESERVATION_SLOT_CONFLICT' as const;
 
@@ -94,5 +96,33 @@ export class EquipmentUnavailableError extends Error {
   public constructor(public readonly status: string) {
     super(`Equipamento indisponível para reserva no momento (status: ${status}).`);
     this.name = 'EquipmentUnavailableError';
+  }
+}
+
+export class SchedulingEquipmentNotFoundError extends Error {
+  public readonly code = 'EQUIPMENT_NOT_FOUND' as const;
+
+  public constructor(public readonly equipmentId: string) {
+    super('Equipamento não encontrado neste laboratório.');
+    this.name = 'SchedulingEquipmentNotFoundError';
+  }
+}
+
+/**
+ * Recusa de check-in feito pela leitura do QR do equipamento.
+ *
+ * Uma única classe parametrizada pelo enum do contrato — assim o conjunto de
+ * razões continua sendo propriedade do schema Zod e o filtro de exceção precisa
+ * de um só ramo.
+ */
+export class EquipmentCheckInRefusedError extends Error {
+  public constructor(
+    public readonly code: CheckInRefusalReason,
+    message: string,
+    public readonly nextReservationStartsAt: string | null = null,
+    public readonly occupiedUntil: string | null = null,
+  ) {
+    super(message);
+    this.name = 'EquipmentCheckInRefusedError';
   }
 }

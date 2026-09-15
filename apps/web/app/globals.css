@@ -1165,6 +1165,164 @@ a:active {
   background: var(--arqueia-brand-700);
 }
 
+/* ---- Etiqueta QR do equipamento ---- */
+
+.equipment-card-actions {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr auto;
+  margin-top: 0.9rem;
+}
+
+.equipment-card-actions .equipment-reserve-link {
+  margin-top: 0;
+}
+
+.equipment-qr-btn {
+  align-items: center;
+  display: inline-flex;
+  font-size: 0.75rem;
+  gap: 0.35rem;
+  justify-content: center;
+  padding: 0.65rem 0.8rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .equipment-card-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+.qr-label-backdrop {
+  align-items: center;
+  background: rgb(15 23 42 / 55%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 1rem;
+  position: fixed;
+  z-index: 200;
+}
+
+.qr-label-dialog {
+  background: white;
+  border-radius: 16px;
+  box-shadow: var(--arqueia-shadow-md);
+  display: grid;
+  gap: 0.85rem;
+  max-height: 92dvh;
+  max-width: 380px;
+  overflow-y: auto;
+  padding: 1.1rem;
+  width: 100%;
+}
+
+.qr-label-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.qr-label-header h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.qr-label-close {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+
+.qr-label-printable {
+  border: 1px solid var(--arqueia-ink-200, #e2e8f0);
+  border-radius: 12px;
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+  padding: 1rem;
+  text-align: center;
+}
+
+.qr-label-image {
+  height: auto;
+  image-rendering: pixelated;
+  max-width: 100%;
+  width: 220px;
+}
+
+.qr-label-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin: 0.4rem 0 0;
+}
+
+.qr-label-code {
+  color: var(--arqueia-ink-500, #64748b);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+.qr-label-hint {
+  color: var(--arqueia-ink-500, #64748b);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.qr-label-payload {
+  font-size: 0.7rem;
+}
+
+.qr-label-payload code {
+  display: block;
+  margin-top: 0.4rem;
+  overflow-wrap: anywhere;
+}
+
+.qr-label-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* Na impressão sobra apenas a etiqueta. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .qr-label-printable,
+  .qr-label-printable * {
+    visibility: visible;
+  }
+
+  .qr-label-backdrop {
+    background: none;
+    display: block;
+    position: static;
+  }
+
+  .qr-label-dialog {
+    box-shadow: none;
+    max-width: none;
+    padding: 0;
+  }
+
+  .qr-label-printable {
+    border: 0;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 100%;
+  }
+}
+
 .equipment-pagination {
   align-items: center;
   display: flex;
@@ -3362,4 +3520,50 @@ a:active {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ---- Check-in pela etiqueta QR ---- */
+
+.qr-checkin-block {
+  border: 1px solid var(--arqueia-ink-200, #e2e8f0);
+  border-radius: 12px;
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.9rem;
+  padding: 0.85rem;
+}
+
+.qr-checkin-btn {
+  justify-content: center;
+  width: 100%;
+}
+
+.qr-checkin-btn:disabled {
+  cursor: progress;
+  opacity: 0.65;
+}
+
+.qr-checkin-hint,
+.qr-checkin-note {
+  color: var(--arqueia-ink-500, #64748b);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.qr-checkin-success {
+  align-items: center;
+  color: #166534;
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 700;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.qr-checkin-error {
+  color: #b91c1c;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  margin: 0;
 }

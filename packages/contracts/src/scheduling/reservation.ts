@@ -182,3 +182,59 @@ export type ConflictingSlot = z.infer<typeof conflictingSlotSchema>;
 export type CreateReservationResult = z.infer<typeof createReservationResultSchema>;
 export type CancelReservationInput = z.infer<typeof cancelReservationInputSchema>;
 export type ReservationPage = z.infer<typeof reservationPageSchema>;
+
+/**
+ * Tolerância para check-in antecipado: o usuário pode registrar presença até
+ * CHECK_IN_EARLY_TOLERANCE_MINUTES antes do início da sua reserva.
+ *
+ * Não existe limite superior próprio: enquanto a reserva não terminar, a vaga
+ * segue ocupada por ela (a constraint de exclusão só ignora CANCELLED e
+ * RELEASED_ABSENCE), então recusar o check-in por atraso deixaria o equipamento
+ * inutilizável por todos. Quem decide ausência é releaseAbsentReservations.
+ */
+export const CHECK_IN_EARLY_TOLERANCE_MINUTES = 15;
+
+/** Prefixo do código gravado na etiqueta QR física de um equipamento. */
+export const EQUIPMENT_QR_PREFIX = 'ARQ-EQP-';
+
+/** Janela consultada pela UI do QR para prever a elegibilidade do check-in. */
+export const CHECK_IN_LOOKUP_WINDOW_HOURS = 12;
+
+export const checkInByEquipmentInputSchema = z
+  .object({
+    laboratoryId: uuidSchema,
+    equipmentId: uuidSchema,
+  })
+  .strict();
+
+export const checkInRefusalReasons = [
+  'NO_ACTIVE_RESERVATION',
+  'RESERVATION_NOT_STARTED_YET',
+  'RESERVATION_OF_ANOTHER_USER',
+  'RESERVATION_RELEASED_ABSENCE',
+  'RESERVATION_CANCELLED',
+  'EQUIPMENT_BUSY_WITH_PREVIOUS',
+] as const;
+export const checkInRefusalReasonSchema = z.enum(checkInRefusalReasons);
+
+/**
+ * Corpo devolvido com HTTP 422 quando o check-in por equipamento é recusado.
+ *
+ * 422 (e nunca 409): o proxy BFF intercepta todo 409 e o valida contra
+ * conflictErrorResponseSchema, transformando qualquer outro formato em 502.
+ *
+ * Os horários viajam como ISO puro — a formatação em pt-BR acontece no cliente,
+ * no fuso do navegador.
+ */
+export const checkInRefusalResponseSchema = z
+  .object({
+    code: checkInRefusalReasonSchema,
+    message: z.string().trim().min(1).max(500),
+    nextReservationStartsAt: timestampSchema.nullable().default(null),
+    occupiedUntil: timestampSchema.nullable().default(null),
+  })
+  .strict();
+
+export type CheckInByEquipmentInput = z.infer<typeof checkInByEquipmentInputSchema>;
+export type CheckInRefusalReason = z.infer<typeof checkInRefusalReasonSchema>;
+export type CheckInRefusalResponse = z.infer<typeof checkInRefusalResponseSchema>;
