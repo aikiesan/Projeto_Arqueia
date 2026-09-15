@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 
 import {
   CANCELLATION_MINIMUM_NOTICE_MINUTES,
+  CHECK_IN_EARLY_TOLERANCE_MINUTES,
+  CHECK_IN_LOOKUP_WINDOW_HOURS,
   reservationSchema,
   scheduleResponseSchema,
   technicalBlockSchema,
@@ -19,12 +21,14 @@ import {
 } from '@arqueia/contracts';
 
 import {
+  EquipmentCheckInRefusedError,
   EquipmentUnavailableError,
   ReservationCancellationNoticeError,
   ReservationCheckInError,
   ReservationCompletionError,
   ReservationConflictError,
   ReservationNotFoundError,
+  SchedulingEquipmentNotFoundError,
   TechnicalBlockNotFoundError,
 } from '../../src/modules/scheduling/domain/scheduling.errors.js';
 import { generateRecurrentSlots } from '../../src/modules/scheduling/domain/recurrence.js';
@@ -290,6 +294,125 @@ export class InMemorySchedulingRepository implements SchedulingRepository {
     });
 
     this.reservations.set(reservationId, updated);
+    return updated;
+  }
+
+  // Espelha a ordem de classificação do PostgresSchedulingRepository.
+  public async checkInReservationByEquipment(
+    laboratoryId: string,
+    equipmentId: string,
+    context: SchedulingMutationContext,
+  ): Promise<Reservation> {
+    const equipment = this.equipments.get(equipmentId);
+    if (!equipment || equipment.laboratoryId !== laboratoryId) {
+      throw new SchedulingEquipmentNotFoundError(equipmentId);
+    }
+
+    const now = this.clock().getTime();
+    const toleranceMs = CHECK_IN_EARLY_TOLERANCE_MINUTES * 60_000;
+    const windowEnd = now + CHECK_IN_LOOKUP_WINDOW_HOURS * 60 * 60_000;
+    const startsAt = (res: Reservation): number => Date.parse(res.startsAt);
+    const endsAt = (res: Reservation): number => Date.parse(res.endsAt);
+
+    const rows = [...this.reservations.values()]
+      .filter(
+        (res) =>
+          res.equipmentId === equipmentId &&
+          res.laboratoryId === laboratoryId &&
+          res.archivedAt === null &&
+          startsAt(res) < windowEnd &&
+          endsAt(res) > now - 60 * 60_000,
+      )
+      .sort((a, b) => startsAt(a) - startsAt(b));
+
+    const mine = rows.filter((res) => res.userId === context.actorId);
+    const coversNow = (res: Reservation): boolean => startsAt(res) <= now && now < endsAt(res);
+
+    const running = mine.find((res) => res.status === 'IN_PROGRESS' && now < endsAt(res));
+    if (running) {
+      return running;
+    }
+
+    const eligible = mine.find(
+      (res) => res.status === 'CONFIRMED' && now >= startsAt(res) - toleranceMs && now < endsAt(res),
+    );
+
+    if (!eligible) {
+      const released = mine.find((res) => res.status === 'RELEASED_ABSENCE' && coversNow(res));
+      if (released) {
+        throw new EquipmentCheckInRefusedError(
+          'RESERVATION_RELEASED_ABSENCE',
+          'Sua reserva foi liberada por ausência. Registre um uso imediato (walk-in) ou faça uma nova reserva.',
+          null,
+          released.endsAt,
+        );
+      }
+
+      const cancelled = mine.find((res) => res.status === 'CANCELLED' && coversNow(res));
+      if (cancelled) {
+        throw new EquipmentCheckInRefusedError(
+          'RESERVATION_CANCELLED',
+          'Sua reserva para este horário foi cancelada.',
+          null,
+          null,
+        );
+      }
+
+      const upcoming = mine.find(
+        (res) => res.status === 'CONFIRMED' && now < startsAt(res) - toleranceMs,
+      );
+      if (upcoming) {
+        throw new EquipmentCheckInRefusedError(
+          'RESERVATION_NOT_STARTED_YET',
+          `Sua reserva ainda não começou. O check-in é liberado ${CHECK_IN_EARLY_TOLERANCE_MINUTES} minutos antes do horário de início.`,
+          upcoming.startsAt,
+          null,
+        );
+      }
+
+      const occupied = rows.find(
+        (res) => (res.status === 'CONFIRMED' || res.status === 'IN_PROGRESS') && coversNow(res),
+      );
+      if (occupied) {
+        throw new EquipmentCheckInRefusedError(
+          'RESERVATION_OF_ANOTHER_USER',
+          'Este equipamento está reservado por outro usuário no momento.',
+          null,
+          occupied.endsAt,
+        );
+      }
+
+      throw new EquipmentCheckInRefusedError(
+        'NO_ACTIVE_RESERVATION',
+        'Você não possui reserva ativa para este equipamento agora.',
+        null,
+        null,
+      );
+    }
+
+    if (now < startsAt(eligible)) {
+      const previous = rows.find(
+        (res) => res.id !== eligible.id && res.status === 'IN_PROGRESS' && now < endsAt(res),
+      );
+      if (previous) {
+        throw new EquipmentCheckInRefusedError(
+          'EQUIPMENT_BUSY_WITH_PREVIOUS',
+          'O usuário anterior ainda não finalizou o uso. Aguarde o horário de início da sua reserva.',
+          eligible.startsAt,
+          previous.endsAt,
+        );
+      }
+    }
+
+    const nowIso = this.clock().toISOString();
+    const updated = reservationSchema.parse({
+      ...eligible,
+      status: 'IN_PROGRESS',
+      startedAt: nowIso,
+      updatedAt: nowIso,
+    });
+
+    this.reservations.set(eligible.id, updated);
     return updated;
   }
 

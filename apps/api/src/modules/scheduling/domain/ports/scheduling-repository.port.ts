@@ -42,6 +42,21 @@ export interface SchedulingRepository {
     canManageReservations: boolean,
   ): Promise<Reservation>;
 
+  /**
+   * Check-in a partir da leitura do QR físico do equipamento.
+   *
+   * Sem parâmetro canManageReservations por decisão de projeto: como o alvo é
+   * implícito (o adesivo na bancada), um aprovador lendo o QR faria check-in
+   * silencioso na reserva de outra pessoa, gravando started_at no nome dela.
+   * Este fluxo resolve apenas a reserva do próprio ator; o bypass de aprovador
+   * continua existindo só no check-in explícito por reservationId.
+   */
+  checkInReservationByEquipment(
+    laboratoryId: string,
+    equipmentId: string,
+    context: SchedulingMutationContext,
+  ): Promise<Reservation>;
+
   completeReservation(
     laboratoryId: string,
     reservationId: string,

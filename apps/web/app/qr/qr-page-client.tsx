@@ -1,6 +1,7 @@
 'use client';
 
 import type { AuthenticatedPrincipal, Laboratory } from '@arqueia/contracts';
+import { checkInRefusalResponseSchema, reservationSchema } from '@arqueia/contracts';
 import { ArqueiaIcon, WorkspaceShell } from '@arqueia/ui';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
@@ -69,6 +70,9 @@ export function QrPageClient() {
   const [resolving, setResolving] = useState(false);
   const [resolvedResult, setResolvedResult] = useState<QrResolutionResult | null>(null);
   const [scannerError, setScannerError] = useState<string | null>(null);
+  const [checkInPending, setCheckInPending] = useState(false);
+  const [checkInMessage, setCheckInMessage] = useState<string | null>(null);
+  const [checkInError, setCheckInError] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -132,6 +136,67 @@ export function QrPageClient() {
     }
   }, []);
 
+  /**
+   * Check-in pela etiqueta do equipamento.
+   *
+   * Envia apenas o laboratoryId: quem resolve qual reserva é a API, sob
+   * transação — o cliente nunca escolhe o reservationId.
+   */
+  const handleCheckIn = useCallback(
+    async (equipmentId: string, checkInLaboratoryId: string): Promise<void> => {
+      setCheckInPending(true);
+      setCheckInError(null);
+      setCheckInMessage(null);
+
+      try {
+        const response = await basePathFetch(
+          `/api/scheduling/equipment/${encodeURIComponent(equipmentId)}/check-in`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ laboratoryId: checkInLaboratoryId }),
+            cache: 'no-store',
+          },
+        );
+
+        if (response.status === 401) {
+          router.replace('/login');
+          return;
+        }
+
+        const payload: unknown = await response.json().catch(() => null);
+
+        if (response.ok) {
+          const reservation = reservationSchema.safeParse(payload);
+          const startedAt = reservation.success ? reservation.data.startedAt : null;
+          setCheckInMessage(
+            startedAt
+              ? `Check-in confirmado às ${new Date(startedAt).toLocaleTimeString('pt-BR', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}. Bom trabalho!`
+              : 'Check-in confirmado. Bom trabalho!',
+          );
+          // Sem pausar a câmera, o loop relê a mesma etiqueta a cada 3 s.
+          setCameraActive(false);
+          return;
+        }
+
+        const refusal = checkInRefusalResponseSchema.safeParse(payload);
+        setCheckInError(
+          refusal.success
+            ? refusal.data.message
+            : 'Não foi possível registrar o check-in. Tente novamente.',
+        );
+      } catch {
+        setCheckInError('Falha de conexão ao registrar o check-in.');
+      } finally {
+        setCheckInPending(false);
+      }
+    },
+    [router],
+  );
+
   const handleResolveCode = useCallback(
     async (codeToResolve: string) => {
       const trimmed = codeToResolve.trim();
@@ -141,7 +206,9 @@ export function QrPageClient() {
       setScannerError(null);
 
       try {
-        const result = await lookupAndResolveQr(trimmed, laboratoryId ?? undefined, basePathFetch);
+        setCheckInMessage(null);
+      setCheckInError(null);
+      const result = await lookupAndResolveQr(trimmed, laboratoryId ?? undefined, basePathFetch);
         setResolvedResult(result);
       } catch (err) {
         setScannerError(err instanceof Error ? err.message : 'Não foi possível consultar o código.');
@@ -539,6 +606,48 @@ export function QrPageClient() {
                 ))}
               </dl>
             )}
+
+            {resolvedResult.entity?.checkIn ? (
+              <div className="qr-checkin-block">
+                {checkInMessage ? (
+                  <p aria-live="polite" className="qr-checkin-success">
+                    <ArqueiaIcon name="check" size={16} /> {checkInMessage}
+                  </p>
+                ) : null}
+
+                {checkInError ? (
+                  <p aria-live="polite" className="qr-checkin-error">
+                    {checkInError}
+                  </p>
+                ) : null}
+
+                {!checkInMessage &&
+                (resolvedResult.entity.checkIn.state === 'ELIGIBLE' ||
+                  resolvedResult.entity.checkIn.state === 'IN_PROGRESS') ? (
+                  <>
+                    <p className="qr-checkin-hint">{resolvedResult.entity.checkIn.hint}</p>
+                    <button
+                      className="qr-action-btn-primary qr-checkin-btn"
+                      disabled={checkInPending}
+                      onClick={() => {
+                        const intent = resolvedResult.entity?.checkIn;
+                        if (intent) void handleCheckIn(intent.equipmentId, intent.laboratoryId);
+                      }}
+                      type="button"
+                    >
+                      <ArqueiaIcon name="check" size={16} />
+                      {checkInPending ? 'Registrando…' : 'Fazer check-in'}
+                    </button>
+                  </>
+                ) : null}
+
+                {!checkInMessage &&
+                resolvedResult.entity.checkIn.state !== 'ELIGIBLE' &&
+                resolvedResult.entity.checkIn.state !== 'IN_PROGRESS' ? (
+                  <p className="qr-checkin-note">{resolvedResult.entity.checkIn.hint}</p>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="qr-result-actions">
               <a

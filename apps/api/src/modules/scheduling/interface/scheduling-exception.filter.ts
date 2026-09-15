@@ -3,22 +3,30 @@ import type { Response } from 'express';
 
 import { AuthorizationDeniedError } from '../../identity/domain/errors/authorization-denied.error.js';
 import {
+  EquipmentCheckInRefusedError,
   EquipmentTrainingRequiredError,
   EquipmentUnavailableError,
   InvalidReservationProjectError,
   ReservationCancellationNoticeError,
+  ReservationCheckInError,
+  ReservationCompletionError,
   ReservationConflictError,
   ReservationNotFoundError,
   ReservationApprovalRequiredError,
   ScheduleResultLimitExceededError,
+  SchedulingEquipmentNotFoundError,
   SchedulingStartsInPastError,
   TechnicalBlockNotFoundError,
 } from '../domain/scheduling.errors.js';
 
 @Catch(
   AuthorizationDeniedError,
+  EquipmentCheckInRefusedError,
+  ReservationCheckInError,
+  ReservationCompletionError,
   ReservationConflictError,
   ReservationNotFoundError,
+  SchedulingEquipmentNotFoundError,
   ReservationCancellationNoticeError,
   TechnicalBlockNotFoundError,
   EquipmentUnavailableError,
@@ -55,12 +63,44 @@ export class SchedulingExceptionFilter implements ExceptionFilter {
       return;
     }
 
+    if (exception instanceof SchedulingEquipmentNotFoundError) {
+      response.status(HttpStatus.NOT_FOUND).json({
+        code: exception.code,
+        message: exception.message,
+      });
+      return;
+    }
+
     if (
       exception instanceof ReservationNotFoundError ||
       exception instanceof TechnicalBlockNotFoundError
     ) {
       response.status(HttpStatus.NOT_FOUND).json({
         code: 'NOT_FOUND',
+        message: exception.message,
+      });
+      return;
+    }
+
+    // 422 e nunca 409: o proxy BFF intercepta todo 409 e o valida contra
+    // conflictErrorResponseSchema, virando 502 para qualquer outro formato.
+    if (exception instanceof EquipmentCheckInRefusedError) {
+      response.status(HttpStatus.UNPROCESSABLE_ENTITY).json({
+        code: exception.code,
+        message: exception.message,
+        nextReservationStartsAt: exception.nextReservationStartsAt,
+        occupiedUntil: exception.occupiedUntil,
+      });
+      return;
+    }
+
+    // Antes caíam no 500 genérico por não constarem do @Catch.
+    if (
+      exception instanceof ReservationCheckInError ||
+      exception instanceof ReservationCompletionError
+    ) {
+      response.status(HttpStatus.UNPROCESSABLE_ENTITY).json({
+        code: exception.code,
         message: exception.message,
       });
       return;

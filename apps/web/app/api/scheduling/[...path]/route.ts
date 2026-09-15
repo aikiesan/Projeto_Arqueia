@@ -1,6 +1,7 @@
 import {
   cancelReservationInputSchema,
   cancelTechnicalBlockInputSchema,
+  checkInByEquipmentInputSchema,
   checkInReservationInputSchema,
   completeReservationInputSchema,
   conflictErrorResponseSchema,
@@ -74,6 +75,24 @@ function parameterizedContract(pathname: string, payload: unknown): {
       input,
       route: {
         inputSchema: checkInReservationInputSchema,
+        responseSchema: reservationSchema,
+        laboratoryId: (value) => value.laboratoryId,
+        upstreamBody: (value) => ({ laboratoryId: value.laboratoryId }),
+      },
+    };
+  }
+
+  // Check-in pela leitura do QR do equipamento. O corpo enviado ao upstream leva
+  // apenas o laboratoryId: quem resolve a reserva é a API, sob transação.
+  const equipmentCheckInMatch = pathname.match(/^\/api\/scheduling\/equipment\/([^/]+)\/check-in$/);
+  if (equipmentCheckInMatch) {
+    const id = uuidSchema.safeParse(decodeURIComponent(equipmentCheckInMatch[1] ?? ''));
+    if (!id.success || typeof payload !== 'object' || payload === null) return null;
+    const input = { ...(payload as Record<string, unknown>), equipmentId: id.data };
+    return {
+      input,
+      route: {
+        inputSchema: checkInByEquipmentInputSchema,
         responseSchema: reservationSchema,
         laboratoryId: (value) => value.laboratoryId,
         upstreamBody: (value) => ({ laboratoryId: value.laboratoryId }),
