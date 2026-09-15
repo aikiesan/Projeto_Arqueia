@@ -17,6 +17,19 @@ set -a
 . ./.env
 set +a
 
+# O build do Next regrava arquivos gerados; se algum deles estiver rastreado, o
+# pull aborta com uma mensagem críptica no meio do deploy. Falha cedo e dizendo
+# exatamente qual arquivo está sujo.
+sujos="$(git status --porcelain --untracked-files=no)"
+if [ -n "$sujos" ]; then
+  echo "!! Árvore de trabalho suja em ${REPO_DIR} — o pull abortaria:" >&2
+  echo "$sujos" >&2
+  echo "" >&2
+  echo "   Se forem apenas arquivos gerados pelo build, descarte e repita:" >&2
+  echo "     git checkout -- <arquivo>" >&2
+  exit 1
+fi
+
 echo ">> git pull"
 git pull origin main
 
