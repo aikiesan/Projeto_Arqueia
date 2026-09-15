@@ -32,16 +32,46 @@ describe('Scheduling Contracts (Checkpoint A1)', () => {
     expect(parsed.sampleCount).toBe(5);
   });
 
-  it('rejects reservation input if projectId is missing', () => {
-    const invalidPayload = {
+  /**
+   * Projeto virou texto livre e finalidade deixou de ser obrigatória, por
+   * decisão do laboratório. O que antes era rejeitado agora é o caso comum.
+   */
+  it('aceita reserva sem projeto e sem finalidade', () => {
+    const parsed = createReservationInputSchema.parse({
       laboratoryId: labId,
       equipmentId,
       startsAt: '2026-08-20T10:00:00.000Z',
       endsAt: '2026-08-20T12:00:00.000Z',
-      purpose: 'Análise sem projeto',
-    };
+    });
 
-    expect(() => createReservationInputSchema.parse(invalidPayload)).toThrow();
+    expect(parsed.projectId).toBeNull();
+    expect(parsed.projectLabel).toBeNull();
+    expect(parsed.purpose).toBeNull();
+  });
+
+  it('aceita o projeto escrito livremente pelo aluno', () => {
+    const parsed = createReservationInputSchema.parse({
+      laboratoryId: labId,
+      equipmentId,
+      startsAt: '2026-08-20T10:00:00.000Z',
+      endsAt: '2026-08-20T12:00:00.000Z',
+      projectLabel: 'Mestrado — biogás de vinhaça',
+      purpose: 'Análise cromatográfica',
+    });
+
+    expect(parsed.projectLabel).toBe('Mestrado — biogás de vinhaça');
+  });
+
+  it('recusa projeto em branco: ou vem texto, ou vem null', () => {
+    expect(() =>
+      createReservationInputSchema.parse({
+        laboratoryId: labId,
+        equipmentId,
+        startsAt: '2026-08-20T10:00:00.000Z',
+        endsAt: '2026-08-20T12:00:00.000Z',
+        projectLabel: '   ',
+      }),
+    ).toThrow();
   });
 
   it('rejects reservation input if startsAt >= endsAt', () => {

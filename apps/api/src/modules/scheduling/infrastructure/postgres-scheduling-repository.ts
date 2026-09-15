@@ -106,9 +106,10 @@ interface OccupationRow {
 
 interface ReservationRow extends OccupationRow {
   user_id: string;
-  project_id: string;
+  project_id: string | null;
+  project_label: string | null;
   project_code?: string;
-  purpose: string;
+  purpose: string | null;
   sample_count: number | null;
   notes: string | null;
   started_at: Date | null;
@@ -137,6 +138,7 @@ interface CombinedScheduleRow {
   status: string;
   user_id: string | null;
   project_id: string | null;
+  project_label: string | null;
   project_code: string | null;
   purpose: string | null;
   sample_count: number | null;
@@ -159,6 +161,7 @@ function mapReservation(row: ReservationRow): Reservation {
     equipmentId: row.equipment_id,
     userId: row.user_id,
     projectId: row.project_id,
+    projectLabel: row.project_label,
     startsAt: timestamp(row.starts_at),
     endsAt: timestamp(row.ends_at),
     status: row.status,
@@ -328,17 +331,21 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
             throw new ReservationApprovalRequiredError();
           }
 
-          const projectResult = await client.query<ProjectRow>(
-            `SELECT id FROM projects
-              WHERE id = $1
-                AND laboratory_id = $2
-                AND status = 'ACTIVE'
-                AND archived_at IS NULL
-              FOR SHARE`,
-            [input.projectId, input.laboratoryId],
-          );
-          if (!projectResult.rows[0]) {
-            throw new InvalidReservationProjectError();
+          // Projeto virou texto livre e é opcional; quando vier um id, ele
+          // continua tendo de existir e estar ativo no laboratório.
+          if (input.projectId) {
+            const projectResult = await client.query<ProjectRow>(
+              `SELECT id FROM projects
+                WHERE id = $1
+                  AND laboratory_id = $2
+                  AND status = 'ACTIVE'
+                  AND archived_at IS NULL
+                FOR SHARE`,
+              [input.projectId, input.laboratoryId],
+            );
+            if (!projectResult.rows[0]) {
+              throw new InvalidReservationProjectError();
+            }
           }
 
           const durationMinutes =
@@ -360,16 +367,17 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
 
           const resResult = await client.query<ReservationRow>(
             `INSERT INTO reservations (
-               id, laboratory_id, equipment_id, user_id, project_id, purpose, sample_count, notes
-             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-             RETURNING id, laboratory_id, equipment_id, user_id, project_id, purpose, sample_count, notes, started_at, completed_at, cancelled_at, cancelled_by_user_id, cancellation_reason, created_at, updated_at, archived_at`,
+               id, laboratory_id, equipment_id, user_id, project_id, project_label, purpose, sample_count, notes
+             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             RETURNING id, laboratory_id, equipment_id, user_id, project_id, project_label, purpose, sample_count, notes, started_at, completed_at, cancelled_at, cancelled_by_user_id, cancellation_reason, created_at, updated_at, archived_at`,
             [
               occupation.id,
               input.laboratoryId,
               input.equipmentId,
               context.actorId,
-              input.projectId,
-              input.purpose,
+              input.projectId ?? null,
+              input.projectLabel ?? null,
+              input.purpose ?? null,
               input.sampleCount ?? null,
               input.notes ?? null,
             ],
@@ -441,17 +449,19 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
           throw new ReservationApprovalRequiredError();
         }
 
-        const projectResult = await client.query<ProjectRow>(
-          `SELECT id FROM projects
-            WHERE id = $1
-              AND laboratory_id = $2
-              AND status = 'ACTIVE'
-              AND archived_at IS NULL
-            FOR SHARE`,
-          [input.projectId, input.laboratoryId],
-        );
-        if (!projectResult.rows[0]) {
-          throw new InvalidReservationProjectError();
+        if (input.projectId) {
+          const projectResult = await client.query<ProjectRow>(
+            `SELECT id FROM projects
+              WHERE id = $1
+                AND laboratory_id = $2
+                AND status = 'ACTIVE'
+                AND archived_at IS NULL
+              FOR SHARE`,
+            [input.projectId, input.laboratoryId],
+          );
+          if (!projectResult.rows[0]) {
+            throw new InvalidReservationProjectError();
+          }
         }
 
         if (input.durationMinutes > eq.max_reservation_minutes) {
@@ -475,16 +485,17 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
 
         const resResult = await client.query<ReservationRow>(
           `INSERT INTO reservations (
-             id, laboratory_id, equipment_id, user_id, project_id, purpose, sample_count, notes, started_at
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
-           RETURNING id, laboratory_id, equipment_id, user_id, project_id, purpose, sample_count, notes, started_at, completed_at, cancelled_at, cancelled_by_user_id, cancellation_reason, created_at, updated_at, archived_at`,
+             id, laboratory_id, equipment_id, user_id, project_id, project_label, purpose, sample_count, notes, started_at
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now())
+           RETURNING id, laboratory_id, equipment_id, user_id, project_id, project_label, purpose, sample_count, notes, started_at, completed_at, cancelled_at, cancelled_by_user_id, cancellation_reason, created_at, updated_at, archived_at`,
           [
             occupation.id,
             input.laboratoryId,
             input.equipmentId,
             context.actorId,
-            input.projectId,
-            input.purpose,
+            input.projectId ?? null,
+            input.projectLabel ?? null,
+            input.purpose ?? null,
             input.sampleCount ?? null,
             input.notes ?? null,
           ],
@@ -525,7 +536,7 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
   ): Promise<Reservation> {
     return inTransaction(this.pool, async (client) => {
       const queryResult = await client.query<ReservationRow>(
-        `SELECT r.id, r.laboratory_id, r.equipment_id, r.user_id, r.project_id, r.purpose,
+        `SELECT r.id, r.laboratory_id, r.equipment_id, r.user_id, r.project_id, r.project_label, r.purpose,
                 r.sample_count, r.notes, r.started_at, r.completed_at, r.cancelled_at, r.cancelled_by_user_id, r.cancellation_reason,
                 r.created_at, r.updated_at, r.archived_at,
                 o.starts_at, o.ends_at, o.status
@@ -565,7 +576,7 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
         `UPDATE reservations
             SET started_at = now(), updated_at = now()
           WHERE id = $1 AND laboratory_id = $2
-          RETURNING id, laboratory_id, equipment_id, user_id, project_id, purpose, sample_count, notes, started_at, completed_at, cancelled_at, cancelled_by_user_id, cancellation_reason, created_at, updated_at, archived_at`,
+          RETURNING id, laboratory_id, equipment_id, user_id, project_id, project_label, purpose, sample_count, notes, started_at, completed_at, cancelled_at, cancelled_by_user_id, cancellation_reason, created_at, updated_at, archived_at`,
         [reservationId, laboratoryId],
       );
 
@@ -616,7 +627,7 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
       // permite recusas específicas numa única ida ao banco. `period` é coluna
       // gerada com índice GiST, então `&&` é indexado.
       const windowResult = await client.query<ReservationRow>(
-        `SELECT r.id, r.laboratory_id, r.equipment_id, r.user_id, r.project_id, r.purpose,
+        `SELECT r.id, r.laboratory_id, r.equipment_id, r.user_id, r.project_id, r.project_label, r.purpose,
                 r.sample_count, r.notes, r.started_at, r.completed_at, r.cancelled_at, r.cancelled_by_user_id, r.cancellation_reason,
                 r.created_at, r.updated_at, r.archived_at,
                 o.starts_at, o.ends_at, o.status
@@ -681,7 +692,7 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
         `UPDATE reservations
             SET started_at = now(), updated_at = now()
           WHERE id = $1 AND laboratory_id = $2
-          RETURNING id, laboratory_id, equipment_id, user_id, project_id, purpose, sample_count, notes, started_at, completed_at, cancelled_at, cancelled_by_user_id, cancellation_reason, created_at, updated_at, archived_at`,
+          RETURNING id, laboratory_id, equipment_id, user_id, project_id, project_label, purpose, sample_count, notes, started_at, completed_at, cancelled_at, cancelled_by_user_id, cancellation_reason, created_at, updated_at, archived_at`,
         [eligible.id, laboratoryId],
       );
 
@@ -718,7 +729,7 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
   ): Promise<Reservation> {
     return inTransaction(this.pool, async (client) => {
       const queryResult = await client.query<ReservationRow>(
-        `SELECT r.id, r.laboratory_id, r.equipment_id, r.user_id, r.project_id, r.purpose,
+        `SELECT r.id, r.laboratory_id, r.equipment_id, r.user_id, r.project_id, r.project_label, r.purpose,
                 r.sample_count, r.notes, r.started_at, r.completed_at, r.cancelled_at, r.cancelled_by_user_id, r.cancellation_reason,
                 r.created_at, r.updated_at, r.archived_at,
                 o.starts_at, o.ends_at, o.status
@@ -760,7 +771,7 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
                 notes = COALESCE($3, notes),
                 updated_at = now()
           WHERE id = $1 AND laboratory_id = $2
-          RETURNING id, laboratory_id, equipment_id, user_id, project_id, purpose, sample_count, notes, started_at, completed_at, cancelled_at, cancelled_by_user_id, cancellation_reason, created_at, updated_at, archived_at`,
+          RETURNING id, laboratory_id, equipment_id, user_id, project_id, project_label, purpose, sample_count, notes, started_at, completed_at, cancelled_at, cancelled_by_user_id, cancellation_reason, created_at, updated_at, archived_at`,
         [reservationId, laboratoryId, notes ?? null],
       );
 
@@ -846,7 +857,7 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
   ): Promise<Reservation> {
     return inTransaction(this.pool, async (client) => {
       const queryResult = await client.query<ReservationRow>(
-        `SELECT r.id, r.laboratory_id, r.equipment_id, r.user_id, r.project_id, r.purpose,
+        `SELECT r.id, r.laboratory_id, r.equipment_id, r.user_id, r.project_id, r.project_label, r.purpose,
                 r.sample_count, r.notes, r.started_at, r.completed_at, r.cancelled_at, r.cancelled_by_user_id, r.cancellation_reason,
                 r.created_at, r.updated_at, r.archived_at,
                 o.starts_at, o.ends_at, o.status
@@ -893,7 +904,7 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
            cancellation_reason = $3,
            updated_at = now()
          WHERE id = $1 AND laboratory_id = $4
-         RETURNING id, laboratory_id, equipment_id, user_id, project_id, purpose, sample_count, notes, started_at, completed_at, cancelled_at, cancelled_by_user_id, cancellation_reason, created_at, updated_at, archived_at`,
+         RETURNING id, laboratory_id, equipment_id, user_id, project_id, project_label, purpose, sample_count, notes, started_at, completed_at, cancelled_at, cancelled_by_user_id, cancellation_reason, created_at, updated_at, archived_at`,
         [reservationId, context.actorId, reason ?? null, laboratoryId],
       );
 
@@ -1067,7 +1078,7 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
     const result = await this.pool.query<CombinedScheduleRow>(
       `SELECT o.id, o.laboratory_id, o.equipment_id, e.name AS equipment_name, o.occupation_type,
               o.starts_at, o.ends_at, o.status,
-              r.user_id, r.project_id, p.code AS project_code,
+              r.user_id, r.project_id, r.project_label, p.code AS project_code,
               r.purpose, r.sample_count, r.notes, r.started_at, r.completed_at,
               tb.created_by_user_id, tb.reason AS block_reason, tb.description
          FROM equipment_occupations o
@@ -1121,7 +1132,8 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
           startsAt: timestamp(row.starts_at),
           endsAt: timestamp(row.ends_at),
           title: canSeeDetails
-            ? `Reserva: ${row.purpose ?? 'Sem finalidade'}`
+            // Finalidade e projeto são opcionais; o título usa o que houver.
+            ? `Reserva${row.purpose ? `: ${row.purpose}` : row.project_label ? `: ${row.project_label}` : ''}`
             : 'Equipamento Reservado',
           status,
           isMine,
@@ -1136,9 +1148,10 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
             ? {
                 reservationId: row.id,
                 userId: row.user_id!,
-                projectId: row.project_id!,
+                projectId: row.project_id,
                 projectCode: row.project_code ?? undefined,
-                purpose: row.purpose ?? '',
+                projectLabel: row.project_label,
+                purpose: row.purpose,
                 sampleCount: row.sample_count ?? undefined,
                 notes: row.notes ?? undefined,
                 startedAt: row.started_at ? timestamp(row.started_at) : null,

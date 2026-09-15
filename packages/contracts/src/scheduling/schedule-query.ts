@@ -52,9 +52,10 @@ export const scheduleReservationDetailsSchema = z
   .object({
     reservationId: uuidSchema,
     userId: uuidSchema,
-    projectId: uuidSchema,
+    projectId: uuidSchema.nullable().optional(),
     projectCode: z.string().trim().min(1).max(48).nullable().optional(),
-    purpose: z.string().trim().min(2).max(500),
+    projectLabel: z.string().trim().min(1).max(200).nullable().optional(),
+    purpose: z.string().trim().min(2).max(500).nullable().optional(),
     sampleCount: z.number().int().min(1).max(10_000).nullable().optional(),
     notes: z.string().trim().max(2_000).nullable().optional(),
     startedAt: timestampSchema.nullable().optional(),

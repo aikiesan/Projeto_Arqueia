@@ -698,8 +698,8 @@ describe('AgendaPageClient Integration', () => {
     fireEvent.change(dialog.querySelector('input[name="endTime"]')!, {
       target: { value: '10:30' },
     });
-    fireEvent.change(dialog.querySelector('select[name="projectId"]')!, {
-      target: { value: sampleProject.id },
+    fireEvent.change(dialog.querySelector('input[name="projectLabel"]')!, {
+      target: { value: 'Projeto escrito pelo aluno' },
     });
     fireEvent.change(dialog.querySelector('input[name="purpose"]')!, {
       target: { value: 'Análise de estabilidade' },
@@ -779,8 +779,8 @@ describe('AgendaPageClient Integration', () => {
     fireEvent.change(dialog.querySelector('input[name="endTime"]')!, {
       target: { value: '10:30' },
     });
-    fireEvent.change(dialog.querySelector('select[name="projectId"]')!, {
-      target: { value: sampleProject.id },
+    fireEvent.change(dialog.querySelector('input[name="projectLabel"]')!, {
+      target: { value: 'Projeto escrito pelo aluno' },
     });
     fireEvent.change(dialog.querySelector('input[name="purpose"]')!, {
       target: { value: 'Finalidade preservada' },
@@ -789,7 +789,9 @@ describe('AgendaPageClient Integration', () => {
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('CONFLITO');
     expect(dialog.querySelector('input[name="purpose"]')).toHaveValue('Finalidade preservada');
-    expect(dialog.querySelector('select[name="projectId"]')).toHaveValue(sampleProject.id);
+    expect(dialog.querySelector('input[name="projectLabel"]')).toHaveValue(
+      'Projeto escrito pelo aluno',
+    );
     expect(dialog.querySelector('input[name="startTime"]')).toHaveValue('09:00');
     expect(dialog.querySelector('input[name="endTime"]')).toHaveValue('10:30');
     expect(screen.getAllByText('Análise de Frações HPLC').length).toBeGreaterThanOrEqual(1);
