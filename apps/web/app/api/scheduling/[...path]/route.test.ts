@@ -150,4 +150,89 @@ describe('BFF scheduling mutations', () => {
       endsAt: '2026-08-20T11:00:00.000Z',
     });
   });
+
+  describe('check-in pela etiqueta do equipamento', () => {
+    const checkInPath = `/api/scheduling/equipment/${equipmentId}/check-in`;
+    const startedReservation = { ...reservation, status: 'IN_PROGRESS', startedAt: '2026-08-20T10:00:00.000Z' };
+
+    it('rejeita origem não confiável antes de encaminhar', async () => {
+      const response = await POST(
+        postRequest(checkInPath, { laboratoryId }, 'https://attacker.invalid'),
+      );
+
+      expect(response.status).toBe(403);
+      expect(await response.json()).toEqual({ code: 'INVALID_ORIGIN' });
+      expect(apiServer.authorizedApiRequest).not.toHaveBeenCalled();
+    });
+
+    it('encaminha somente o laboratoryId para a API', async () => {
+      vi.mocked(apiServer.authorizedApiRequest).mockResolvedValue(
+        new Response(JSON.stringify(startedReservation), { status: 200 }),
+      );
+
+      const response = await POST(postRequest(checkInPath, { laboratoryId }));
+
+      expect(response.status).toBe(200);
+      const forwarded = vi.mocked(apiServer.authorizedApiRequest).mock.calls[0];
+      expect(forwarded?.[1]).toBe(checkInPath);
+      expect(await (forwarded?.[0] as Request).json()).toEqual({ laboratoryId });
+    });
+
+    /** O contrato é .strict(): o cliente não escolhe a reserva nem por tabela. */
+    it('recusa payload com campos extras, como reservationId', async () => {
+      const response = await POST(
+        postRequest(checkInPath, { laboratoryId, reservationId: 'nao-deve-passar' }),
+      );
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ code: 'INVALID_SCHEDULING_INPUT' });
+      expect(apiServer.authorizedApiRequest).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Regressão: o handler intercepta todo 409 e o valida contra
+     * conflictErrorResponseSchema. Por isso a recusa de check-in usa 422, que
+     * precisa chegar ao cliente com o corpo intacto.
+     */
+    it('repassa a recusa 422 sem alterar o corpo', async () => {
+      const refusal = {
+        code: 'RESERVATION_OF_ANOTHER_USER',
+        message: 'Este equipamento está reservado por outro usuário no momento.',
+        nextReservationStartsAt: null,
+        occupiedUntil: '2026-08-20T11:00:00.000Z',
+      };
+      vi.mocked(apiServer.authorizedApiRequest).mockResolvedValue(
+        new Response(JSON.stringify(refusal), { status: 422 }),
+      );
+
+      const response = await POST(postRequest(checkInPath, { laboratoryId }));
+
+      expect(response.status).toBe(422);
+      expect(await response.json()).toEqual(refusal);
+    });
+
+    it('barra resposta de outro laboratório', async () => {
+      vi.mocked(apiServer.authorizedApiRequest).mockResolvedValue(
+        new Response(
+          JSON.stringify({ ...startedReservation, laboratoryId: '99999999-9999-4999-a999-999999999999' }),
+          { status: 200 },
+        ),
+      );
+
+      const response = await POST(postRequest(checkInPath, { laboratoryId }));
+
+      expect(response.status).toBe(502);
+      expect(await response.json()).toEqual({ code: 'UPSTREAM_SCOPE_MISMATCH' });
+    });
+
+    it('não roteia equipmentId que não seja uuid', async () => {
+      const response = await POST(
+        postRequest('/api/scheduling/equipment/nao-e-uuid/check-in', { laboratoryId }),
+      );
+
+      expect(response.status).toBe(404);
+      expect(await response.json()).toEqual({ code: 'ROUTE_NOT_FOUND' });
+      expect(apiServer.authorizedApiRequest).not.toHaveBeenCalled();
+    });
+  });
 });
