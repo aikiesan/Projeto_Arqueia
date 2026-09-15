@@ -304,7 +304,10 @@ export function EquipmentPageClient() {
                 {item.notes ? <p className="equipment-card-notes">{item.notes}</p> : null}
 
                 <div className="equipment-card-actions">
-                  <a className="equipment-reserve-link" href={`/agenda?equipmentId=${item.id}`}>
+                  <a
+                    className="equipment-reserve-link"
+                    href={withBasePath(`/agenda?equipmentId=${item.id}`)}
+                  >
                     Reservar Horário
                   </a>
                   <button
