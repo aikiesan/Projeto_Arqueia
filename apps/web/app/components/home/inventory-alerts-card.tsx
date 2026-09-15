@@ -1,6 +1,8 @@
 import type { DashboardInventoryAlert } from '@arqueia/contracts';
 import { ArqueiaIcon } from '@arqueia/ui';
 
+import { withBasePath } from '../../lib/base-path';
+
 export interface InventoryAlertsCardProps {
   readonly alerts: readonly DashboardInventoryAlert[];
   readonly available: boolean;
@@ -40,7 +42,7 @@ export function InventoryAlertsCard({
               : alerts[0]?.detail ?? 'Saldos e validades calculados a partir do ledger.'}
         </p>
       </div>
-      {firstHref ? <a href={firstHref}>Abrir</a> : null}
+      {firstHref ? <a href={withBasePath(firstHref)}>Abrir</a> : null}
     </article>
   );
 }

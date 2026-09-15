@@ -2,6 +2,8 @@ import type { DashboardReservation } from '@arqueia/contracts';
 
 import { DashboardSectionState } from './dashboard-section-state';
 
+import { withBasePath } from '../../lib/base-path';
+
 export interface TodayReservationsCardProps {
   readonly reservations: readonly DashboardReservation[];
   readonly available: boolean;
@@ -43,7 +45,7 @@ export function TodayReservationsCard({
               <strong>{reservation.equipmentName}</strong>
               <span>{reservation.purpose}</span>
             </div>
-            <a href={reservation.href}>Ver</a>
+            <a href={withBasePath(reservation.href)}>Ver</a>
           </article>
         ))}
       </div>

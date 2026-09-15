@@ -30,7 +30,7 @@ function pathnameOf(href: string): string {
 
 function navigationCard(item: NavigationItem) {
   return (
-    <a className="more-module-card" href={item.href} key={item.href}>
+    <a className="more-module-card" href={withBasePath(item.href)} key={item.href}>
       <span className="more-module-icon">
         <ArqueiaIcon name={item.icon} size={23} />
       </span>

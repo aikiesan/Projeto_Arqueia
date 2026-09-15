@@ -131,3 +131,52 @@ describe('WorkspaceShell', () => {
     });
   });
 });
+
+describe('WorkspaceShell sob basePath', () => {
+  /**
+   * Em produção o app vive em /arqueia. Todo href do shell precisa sair
+   * prefixado — um link cru manda o usuário para a raiz do domínio do CP2b,
+   * que responde 404.
+   */
+  const scoped: WorkspaceShellProps = {
+    ...props,
+    activeModuleHref: '/agenda',
+    basePath: '/arqueia',
+    laboratories: [
+      { href: '/agenda?laboratory=lab-cp2b', id: 'lab-cp2b', name: 'Laboratório CP2b', shortName: 'CP' },
+    ],
+    moduleNavigation: [
+      { href: '/', icon: 'inicio', label: 'Visão geral' },
+      { href: '/agenda', icon: 'agenda', label: 'Agenda' },
+    ],
+    qrAction: { href: '/qr?laboratory=lab-cp2b', label: 'Ler QR Code' },
+  };
+
+  it('prefixa todos os links internos renderizados', () => {
+    const { container } = render(<WorkspaceShell {...scoped} />);
+
+    const internos = [...container.querySelectorAll('a[href^="/"]')].map((a) =>
+      a.getAttribute('href'),
+    );
+
+    expect(internos.length).toBeGreaterThan(0);
+    expect(internos.filter((href) => href !== null && !href.startsWith('/arqueia'))).toEqual([]);
+  });
+
+  it('prefixa a navegação da agenda e o seletor de laboratório', () => {
+    render(<WorkspaceShell {...scoped} />);
+
+    expect(screen.getAllByRole('link', { name: 'Agenda' })[0]).toHaveAttribute(
+      'href',
+      '/arqueia/agenda',
+    );
+    expect(screen.getByRole('link', { name: 'Laboratório CP2b' })).toHaveAttribute(
+      'href',
+      '/arqueia/agenda?laboratory=lab-cp2b',
+    );
+    expect(screen.getByRole('link', { name: 'Ler QR Code' })).toHaveAttribute(
+      'href',
+      '/arqueia/qr?laboratory=lab-cp2b',
+    );
+  });
+});

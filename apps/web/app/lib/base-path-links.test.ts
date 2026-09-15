@@ -39,10 +39,29 @@ function anchorTags(source: string): string[] {
   return tags;
 }
 
-/** href que aponta para a raiz do domínio sem passar por withBasePath. */
+/**
+ * href interno que não passou por withBasePath.
+ *
+ * Cobre as duas formas, porque a primeira versão deste teste só olhava literais
+ * e deixou escapar seis links do dashboard cujo href vinha da API por variável:
+ *   href="/agenda"            (literal)
+ *   href={action.href}        (variável — a API monta o caminho e não conhece
+ *                              o basePath da implantação)
+ *
+ * Ficam de fora âncoras (#), URLs absolutas e caminhos relativos.
+ */
 function hasUnprefixedHref(tag: string): boolean {
-  const href = /href=\{?["'`]\/[^"'`]*["'`]\}?/.exec(tag);
-  return href !== null && !tag.includes('withBasePath');
+  const href = /href=(\{[^}]*\}|"[^"]*"|'[^']*')/.exec(tag);
+  if (href === null) return false;
+
+  const value = href[1] ?? '';
+  if (value.includes('withBasePath') || value.includes('joinBasePath')) return false;
+
+  const literal = /^[{]?["'`]?([^"'`{}]*)/.exec(value)?.[1] ?? '';
+  if (literal.startsWith('#') || /^[a-z]+:/i.test(literal) || literal.startsWith('//')) return false;
+
+  // Literal interno, ou href vindo de expressão/variável: ambos precisam do prefixo.
+  return literal.startsWith('/') || value.startsWith('{');
 }
 
 describe('Links internos sob basePath', () => {
@@ -66,5 +85,13 @@ describe('Links internos sob basePath', () => {
     expect(anchorTags(corrigido).filter(hasUnprefixedHref)).toHaveLength(0);
     expect(anchorTags(externo).filter(hasUnprefixedHref)).toHaveLength(0);
     expect(anchorTags(ancora).filter(hasUnprefixedHref)).toHaveLength(0);
+  });
+
+  it('também detecta href vindo de variável, como os do dashboard', () => {
+    const daApi = '<a href={action.href}>Acessar</a>';
+    const corrigido = '<a href={withBasePath(action.href)}>Acessar</a>';
+
+    expect(anchorTags(daApi).filter(hasUnprefixedHref)).toHaveLength(1);
+    expect(anchorTags(corrigido).filter(hasUnprefixedHref)).toHaveLength(0);
   });
 });
