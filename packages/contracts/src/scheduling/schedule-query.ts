@@ -83,6 +83,13 @@ export const scheduleItemSchema = z
     startsAt: timestampSchema,
     endsAt: timestampSchema,
     title: z.string().trim().min(1).max(500),
+    /**
+     * Nome de quem reservou o equipamento. Fica `null` em bloqueios técnicos.
+     * A agenda pública (sem login) já expõe esse nome por decisão do
+     * responsável pelo laboratório; aqui ele existe para que a agenda interna
+     * deixe claro, na própria grade, de quem é cada reserva.
+     */
+    reservedBy: z.string().trim().min(1).max(200).nullable().optional(),
     status: scheduleItemStatusSchema,
     isMine: z.boolean(),
     canCancel: z.boolean(),

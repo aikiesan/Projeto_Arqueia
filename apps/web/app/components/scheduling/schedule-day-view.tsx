@@ -240,11 +240,17 @@ export function ScheduleDayView({
 
   // If in Multi-Lane Mode ("Todos os Equipamentos" and equipments list available)
   if (isMultiLaneMode && equipments && equipments.length > 0) {
-    const gridTemplateCols = `68px repeat(${equipments.length}, minmax(220px, 1fr))`;
+    // A largura das raias vem do CSS (`--schedule-lane-*`), não de um valor fixo
+    // aqui: assim o celular usa colunas mais estreitas sem duplicar layout.
+    const gridTemplateCols =
+      'var(--schedule-lane-gutter) repeat(var(--schedule-lane-count), minmax(var(--schedule-lane-width), 1fr))';
+    const laneCountStyle = {
+      '--schedule-lane-count': equipments.length,
+    } as React.CSSProperties;
     const totalGridHeight = hoursList.length * 64;
 
     return (
-      <div className={`schedule-day-view schedule-day-view--lanes ${className}`}>
+      <div className={`schedule-day-view schedule-day-view--lanes ${className}`} style={laneCountStyle}>
         <div className="schedule-day-header">
           <div>
             <h3 className="schedule-day-title">{formattedDayHeader}</h3>

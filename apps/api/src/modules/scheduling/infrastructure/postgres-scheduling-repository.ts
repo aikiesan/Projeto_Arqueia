@@ -137,6 +137,7 @@ interface CombinedScheduleRow {
   ends_at: Date;
   status: string;
   user_id: string | null;
+  reserved_by: string | null;
   project_id: string | null;
   project_label: string | null;
   project_code: string | null;
@@ -1078,12 +1079,14 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
     const result = await this.pool.query<CombinedScheduleRow>(
       `SELECT o.id, o.laboratory_id, o.equipment_id, e.name AS equipment_name, o.occupation_type,
               o.starts_at, o.ends_at, o.status,
-              r.user_id, r.project_id, r.project_label, p.code AS project_code,
+              r.user_id, ru.name AS reserved_by,
+              r.project_id, r.project_label, p.code AS project_code,
               r.purpose, r.sample_count, r.notes, r.started_at, r.completed_at,
               tb.created_by_user_id, tb.reason AS block_reason, tb.description
          FROM equipment_occupations o
          JOIN equipment e ON e.id = o.equipment_id
     LEFT JOIN reservations r ON r.id = o.id
+    LEFT JOIN users ru ON ru.id = r.user_id
     LEFT JOIN projects p ON p.id = r.project_id
     LEFT JOIN technical_blocks tb ON tb.id = o.id
         WHERE o.laboratory_id = $1
@@ -1135,6 +1138,9 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
             // Finalidade e projeto são opcionais; o título usa o que houver.
             ? `Reserva${row.purpose ? `: ${row.purpose}` : row.project_label ? `: ${row.project_label}` : ''}`
             : 'Equipamento Reservado',
+          // Quem reservou aparece para todo mundo que enxerga a agenda: é a
+          // informação que evita disputa de horário no balcão do laboratório.
+          reservedBy: row.reserved_by ?? null,
           status,
           isMine,
           canCancel:
@@ -1170,6 +1176,7 @@ export class PostgresSchedulingRepository implements SchedulingRepository {
         startsAt: timestamp(row.starts_at),
         endsAt: timestamp(row.ends_at),
         title: 'Bloqueio técnico',
+        reservedBy: null,
         status,
         isMine: false,
         canCancel: status !== 'CANCELLED' && access.canManageBlocks,

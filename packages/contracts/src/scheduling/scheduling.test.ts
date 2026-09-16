@@ -6,6 +6,7 @@ import {
   createReservationInputSchema,
   createTechnicalBlockInputSchema,
   listScheduleQuerySchema,
+  scheduleItemSchema,
   scheduleResponseSchema,
 } from './index.js';
 
@@ -239,6 +240,36 @@ describe('Scheduling Contracts (Checkpoint A1)', () => {
 
     expect(parsed.timezone).toBe('America/Sao_Paulo');
     expect(parsed.items[0]?.canCancel).toBe(true);
+  });
+
+  it('carrega o nome de quem reservou no item de agenda', () => {
+    const baseItem = {
+      id: '44444444-4444-4444-a444-444444444444',
+      type: 'RESERVATION' as const,
+      equipmentId,
+      equipmentName: 'Cromatógrafo HPLC',
+      startsAt: '2026-08-20T10:00:00.000Z',
+      endsAt: '2026-08-20T12:00:00.000Z',
+      title: 'Equipamento Reservado',
+      status: 'CONFIRMED' as const,
+      isMine: false,
+      canCancel: false,
+    };
+
+    const withName = scheduleItemSchema.parse({ ...baseItem, reservedBy: 'Marina Duarte' });
+    expect(withName.reservedBy).toBe('Marina Duarte');
+
+    // Bloqueio técnico não tem reservante: o campo aceita null explicitamente.
+    const block = scheduleItemSchema.parse({
+      ...baseItem,
+      type: 'TECHNICAL_BLOCK',
+      title: 'Bloqueio técnico',
+      reservedBy: null,
+    });
+    expect(block.reservedBy).toBeNull();
+
+    // Nome em branco é erro de origem, não um item "sem dono".
+    expect(() => scheduleItemSchema.parse({ ...baseItem, reservedBy: '   ' })).toThrow();
   });
 
   it('formats stable conflict error response', () => {

@@ -802,8 +802,8 @@ a:active {
   font-weight: 650;
 }
 
-.login-form input,
-.equipment-form input,
+.login-form input:not([type='checkbox']):not([type='radio']),
+.equipment-form input:not([type='checkbox']):not([type='radio']),
 .equipment-form select,
 .equipment-form textarea {
   background: var(--arqueia-surface);
@@ -812,11 +812,45 @@ a:active {
   box-sizing: border-box;
   color: var(--arqueia-ink-950);
   font: inherit;
+  /* 16px impede o zoom automático do Safari iOS ao focar o campo. */
   font-size: 16px;
+  max-width: 100%;
   min-height: 48px;
+  min-width: 0;
   padding: 0.75rem 0.9rem;
   width: 100%;
   -webkit-appearance: none;
+}
+
+/*
+ * Caixas de seleção continuam sendo caixas de seleção: sem esta exceção elas
+ * herdavam `width: 100%` + `min-height: 48px` das regras acima e viravam um
+ * retângulo gigante (e, com `-webkit-appearance: none`, invisível no iOS).
+ */
+.login-form input[type='checkbox'],
+.login-form input[type='radio'],
+.equipment-form input[type='checkbox'],
+.equipment-form input[type='radio'],
+.agenda-check-field input[type='checkbox'],
+.agenda-weekday-chip input[type='checkbox'] {
+  accent-color: var(--arqueia-brand-700);
+  background: none;
+  border: 0;
+  border-radius: 0;
+  flex: 0 0 auto;
+  height: 22px;
+  margin: 0;
+  min-height: 0;
+  min-width: 0;
+  padding: 0;
+  width: 22px;
+  -webkit-appearance: checkbox;
+  appearance: auto;
+}
+
+.login-form input[type='radio'],
+.equipment-form input[type='radio'] {
+  -webkit-appearance: radio;
 }
 
 .login-form input:focus,
@@ -1011,7 +1045,11 @@ a:active {
 .equipment-grid {
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  /*
+   * `min(290px, 100%)`: em telas de 320px o track fixo de 290px ficava mais
+   * largo que a coluna útil (288px) e o grid vazava para fora da viewport.
+   */
+  grid-template-columns: repeat(auto-fill, minmax(min(290px, 100%), 1fr));
 }
 
 .equipment-card {
@@ -1335,27 +1373,43 @@ a:active {
 .equipment-pagination .secondary-button { width: auto; }
 
 .equipment-dialog-backdrop {
-  align-items: center;
+  align-items: flex-end;
   background: rgba(15, 23, 42, 0.6);
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   inset: 0;
   justify-content: center;
-  padding: 1rem;
+  padding: 0;
   position: fixed;
   z-index: 100;
 }
 
 .equipment-dialog {
   background: var(--arqueia-surface);
-  border-radius: 16px;
+  border-radius: 20px 20px 0 0;
   box-shadow: var(--arqueia-shadow-lg);
   box-sizing: border-box;
-  max-height: calc(100dvh - 2rem);
+  max-height: 92dvh;
   max-width: 720px;
+  overscroll-behavior: contain;
   overflow-y: auto;
-  padding: 1.5rem;
+  padding: 1.25rem 1.1rem calc(1.25rem + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
   width: 100%;
+}
+
+@media (min-width: 640px) {
+  .equipment-dialog-backdrop {
+    align-items: center;
+    padding: 1rem;
+  }
+
+  .equipment-dialog {
+    border-radius: 16px;
+    max-height: calc(100dvh - 2rem);
+    padding: 1.5rem;
+  }
 }
 
 .equipment-dialog-heading {
@@ -1411,10 +1465,26 @@ a:active {
 
 .equipment-form-actions {
   display: flex;
+  flex-direction: column-reverse;
   gap: 0.7rem;
   grid-column: 1 / -1;
   justify-content: flex-end;
   padding-top: 0.4rem;
+}
+
+.equipment-form-actions > button {
+  min-height: 48px;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .equipment-form-actions {
+    flex-direction: row;
+  }
+
+  .equipment-form-actions > button {
+    width: auto;
+  }
 }
 
 .schedule-card--continuation {
@@ -1840,6 +1910,16 @@ a:active {
   color: var(--arqueia-ink-600);
   font-size: 0.68rem;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Também aparece fora das raias contínuas, onde não havia regra base. */
+.schedule-card-project {
+  color: var(--arqueia-ink-500, #64748b);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.65rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2342,8 +2422,10 @@ a:active {
   display: flex;
   flex-direction: column;
   max-height: 90dvh;
+  overscroll-behavior: contain;
   overflow-y: auto;
-  padding: 1.25rem;
+  padding: 1.25rem 1.1rem calc(1.25rem + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
   width: 100%;
 }
 
@@ -2484,9 +2566,10 @@ a:active {
 }
 
 .schedule-drawer-footer {
-  align-items: center;
+  align-items: stretch;
   border-top: 1px solid var(--arqueia-line);
   display: flex;
+  flex-direction: column-reverse;
   gap: 0.75rem;
   justify-content: flex-end;
   padding-top: 1rem;
@@ -2499,9 +2582,10 @@ a:active {
   display: inline-flex;
   font-size: 0.8rem;
   font-weight: 800;
-  height: 40px;
   justify-content: center;
+  min-height: 48px;
   padding: 0 1.25rem;
+  width: 100%;
 }
 
 .schedule-drawer-btn:focus-visible {
@@ -2543,6 +2627,16 @@ a:active {
     border-radius: 20px;
     max-width: 580px;
     padding: 1.75rem;
+  }
+
+  .schedule-drawer-footer {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .schedule-drawer-btn {
+    min-height: 44px;
+    width: auto;
   }
 }
 
@@ -3335,7 +3429,21 @@ a:active {
    ========================================================================== */
 
 .schedule-day-view--lanes {
+  /*
+   * Largura das raias e da coluna de horas. No celular elas encolhem para caber
+   * mais equipamentos na tela antes de exigir rolagem lateral.
+   */
+  --schedule-lane-gutter: 48px;
+  --schedule-lane-width: 150px;
+  max-width: 100%;
   width: 100%;
+}
+
+@media (min-width: 600px) {
+  .schedule-day-view--lanes {
+    --schedule-lane-gutter: 68px;
+    --schedule-lane-width: 220px;
+  }
 }
 
 .schedule-day-lanes-container {
@@ -3382,8 +3490,9 @@ a:active {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  padding: 0.65rem 0.85rem;
-  min-width: 220px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0.65rem 0.6rem;
 }
 
 .schedule-day-lane-header-col:last-child {
@@ -3391,20 +3500,31 @@ a:active {
 }
 
 .schedule-day-lane-header-title {
-  color: var(--arqueia-ink-950);
-  font-size: 0.84rem;
-  font-weight: 800;
-  display: flex;
   align-items: center;
+  color: var(--arqueia-ink-950);
+  display: flex;
+  font-size: 0.78rem;
+  font-weight: 800;
   gap: 0.4rem;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.schedule-day-lane-header-title > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .schedule-day-lane-header-meta {
-  display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.7rem;
   color: var(--arqueia-ink-600);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.66rem;
+  gap: 0.35rem 0.5rem;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .schedule-day-lanes-body {
@@ -3439,7 +3559,7 @@ a:active {
 
 .schedule-day-lane-column {
   border-right: 1px solid var(--arqueia-line);
-  min-width: 220px;
+  min-width: 0;
   position: relative;
 }
 
@@ -3669,7 +3789,39 @@ a:active {
 .public-agenda-week {
   display: grid;
   gap: 0.75rem;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr));
+}
+
+/*
+ * O seletor de laboratório da agenda pública não tinha regra: ficava com a
+ * largura intrínseca do nome mais longo e estourava a tela do celular.
+ */
+.public-agenda-lab {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.public-agenda-lab select {
+  background: white;
+  border: 1px solid var(--arqueia-ink-200, #e2e8f0);
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  max-width: 100%;
+  min-height: 48px;
+  min-width: 0;
+  padding: 0 2rem 0 0.75rem;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .public-agenda-lab {
+    max-width: 420px;
+  }
 }
 
 .public-agenda-day {
@@ -3743,4 +3895,465 @@ a:active {
   line-height: 1.5;
   margin-top: 1.5rem;
   padding-top: 0.9rem;
+}
+
+/* ==========================================================================
+   Agenda no celular — barra de controle, avisos e estados que faltavam
+   ==========================================================================
+   A página de agenda era montada com estilos embutidos pensados para telas
+   largas: o `<select>` de equipamentos crescia até a largura do nome mais
+   longo e empurrava a linha inteira para fora da viewport, e vários modifiers
+   usados pelos componentes (`--in-progress`, `--complete`) nunca chegaram a
+   ter regra. Tudo aqui é mobile-first: a versão larga entra por media query.
+   ========================================================================== */
+
+.agenda-notice {
+  background: #e6fffa;
+  border: 1px solid #38b2ac;
+  border-radius: var(--arqueia-radius-sm);
+  color: #234e52;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0.5rem 0;
+  overflow-wrap: anywhere;
+  padding: 0.75rem 0.9rem;
+}
+
+.agenda-control-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.agenda-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+/*
+ * `min-width: 0` no rótulo e no próprio campo: sem isso o `<select>` adota a
+ * largura intrínseca da opção mais longa (nomes de equipamento + código) e
+ * estoura a tela do celular.
+ */
+.agenda-filter-select {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+}
+
+.agenda-filter-select select {
+  background: var(--arqueia-surface);
+  border: 1px solid var(--arqueia-line);
+  border-radius: 10px;
+  color: var(--arqueia-ink-950);
+  font: inherit;
+  font-size: 16px;
+  max-width: 100%;
+  min-height: 48px;
+  min-width: 0;
+  padding: 0 2rem 0 0.85rem;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.agenda-filter-select select:focus-visible {
+  border-color: var(--arqueia-brand-500);
+  box-shadow: 0 0 0 3px rgb(45 167 125 / 16%);
+  outline: none;
+}
+
+.agenda-check-field {
+  align-items: center;
+  color: var(--arqueia-ink-800);
+  cursor: pointer;
+  display: flex;
+  font-size: 0.85rem;
+  font-weight: 650;
+  gap: 0.55rem;
+  min-height: 44px;
+}
+
+.agenda-action-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.agenda-action-btn {
+  align-items: center;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.85rem;
+  font-weight: 800;
+  gap: 0.4rem;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 1rem;
+  text-align: center;
+  width: 100%;
+}
+
+.agenda-action-btn:focus-visible {
+  outline: 2px solid var(--arqueia-brand-500);
+  outline-offset: 2px;
+}
+
+.agenda-action-btn--primary {
+  background: var(--arqueia-brand-700);
+  border: 1px solid var(--arqueia-brand-900);
+  color: #ffffff;
+}
+
+.agenda-action-btn--primary:hover {
+  background: var(--arqueia-brand-900);
+}
+
+.agenda-action-btn--walkin {
+  background: #2b6cb0;
+  border: 1px solid #22548a;
+  color: #ffffff;
+}
+
+.agenda-action-btn--walkin:hover {
+  background: #22548a;
+}
+
+.agenda-action-btn--block {
+  background: #fff8eb;
+  border: 1px solid #e0c897;
+  color: #8c5300;
+}
+
+.agenda-action-btn--block:hover {
+  background: #ffeed1;
+}
+
+@media (min-width: 720px) {
+  .agenda-control-bar {
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: space-between;
+  }
+
+  .agenda-filter-group {
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .agenda-filter-select {
+    max-width: 320px;
+  }
+
+  .agenda-action-group {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .agenda-action-btn {
+    width: auto;
+  }
+}
+
+/* Linha início/término dos formulários */
+.agenda-time-range {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.agenda-time-range > label {
+  display: grid;
+  gap: 0.42rem;
+  min-width: 0;
+}
+
+/* Recorrência */
+.agenda-recurrence {
+  background: #f7fafc;
+  border: 1px solid var(--arqueia-line);
+  border-radius: 10px;
+  margin: 0;
+  min-width: 0;
+  padding: 0.85rem 0.75rem;
+}
+
+.agenda-recurrence legend {
+  color: var(--arqueia-ink-800);
+  font-size: 0.8rem;
+  font-weight: 750;
+  padding: 0 0.35rem;
+}
+
+.agenda-recurrence-grid {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.agenda-weekday-legend {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 650;
+  margin-bottom: 0.45rem;
+}
+
+.agenda-weekday-grid {
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+}
+
+.agenda-weekday-chip {
+  align-items: center;
+  background: #edf2f7;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+  color: #4a5568;
+  cursor: pointer;
+  display: flex;
+  font-size: 0.78rem;
+  font-weight: 550;
+  gap: 0.4rem;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.2rem 0.4rem;
+}
+
+.agenda-weekday-chip--on {
+  background: #e6fffa;
+  border-color: #38b2ac;
+  color: #234e52;
+  font-weight: 750;
+}
+
+.agenda-weekday-chip input[type='checkbox'] {
+  height: 18px;
+  width: 18px;
+}
+
+/* Durações do uso imediato */
+.agenda-duration-grid {
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  margin-top: 0.35rem;
+}
+
+.agenda-duration-chip {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #cbd5e0;
+  border-radius: 8px;
+  color: #4a5568;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 550;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 0.6rem;
+}
+
+.agenda-duration-chip--on {
+  background: #ebf8ff;
+  border-color: #2b6cb0;
+  box-shadow: inset 0 0 0 1px #2b6cb0;
+  color: #2b6cb0;
+  font-weight: 800;
+}
+
+.agenda-duration-chip:focus-visible {
+  outline: 2px solid var(--arqueia-brand-500);
+  outline-offset: 2px;
+}
+
+.primary-button--walkin {
+  background: #2b6cb0;
+  border-color: #22548a;
+}
+
+.primary-button--walkin:hover:not(:disabled) {
+  background: #22548a;
+}
+
+/* ==========================================================================
+   Estados de agenda que os componentes usavam sem regra correspondente
+   ========================================================================== */
+
+.schedule-card--in-progress {
+  background: #ebf8ff;
+  border-color: #bee3f8;
+  border-left-color: #2b6cb0;
+}
+
+.schedule-card--in-progress .schedule-card-badge {
+  background: #bee3f8;
+  color: #1a4971;
+}
+
+.schedule-drawer-badge--in-progress {
+  background: #bee3f8;
+  color: #1a4971;
+}
+
+.schedule-status-tag--in-progress {
+  background: #bee3f8;
+  color: #1a4971;
+}
+
+.schedule-drawer-btn--primary {
+  background: var(--arqueia-brand-700);
+  border: 1px solid var(--arqueia-brand-900);
+  color: #ffffff;
+}
+
+.schedule-drawer-btn--primary:hover:not(:disabled) {
+  background: var(--arqueia-brand-900);
+}
+
+.schedule-drawer-btn--complete {
+  background: #2b6cb0;
+  border: 1px solid #22548a;
+  color: #ffffff;
+}
+
+.schedule-drawer-btn--complete:hover:not(:disabled) {
+  background: #22548a;
+}
+
+.schedule-drawer-btn--primary:disabled,
+.schedule-drawer-btn--complete:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.schedule-day-slot-empty-text {
+  color: var(--arqueia-ink-400);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+/* Nome de quem reservou: aparece no cartão da grade e na raia do dia. */
+.schedule-card-requester {
+  color: var(--arqueia-ink-800);
+  font-size: 0.7rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-card--other .schedule-card-requester {
+  color: var(--arqueia-ink-600);
+}
+
+/* ==========================================================================
+   Garantias de largura — nada da agenda pode ultrapassar a tela do celular
+   ========================================================================== */
+
+.schedule-header,
+.schedule-legend-container,
+.schedule-day-view,
+.schedule-week-view,
+.schedule-feedback,
+.equipment-toolbar {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.schedule-header-title,
+.schedule-day-title,
+.schedule-day-subtitle {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.schedule-drawer-title,
+.schedule-drawer-details-grid dd,
+.schedule-drawer-details-grid dt {
+  overflow-wrap: anywhere;
+}
+
+.schedule-week-mobile-summary {
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+/*
+ * Rolagem lateral das raias/abas: com `touch-action: pan-x pan-y` o gesto
+ * horizontal fica no componente e o vertical continua rolando a página,
+ * comportamento esperado tanto no Chrome Android quanto no Safari iOS.
+ */
+.schedule-day-lanes-container,
+.schedule-equipment-tabs-container,
+.schedule-week-grid-container {
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+}
+
+/* Alvos de toque e feedback de toque em toda a interface */
+button,
+a,
+[role='button'],
+summary {
+  -webkit-tap-highlight-color: rgb(45 167 125 / 12%);
+  touch-action: manipulation;
+}
+
+/* Campos de formulário nunca devem estourar a coluna */
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
+/* Estados de feedback e nome do equipamento nas abas — modifiers sem regra. */
+.schedule-feedback--empty {
+  background: var(--arqueia-surface-muted);
+}
+
+.schedule-feedback--unavailable {
+  background: #fff8eb;
+  border-color: #e0c897;
+}
+
+.schedule-feedback--unavailable .schedule-feedback-title {
+  color: #8c5300;
+}
+
+.schedule-feedback--error {
+  background: #fff5f5;
+  border-color: #f3c2c2;
+}
+
+.schedule-feedback--error .schedule-feedback-title {
+  color: #9b2c2c;
+}
+
+/*
+ * No celular a aba precisa caber: o nome encolhe com reticências em vez de
+ * empurrar a régua de abas — que já rola na horizontal — para fora da tela.
+ */
+.schedule-equipment-name {
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 600px) {
+  .schedule-equipment-name {
+    max-width: 18rem;
+  }
 }
