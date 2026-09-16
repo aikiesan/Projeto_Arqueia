@@ -666,16 +666,19 @@ export function AgendaPageClient() {
       userInitials={initials}
       userLabel={pageData.principal.user.name}
     >
+      {/*
+        O cabeçalho do WorkspaceShell já anuncia o laboratório ativo logo acima.
+        Repetir o nome aqui consumia uma tela inteira de rolagem no celular.
+      */}
       <section className="equipment-toolbar">
         <div>
-          <span className="section-kicker">{activeLaboratory.name}</span>
           <h2>Agenda de Equipamentos</h2>
           <p>Consulte a ocupação em tempo real, selecione horários na grade e gerencie bloqueios técnicos.</p>
         </div>
       </section>
 
       {notice && (
-        <div aria-live="polite" role="status" style={{ background: '#e6fffa', border: '1px solid #38b2ac', color: '#234e52', padding: '0.75rem 1rem', borderRadius: '6px', margin: '0.5rem 0' }}>
+        <div aria-live="polite" className="agenda-notice" role="status">
           {notice}
         </div>
       )}
@@ -693,39 +696,41 @@ export function AgendaPageClient() {
       )}
 
       {/* Control Bar: Filter & Equipment Selection */}
-      <section className="agenda-control-bar" style={{ display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'space-between', margin: '1rem 0', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <select
-            aria-label="Filtrar por equipamento"
-            value={selectedEquipmentId}
-            onChange={(e) => handleEquipmentChange(e.target.value)}
-            style={{ padding: '0.45rem 0.75rem', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '0.875rem' }}
-          >
-            <option value="">Todos os Equipamentos</option>
-            {equipments.map((eq) => (
-              <option key={eq.id} value={eq.id}>
-                {eq.name} ({eq.code})
-              </option>
-            ))}
-          </select>
+      <section className="agenda-control-bar">
+        <div className="agenda-filter-group">
+          {/* O `aria-label` já nomeia o campo; um rótulo visível duplicaria o
+              seletor de equipamento que aparece logo acima em forma de abas. */}
+          <div className="agenda-filter-select">
+            <select
+              aria-label="Filtrar por equipamento"
+              onChange={(e) => handleEquipmentChange(e.target.value)}
+              value={selectedEquipmentId}
+            >
+              <option value="">Todos os Equipamentos</option>
+              {equipments.map((eq) => (
+                <option key={eq.id} value={eq.id}>
+                  {eq.name} ({eq.code})
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+          <label className="agenda-check-field">
             <input
-              type="checkbox"
               checked={onlyMine}
               onChange={(e) => handleToggleOnlyMine(e.target.checked)}
+              type="checkbox"
             />
             <span>Minhas reservas</span>
           </label>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="agenda-action-group">
           {capabilities.canReserve && (
             <button
               aria-label="Uso imediato por QR Code"
-              className="equipment-primary-btn"
+              className="agenda-action-btn agenda-action-btn--walkin"
               onClick={openWalkInModal}
-              style={{ background: '#2b6cb0', borderColor: '#2b6cb0' }}
               type="button"
             >
               ⚡ Uso Imediato (QR Code)
@@ -735,7 +740,7 @@ export function AgendaPageClient() {
           {capabilities.canReserve && (
             <button
               aria-label="Criar nova reserva"
-              className="equipment-primary-btn"
+              className="agenda-action-btn agenda-action-btn--primary"
               onClick={() => openReservationModal()}
               type="button"
             >
@@ -746,9 +751,8 @@ export function AgendaPageClient() {
           {capabilities.canManageBlocks && (
             <button
               aria-label="Criar novo bloqueio"
-              className="equipment-primary-btn"
+              className="agenda-action-btn agenda-action-btn--block"
               onClick={openBlockModal}
-              style={{ background: '#dd6b20', borderColor: '#dd6b20' }}
               type="button"
             >
               Criar novo bloqueio
@@ -880,8 +884,8 @@ export function AgendaPageClient() {
                   required
                 />
               </label>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <label style={{ flex: 1 }}>
+              <div className="agenda-time-range field-wide">
+                <label>
                   <span>Início *</span>
                   <input
                     type="time"
@@ -890,7 +894,7 @@ export function AgendaPageClient() {
                     required
                   />
                 </label>
-                <label style={{ flex: 1 }}>
+                <label>
                   <span>Término *</span>
                   <input
                     type="time"
@@ -913,19 +917,9 @@ export function AgendaPageClient() {
               </label>
 
               {/* Recurrence Section */}
-              <fieldset
-                style={{
-                  gridColumn: '1 / -1',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '6px',
-                  padding: '0.75rem',
-                  background: '#f7fafc',
-                }}
-              >
-                <legend style={{ fontSize: '0.85rem', fontWeight: 600, color: '#2d3748', padding: '0 0.4rem' }}>
-                  Repetição / Recorrência
-                </legend>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+              <fieldset className="agenda-recurrence field-wide">
+                <legend>Repetição / Recorrência</legend>
+                <label className="agenda-check-field">
                   <input
                     type="checkbox"
                     checked={isRecurrent}
@@ -935,7 +929,7 @@ export function AgendaPageClient() {
                 </label>
 
                 {isRecurrent && (
-                  <div style={{ display: 'grid', gap: '0.75rem', marginTop: '0.75rem' }}>
+                  <div className="agenda-recurrence-grid">
                     <label>
                       <span>Frequência</span>
                       <select
@@ -953,10 +947,8 @@ export function AgendaPageClient() {
 
                     {recurrenceFrequency === 'CUSTOM' && (
                       <div>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 600, display: 'block', marginBottom: '0.4rem' }}>
-                          Dias da semana:
-                        </span>
-                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <span className="agenda-weekday-legend">Dias da semana:</span>
+                        <div className="agenda-weekday-grid">
                           {[
                             { id: 1, label: 'Seg' },
                             { id: 2, label: 'Ter' },
@@ -969,20 +961,8 @@ export function AgendaPageClient() {
                             const isChecked = recurrenceWeekdays.includes(id);
                             return (
                               <label
+                                className={`agenda-weekday-chip${isChecked ? ' agenda-weekday-chip--on' : ''}`}
                                 key={id}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '0.25rem',
-                                  fontSize: '0.78rem',
-                                  cursor: 'pointer',
-                                  background: isChecked ? '#e6fffa' : '#edf2f7',
-                                  color: isChecked ? '#234e52' : '#4a5568',
-                                  padding: '0.2rem 0.5rem',
-                                  borderRadius: '4px',
-                                  border: isChecked ? '1px solid #38b2ac' : '1px solid #cbd5e0',
-                                  fontWeight: isChecked ? 700 : 500,
-                                }}
                               >
                                 <input
                                   type="checkbox"
@@ -994,7 +974,6 @@ export function AgendaPageClient() {
                                       setRecurrenceWeekdays((prev) => prev.filter((d) => d !== id));
                                     }
                                   }}
-                                  style={{ width: 'auto', minHeight: 'auto' }}
                                 />
                                 <span>{label}</span>
                               </label>
@@ -1078,7 +1057,7 @@ export function AgendaPageClient() {
 
               <label className="field-wide">
                 <span>Duração Estimada do Uso *</span>
-                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                <div className="agenda-duration-grid">
                   {[
                     { label: '30 min', mins: 30 },
                     { label: '1 hora', mins: 60 },
@@ -1087,18 +1066,11 @@ export function AgendaPageClient() {
                     { label: '4 horas', mins: 240 },
                   ].map(({ label, mins }) => (
                     <button
+                      aria-pressed={walkInDuration === mins}
+                      className={`agenda-duration-chip${walkInDuration === mins ? ' agenda-duration-chip--on' : ''}`}
                       key={mins}
-                      type="button"
                       onClick={() => setWalkInDuration(mins)}
-                      style={{
-                        padding: '0.35rem 0.75rem',
-                        borderRadius: '4px',
-                        border: walkInDuration === mins ? '2px solid #2b6cb0' : '1px solid #cbd5e0',
-                        background: walkInDuration === mins ? '#ebf8ff' : '#ffffff',
-                        color: walkInDuration === mins ? '#2b6cb0' : '#4a5568',
-                        fontWeight: walkInDuration === mins ? 700 : 500,
-                        cursor: 'pointer',
-                      }}
+                      type="button"
                     >
                       {label}
                     </button>
@@ -1146,9 +1118,8 @@ export function AgendaPageClient() {
                   Cancelar
                 </button>
                 <button
-                  className="primary-button"
+                  className="primary-button primary-button--walkin"
                   disabled={pending}
-                  style={{ background: '#2b6cb0', borderColor: '#2b6cb0' }}
                   type="submit"
                 >
                   {pending ? 'Iniciando...' : '▶ Iniciar Uso Imediato'}
@@ -1210,12 +1181,12 @@ export function AgendaPageClient() {
                   required
                 />
               </label>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <label style={{ flex: 1 }}>
+              <div className="agenda-time-range field-wide">
+                <label>
                   <span>Início *</span>
                   <input type="time" name="startTime" defaultValue="08:00" required />
                 </label>
-                <label style={{ flex: 1 }}>
+                <label>
                   <span>Término *</span>
                   <input type="time" name="endTime" defaultValue="17:00" required />
                 </label>

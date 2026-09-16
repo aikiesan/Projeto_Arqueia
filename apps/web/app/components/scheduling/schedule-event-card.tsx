@@ -55,14 +55,17 @@ export function ScheduleEventCard({
   const continuationClass = isContinuation ? 'schedule-card--continuation' : '';
   const continuousClass = isContinuous ? 'schedule-card--continuous' : '';
 
+  const reservedBy = !isBlock && item.reservedBy ? item.reservedBy : null;
+
   const ariaLabel = useMemo(() => {
     const typeLabel = isBlock ? 'Bloqueio técnico' : 'Reserva';
     const mineLabel = isMine ? ' (Minha reserva)' : '';
     const progressLabel = isInProgress ? ' [Em andamento]' : '';
     const cancelledLabel = isCancelled ? ' [Cancelado]' : '';
     const contLabel = isContinuation ? ' (Continuação)' : '';
-    return `${typeLabel}${mineLabel}${progressLabel}${contLabel}: ${item.title}, Equipamento: ${item.equipmentName}, Horário: ${fullTimeLabel}${cancelledLabel}`;
-  }, [isBlock, isMine, isInProgress, isCancelled, isContinuation, item.title, item.equipmentName, fullTimeLabel]);
+    const byLabel = reservedBy ? `, Reservado por: ${reservedBy}` : '';
+    return `${typeLabel}${mineLabel}${progressLabel}${contLabel}: ${item.title}${byLabel}, Equipamento: ${item.equipmentName}, Horário: ${fullTimeLabel}${cancelledLabel}`;
+  }, [isBlock, isMine, isInProgress, isCancelled, isContinuation, item.title, item.equipmentName, fullTimeLabel, reservedBy]);
 
   const content = (
     <>
@@ -86,6 +89,11 @@ export function ScheduleEventCard({
 
       <span className="schedule-card-body">
         <strong className="schedule-card-title">{item.title}</strong>
+        {reservedBy && (
+          <span className="schedule-card-requester">
+            <span aria-hidden="true">👤</span> {reservedBy}
+          </span>
+        )}
         {!isCompact && !isContinuation && (
           <span className="schedule-card-equipment">{item.equipmentName}</span>
         )}

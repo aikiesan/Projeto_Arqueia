@@ -29,7 +29,9 @@
 .arqueia-workspace {
   background: var(--arqueia-canvas);
   color: var(--arqueia-ink-950);
+  max-width: 100%;
   min-height: 100dvh;
+  min-width: 0;
 }
 
 .arqueia-icon {
@@ -74,7 +76,8 @@
   gap: 0.6rem;
   grid-template-columns: minmax(0, 1fr) auto auto;
   min-height: 64px;
-  padding: 0.6rem 1rem;
+  padding: 0.6rem max(1rem, env(safe-area-inset-right)) 0.6rem max(1rem, env(safe-area-inset-left));
+  padding-top: max(0.6rem, env(safe-area-inset-top));
   position: sticky;
   top: 0;
   z-index: 20;
@@ -131,7 +134,7 @@
 }
 
 .arqueia-mobile-brand small {
-  color: var(--arqueia-muted);
+  color: var(--arqueia-ink-600);
   font-size: 0.7rem;
 }
 
@@ -240,7 +243,9 @@
   margin: 0 auto;
   max-width: 1000px;
   min-width: 0;
-  padding: 1.15rem 1rem 7rem;
+  padding: 1.15rem max(1rem, env(safe-area-inset-right)) calc(7rem + env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-left));
+  width: 100%;
 }
 
 .arqueia-page-heading {
@@ -275,7 +280,8 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
   left: 0;
   min-height: calc(70px + env(safe-area-inset-bottom));
-  padding: 0.35rem 0.35rem calc(0.35rem + env(safe-area-inset-bottom));
+  padding: 0.35rem max(0.35rem, env(safe-area-inset-right)) calc(0.35rem + env(safe-area-inset-bottom))
+    max(0.35rem, env(safe-area-inset-left));
   position: fixed;
   right: 0;
   z-index: 30;
@@ -555,6 +561,10 @@
     max-width: 1120px;
     padding: 2rem clamp(1.5rem, 3vw, 3.2rem) 3rem;
     width: 100%;
+  }
+
+  .arqueia-topbar {
+    padding-top: 0.65rem;
   }
 
   .arqueia-context-panel {

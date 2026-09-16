@@ -30,6 +30,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   colorScheme: 'light',
   initialScale: 1,
+  // `resizes-content` faz o teclado virtual encolher o layout em vez de cobrir
+  // os campos do formulário — o comportamento esperado no Android e no iOS.
+  interactiveWidget: 'resizes-content',
   maximumScale: 5,
   themeColor: '#123f34',
   viewportFit: 'cover',

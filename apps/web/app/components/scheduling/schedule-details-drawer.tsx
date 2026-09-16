@@ -207,6 +207,13 @@ export function ScheduleDetailsDrawer({
                 <dd>{item.equipmentName}</dd>
               </div>
 
+              {!isBlock && (
+                <div>
+                  <dt>Reservado por</dt>
+                  <dd>{item.reservedBy ?? 'Não informado'}</dd>
+                </div>
+              )}
+
               <div>
                 <dt>Data</dt>
                 <dd>{formattedTimes?.date}</dd>
@@ -241,10 +248,19 @@ export function ScheduleDetailsDrawer({
             <section className="schedule-drawer-section">
               <h3 className="schedule-drawer-section-heading">Detalhes da Reserva</h3>
               <dl className="schedule-drawer-details-grid">
-                <div>
-                  <dt>Finalidade</dt>
-                  <dd>{item.reservationDetails.purpose}</dd>
-                </div>
+                {item.reservationDetails.purpose && (
+                  <div>
+                    <dt>Finalidade</dt>
+                    <dd>{item.reservationDetails.purpose}</dd>
+                  </div>
+                )}
+
+                {item.reservationDetails.projectLabel && (
+                  <div>
+                    <dt>Projeto (texto livre)</dt>
+                    <dd>{item.reservationDetails.projectLabel}</dd>
+                  </div>
+                )}
 
                 {item.reservationDetails.projectCode && (
                   <div>
