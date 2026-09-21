@@ -62,12 +62,20 @@ async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 /**
+ * Maior página que `listEquipmentQuerySchema` aceita. Pedir acima disso faz a
+ * API devolver 400 e a agenda inteira cair no estado de erro — não é um número
+ * de conveniência, é o teto do contrato.
+ */
+export const EQUIPMENT_PAGE_SIZE = 50;
+
+/**
  * Carrega o catálogo inteiro do laboratório, página a página.
  *
- * A agenda pedia uma única página de 50. Quem chegava por QR de um equipamento
- * fora desses 50 via a agenda abrir com um `equipmentId` que não existia na
- * lista: aba sem destaque, `<select>` em branco e cabeçalho sem o nome. O teto
- * existe só para não varrer indefinidamente se o servidor paginar sem fim.
+ * A agenda pedia uma única página e parava. Quem chegava por QR de um
+ * equipamento fora dessa página via a agenda abrir com um `equipmentId` que não
+ * existia na lista: aba sem destaque, `<select>` em branco e cabeçalho sem o
+ * nome. O teto de páginas existe só para não varrer indefinidamente se o
+ * servidor paginar sem fim.
  */
 export async function loadAllEquipment(
   laboratoryId: string,
@@ -78,7 +86,7 @@ export async function loadAllEquipment(
   let cursor: string | null = null;
 
   for (let page = 0; page < maxPages; page += 1) {
-    const query = new URLSearchParams({ laboratoryId, limit: '100' });
+    const query = new URLSearchParams({ laboratoryId, limit: String(EQUIPMENT_PAGE_SIZE) });
     if (cursor) query.set('cursor', cursor);
 
     const equipmentPage = await fetchPage(`/api/equipment?${query.toString()}`);

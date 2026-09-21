@@ -1,7 +1,7 @@
-import type { EquipmentPage } from '@arqueia/contracts';
+import { listEquipmentQuerySchema, type EquipmentPage } from '@arqueia/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
-import { loadAllEquipment } from './agenda-page-client';
+import { EQUIPMENT_PAGE_SIZE, loadAllEquipment } from './agenda-page-client';
 
 const laboratoryId = '7d444840-9dc0-11d1-b245-5ffdce74fad2';
 
@@ -13,6 +13,25 @@ function page(ids: readonly string[], nextCursor: string | null): EquipmentPage 
 }
 
 describe('loadAllEquipment', () => {
+  /**
+   * Regressão de CI: a primeira versão pedia `limit=100`, acima do `.max(50)` de
+   * `listEquipmentQuerySchema`. A API respondia 400, o init da agenda caía no
+   * catch e a página inteira virava estado de erro — os testes e2e da agenda
+   * quebraram em bloco. O teste anterior não pegava porque injetava um
+   * `fetchPage` falso, que nunca validava a query. Agora o contrato valida.
+   */
+  it('monta uma query que o contrato da API aceita', async () => {
+    const urls: string[] = [];
+    await loadAllEquipment(laboratoryId, async (url) => {
+      urls.push(url);
+      return page([], null);
+    });
+
+    const query = Object.fromEntries(new URL(urls[0]!, 'http://x').searchParams);
+    expect(() => listEquipmentQuerySchema.parse(query)).not.toThrow();
+    expect(listEquipmentQuerySchema.parse(query).limit).toBe(EQUIPMENT_PAGE_SIZE);
+  });
+
   /**
    * Regressão do QR: a agenda pedia uma página de 50 e parava. Um equipamento
    * na terceira página resolvia no servidor mas não existia na lista da tela —
@@ -31,7 +50,7 @@ describe('loadAllEquipment', () => {
 
     expect(items.map((item) => item.id)).toEqual(['e1', 'e2', 'e3', 'e4', 'e5']);
     expect(urls).toHaveLength(3);
-    expect(urls[0]).toContain('limit=100');
+    expect(urls[0]).toContain(`limit=${EQUIPMENT_PAGE_SIZE}`);
     expect(urls[0]).toContain(`laboratoryId=${laboratoryId}`);
     expect(urls[0]).not.toContain('cursor=');
     expect(urls[1]).toContain('cursor=c1');
