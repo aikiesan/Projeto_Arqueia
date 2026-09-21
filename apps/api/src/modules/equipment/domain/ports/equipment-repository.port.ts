@@ -23,6 +23,12 @@ export interface EquipmentListQuery {
 export interface EquipmentRepository {
   list(query: EquipmentListQuery): Promise<EquipmentPage>;
   findActiveById(equipmentId: string): Promise<Equipment | null>;
+  /**
+   * Resolve o identificador lido de uma etiqueta de QR — UUID ou código
+   * legível — sem exigir laboratório. Quem restringe o acesso é o caso de uso,
+   * depois de saber a qual laboratório o equipamento pertence.
+   */
+  findActiveByQrIdentifier(identifier: string): Promise<Equipment | null>;
   create(input: CreateEquipmentInput, context: EquipmentMutationContext): Promise<Equipment>;
   update(
     equipmentId: string,

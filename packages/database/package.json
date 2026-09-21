@@ -21,6 +21,9 @@
     "bootstrap-admin": "tsx src/bootstrap-admin.ts",
     "seed": "tsx src/seed.ts",
     "import-equipment": "tsx src/import-equipment-catalog.ts",
+    "qr:resolve": "tsx src/cli/qr-resolve.ts",
+    "qr:labels": "tsx src/cli/qr-labels.ts",
+    "agenda:check": "tsx src/cli/agenda-check.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

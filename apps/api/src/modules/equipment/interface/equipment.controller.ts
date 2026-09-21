@@ -2,12 +2,14 @@ import {
   createEquipmentInputSchema,
   equipmentParamsSchema,
   listEquipmentQuerySchema,
+  resolveEquipmentByQrQuerySchema,
   updateEquipmentInputSchema,
   type AuthenticatedPrincipal,
   type CreateEquipmentInput,
   type Equipment,
   type EquipmentPage,
   type EquipmentStatus,
+  type ResolveEquipmentByQrQuery,
   type UpdateEquipmentInput,
 } from '@arqueia/contracts';
 import {
@@ -30,6 +32,7 @@ import { CurrentPrincipal } from '../../identity/interface/current-principal.dec
 import { JwtAuthGuard } from '../../identity/interface/jwt-auth.guard.js';
 import { CreateEquipmentUseCase } from '../application/create-equipment.use-case.js';
 import { ListEquipmentUseCase } from '../application/list-equipment.use-case.js';
+import { ResolveEquipmentByQrUseCase } from '../application/resolve-equipment-by-qr.use-case.js';
 import { UpdateEquipmentUseCase } from '../application/update-equipment.use-case.js';
 import { EquipmentExceptionFilter } from './equipment-exception.filter.js';
 
@@ -57,6 +60,8 @@ export class EquipmentController {
     @Inject(ListEquipmentUseCase) private readonly listEquipment: ListEquipmentUseCase,
     @Inject(CreateEquipmentUseCase) private readonly createEquipment: CreateEquipmentUseCase,
     @Inject(UpdateEquipmentUseCase) private readonly updateEquipment: UpdateEquipmentUseCase,
+    @Inject(ResolveEquipmentByQrUseCase)
+    private readonly resolveEquipmentByQr: ResolveEquipmentByQrUseCase,
   ) {}
 
   @Get()
@@ -65,6 +70,20 @@ export class EquipmentController {
     @Query(new ZodValidationPipe(listEquipmentQuerySchema)) query: ParsedEquipmentQuery,
   ): Promise<EquipmentPage> {
     return this.listEquipment.execute(principal, query);
+  }
+
+  /**
+   * O código vai em query string, e não em segmento de caminho como
+   * `/inventory/batches/by-qr/:code`: a etiqueta grava uma URL completa, e
+   * embutir uma URL num segmento é frágil na cadeia Apache → Next → Nest.
+   */
+  @Get('by-qr')
+  public resolveByQr(
+    @CurrentPrincipal() principal: AuthenticatedPrincipal,
+    @Query(new ZodValidationPipe(resolveEquipmentByQrQuerySchema))
+    query: ResolveEquipmentByQrQuery,
+  ): Promise<Equipment> {
+    return this.resolveEquipmentByQr.execute(principal, query.code);
   }
 
   @Post()

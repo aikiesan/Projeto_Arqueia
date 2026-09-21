@@ -163,6 +163,55 @@ bash infrastructure/scripts/deploy-vm.sh
 
 Promova `dev -> homolog -> prod`. O script interrompe o deploy se build, migração ou health check falharem.
 
+## Ferramentas de operação (CLI)
+
+Rodam a partir de `/data/arqueia/repo`, lendo `DATABASE_URL` do `.env`. Nenhuma
+delas escreve no banco.
+
+```bash
+cd /data/arqueia/repo
+set -a; . ./.env; set +a
+```
+
+### Por que esta etiqueta não abre a agenda?
+
+```bash
+npm run qr:resolve -- 'ARQ-EQP-<uuid>'
+# ou colando a URL inteira lida pela câmera:
+npm run qr:resolve -- 'https://cp2b.unicamp.br/arqueia/qr?code=ARQ-EQP-<uuid>'
+```
+
+Imprime a classificação do código, o equipamento e o laboratório encontrados e a
+URL que a etiqueta deveria abrir. Distingue os três casos que a tela confunde:
+código ilegível, equipamento inexistente e equipamento **arquivado**. Sai com
+código 1 quando a etiqueta não resolve.
+
+### Gerar etiquetas em lote
+
+```bash
+# Planilha com o payload de cada equipamento
+npm run qr:labels -- --laboratory=CP2b > /tmp/etiquetas.csv
+
+# Folha pronta para impressão (abre no navegador e manda imprimir)
+npm run qr:labels -- --laboratory=CP2b --format=html > /tmp/etiquetas.html
+```
+
+Sem `--laboratory`, exporta todos os laboratórios. O payload é idêntico ao que o
+app grava na etiqueta individual.
+
+### Auditar a consistência da agenda
+
+```bash
+npm run agenda:check
+```
+
+Procura as separações entre `equipment_occupations` (que segura o horário) e
+`reservations`/`technical_blocks`: ocupação órfã, reserva que não bloqueia
+horário, `period` divergente da exclusão por sobreposição, horário preso a
+equipamento arquivado, check-in sem `started_at` e código de equipamento
+duplicado entre laboratórios. Sai com código 1 se houver ocorrência **crítica** —
+útil para encadear num cron. Ele **não corrige nada**: só relata.
+
 ## Rollback
 
 1. Anote o commit em produção antes de cada deploy: `git rev-parse HEAD`.

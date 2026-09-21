@@ -6,6 +6,7 @@ import { IdentityModule } from '../identity/identity.module.js';
 import { PermissionEvaluator } from '../identity/domain/services/permission-evaluator.js';
 import { CreateEquipmentUseCase } from './application/create-equipment.use-case.js';
 import { ListEquipmentUseCase } from './application/list-equipment.use-case.js';
+import { ResolveEquipmentByQrUseCase } from './application/resolve-equipment-by-qr.use-case.js';
 import { UpdateEquipmentUseCase } from './application/update-equipment.use-case.js';
 import {
   EQUIPMENT_REPOSITORY,
@@ -34,6 +35,12 @@ import { EquipmentController } from './interface/equipment.controller.js';
       inject: [EQUIPMENT_REPOSITORY, PermissionEvaluator],
       useFactory: (repository: EquipmentRepository, permissions: PermissionEvaluator) =>
         new CreateEquipmentUseCase(repository, permissions),
+    },
+    {
+      provide: ResolveEquipmentByQrUseCase,
+      inject: [EQUIPMENT_REPOSITORY, PermissionEvaluator],
+      useFactory: (repository: EquipmentRepository, permissions: PermissionEvaluator) =>
+        new ResolveEquipmentByQrUseCase(repository, permissions),
     },
     {
       provide: UpdateEquipmentUseCase,

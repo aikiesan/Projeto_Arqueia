@@ -26,7 +26,10 @@
     "db:migrate": "npm run migrate --workspace @arqueia/database --if-present",
     "db:bootstrap-admin": "npm run bootstrap-admin --workspace @arqueia/database",
     "db:seed": "npm run seed --workspace @arqueia/database --if-present",
-    "db:import-equipment": "npm run import-equipment --workspace @arqueia/database"
+    "db:import-equipment": "npm run import-equipment --workspace @arqueia/database",
+    "qr:resolve": "npm run qr:resolve --workspace @arqueia/database --",
+    "qr:labels": "npm run qr:labels --workspace @arqueia/database --",
+    "agenda:check": "npm run agenda:check --workspace @arqueia/database --"
   },
   "packageManager": "npm@10",
   "devDependencies": {

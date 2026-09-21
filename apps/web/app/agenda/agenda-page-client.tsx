@@ -61,6 +61,44 @@ async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+/**
+ * Maior página que `listEquipmentQuerySchema` aceita. Pedir acima disso faz a
+ * API devolver 400 e a agenda inteira cair no estado de erro — não é um número
+ * de conveniência, é o teto do contrato.
+ */
+export const EQUIPMENT_PAGE_SIZE = 50;
+
+/**
+ * Carrega o catálogo inteiro do laboratório, página a página.
+ *
+ * A agenda pedia uma única página e parava. Quem chegava por QR de um
+ * equipamento fora dessa página via a agenda abrir com um `equipmentId` que não
+ * existia na lista: aba sem destaque, `<select>` em branco e cabeçalho sem o
+ * nome. O teto de páginas existe só para não varrer indefinidamente se o
+ * servidor paginar sem fim.
+ */
+export async function loadAllEquipment(
+  laboratoryId: string,
+  fetchPage: (url: string) => Promise<EquipmentPage> = (url) => readJson<EquipmentPage>(url),
+  maxPages = 20,
+): Promise<readonly Equipment[]> {
+  const items: Equipment[] = [];
+  let cursor: string | null = null;
+
+  for (let page = 0; page < maxPages; page += 1) {
+    const query = new URLSearchParams({ laboratoryId, limit: String(EQUIPMENT_PAGE_SIZE) });
+    if (cursor) query.set('cursor', cursor);
+
+    const equipmentPage = await fetchPage(`/api/equipment?${query.toString()}`);
+    items.push(...equipmentPage.items);
+
+    if (!equipmentPage.pageInfo?.hasNextPage || !equipmentPage.pageInfo.nextCursor) break;
+    cursor = equipmentPage.pageInfo.nextCursor;
+  }
+
+  return items;
+}
+
 export function AgendaPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -184,12 +222,10 @@ export function AgendaPageClient() {
 
         // Projeto virou texto livre no formulário: a agenda não precisa mais
         // carregar a lista de projetos cadastrados.
-        const eqPage = await readJson<EquipmentPage>(
-          `/api/equipment?${new URLSearchParams({ laboratoryId: preferred.id, limit: '50' })}`,
-        );
+        const allEquipment = await loadAllEquipment(preferred.id);
         if (initializationId !== initializationRequestId.current) return;
 
-        setEquipments(eqPage.items);
+        setEquipments(allEquipment);
 
         const activeEqId = urlEquipmentId || '';
         setSelectedEquipmentId(activeEqId);
