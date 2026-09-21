@@ -61,6 +61,36 @@ async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+/**
+ * Carrega o catálogo inteiro do laboratório, página a página.
+ *
+ * A agenda pedia uma única página de 50. Quem chegava por QR de um equipamento
+ * fora desses 50 via a agenda abrir com um `equipmentId` que não existia na
+ * lista: aba sem destaque, `<select>` em branco e cabeçalho sem o nome. O teto
+ * existe só para não varrer indefinidamente se o servidor paginar sem fim.
+ */
+export async function loadAllEquipment(
+  laboratoryId: string,
+  fetchPage: (url: string) => Promise<EquipmentPage> = (url) => readJson<EquipmentPage>(url),
+  maxPages = 20,
+): Promise<readonly Equipment[]> {
+  const items: Equipment[] = [];
+  let cursor: string | null = null;
+
+  for (let page = 0; page < maxPages; page += 1) {
+    const query = new URLSearchParams({ laboratoryId, limit: '100' });
+    if (cursor) query.set('cursor', cursor);
+
+    const equipmentPage = await fetchPage(`/api/equipment?${query.toString()}`);
+    items.push(...equipmentPage.items);
+
+    if (!equipmentPage.pageInfo?.hasNextPage || !equipmentPage.pageInfo.nextCursor) break;
+    cursor = equipmentPage.pageInfo.nextCursor;
+  }
+
+  return items;
+}
+
 export function AgendaPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -184,12 +214,10 @@ export function AgendaPageClient() {
 
         // Projeto virou texto livre no formulário: a agenda não precisa mais
         // carregar a lista de projetos cadastrados.
-        const eqPage = await readJson<EquipmentPage>(
-          `/api/equipment?${new URLSearchParams({ laboratoryId: preferred.id, limit: '50' })}`,
-        );
+        const allEquipment = await loadAllEquipment(preferred.id);
         if (initializationId !== initializationRequestId.current) return;
 
-        setEquipments(eqPage.items);
+        setEquipments(allEquipment);
 
         const activeEqId = urlEquipmentId || '';
         setSelectedEquipmentId(activeEqId);

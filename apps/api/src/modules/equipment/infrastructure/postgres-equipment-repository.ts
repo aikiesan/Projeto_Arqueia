@@ -1,5 +1,6 @@
 import {
   equipmentSchema,
+  isUuidIdentifier,
   type CreateEquipmentInput,
   type Equipment,
   type EquipmentPage,
@@ -196,6 +197,36 @@ export class PostgresEquipmentRepository implements EquipmentRepository {
       [equipmentId],
     );
     return result.rows[0] === undefined ? null : mapEquipment(result.rows[0]);
+  }
+
+  public async findActiveByQrIdentifier(identifier: string): Promise<Equipment | null> {
+    // O ramo do id só existe para UUID: `WHERE id = $1::uuid` com um código
+    // legível faz o Postgres abortar a consulta inteira com `invalid input
+    // syntax for type uuid` em vez de devolver "não encontrado".
+    if (isUuidIdentifier(identifier)) {
+      const result = await this.pool.query<EquipmentRow>(
+        `SELECT ${COLUMNS} FROM equipment WHERE id = $1::uuid AND archived_at IS NULL LIMIT 1`,
+        [identifier],
+      );
+      return result.rows[0] === undefined ? null : mapEquipment(result.rows[0]);
+    }
+
+    /*
+     * `code` é único por laboratório (`equipment_lab_code_active_uk` em
+     * `(laboratory_id, code)`), não globalmente. Dois laboratórios podem usar
+     * `CP2b-HPLC-01`. Como a etiqueta não diz qual, resolver por código só é
+     * seguro quando há exatamente um candidato: com dois, um `LIMIT 1` abriria
+     * o equipamento errado. Buscamos dois e recusamos o empate — a etiqueta
+     * impressa grava o UUID e nunca cai aqui.
+     */
+    const result = await this.pool.query<EquipmentRow>(
+      `SELECT ${COLUMNS} FROM equipment
+        WHERE upper(code) = upper($1) AND archived_at IS NULL
+        LIMIT 2`,
+      [identifier],
+    );
+    if (result.rows.length !== 1) return null;
+    return mapEquipment(result.rows[0]!);
   }
 
   public async create(

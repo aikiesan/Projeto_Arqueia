@@ -2,6 +2,36 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { lookupAndResolveQr, parseQrCode, resolveQrDestination } from './qr-resolver';
 
+const equipmentId = '8f555951-9dc0-41d1-b245-5ffdce74fad2';
+const laboratoryId = '7d444840-9dc0-11d1-b245-5ffdce74fad2';
+const otherLaboratoryId = '9c666a62-9dc0-41d1-b245-5ffdce74fad4';
+const timestamp = '2026-09-21T12:00:00.000Z';
+
+/** Equipamento válido segundo `equipmentSchema` — o resolvedor valida o corpo. */
+const equipmentFixture = {
+  archivedAt: null,
+  assetTag: null,
+  benchOptionId: null,
+  catalogOptionId: '1a222333-9dc0-41d1-b245-5ffdce74fad5',
+  code: 'CP2B-EQP-01',
+  createdAt: timestamp,
+  id: equipmentId,
+  laboratoryId,
+  name: 'Cromatógrafo Líquido HPLC',
+  notes: null,
+  reservationPolicy: {
+    absenceReleaseMinutes: 30,
+    maxReservationMinutes: 240,
+    requiresApproval: false,
+    requiresTraining: false,
+  },
+  responsibleUserId: null,
+  serialNumber: null,
+  spaceOptionId: null,
+  status: 'AVAILABLE',
+  updatedAt: timestamp,
+};
+
 describe('qr-resolver', () => {
   describe('parseQrCode', () => {
     it('parses ARQ-LOT- prefixed codes as BATCH', () => {
@@ -130,36 +160,62 @@ describe('qr-resolver', () => {
       expect(result.entity?.directActionHref).toContain('action=withdraw');
     });
 
-    it('looks up equipment by search query when code is EQP', async () => {
+    it('resolve equipamento pelo endpoint do servidor, sem varrer páginas', async () => {
+      const calls: string[] = [];
       const mockFetch = vi.fn().mockImplementation(async (url: string) => {
-        if (url.includes('/api/equipment?')) {
-          return {
-            json: async () => ({
-              items: [
-                {
-                  code: 'CP2B-EQP-01',
-                  id: 'e1',
-                  laboratoryId: 'lab-1',
-                  model: 'Agilent 1260 Infinity II',
-                  name: 'Cromatógrafo Líquido HPLC',
-                  status: 'AVAILABLE',
-                },
-              ],
-            }),
-            ok: true,
-            status: 200,
-          } as Response;
+        calls.push(url);
+        if (url.startsWith('/api/equipment/by-qr?')) {
+          return { json: async () => equipmentFixture, ok: true, status: 200 } as Response;
         }
         return { ok: false, status: 404 } as Response;
       });
 
-      const result = await lookupAndResolveQr('CP2B-EQP-01', 'lab-1', mockFetch as unknown as typeof fetch);
+      const result = await lookupAndResolveQr(
+        'CP2B-EQP-01',
+        otherLaboratoryId,
+        mockFetch as unknown as typeof fetch,
+      );
 
       expect(result.parsed.type).toBe('EQUIPMENT');
       expect(result.entity?.title).toBe('Cromatógrafo Líquido HPLC');
       expect(result.entity?.status).toBe('AVAILABLE');
       expect(result.entity?.directActionLabel).toBe('Ver Agenda & Reservar');
-      expect(result.entity?.directActionHref).toBe('/agenda?laboratory=lab-1&equipmentId=e1');
+      // O laboratório vem do equipamento resolvido, não do que estava aberto.
+      expect(result.entity?.directActionHref).toBe(
+        `/agenda?laboratory=${laboratoryId}&equipmentId=${equipmentId}`,
+      );
+      // Nenhuma varredura paginada de `/api/equipment?…`.
+      expect(calls.some((url) => url.startsWith('/api/equipment?'))).toBe(false);
+      expect(calls[0]).toBe(`/api/equipment/by-qr?code=${encodeURIComponent('CP2B-EQP-01')}`);
+    });
+
+    it('envia o código cru ao servidor, inclusive quando a etiqueta é uma URL', async () => {
+      const calls: string[] = [];
+      const mockFetch = vi.fn().mockImplementation(async (url: string) => {
+        calls.push(url);
+        if (url.startsWith('/api/equipment/by-qr?')) {
+          return { json: async () => equipmentFixture, ok: true, status: 200 } as Response;
+        }
+        return { ok: false, status: 404 } as Response;
+      });
+
+      const label = `https://cp2b.unicamp.br/arqueia/qr?code=${encodeURIComponent(`ARQ-EQP-${equipmentId}`)}`;
+      await lookupAndResolveQr(label, undefined, mockFetch as unknown as typeof fetch);
+
+      expect(calls[0]).toBe(`/api/equipment/by-qr?code=${encodeURIComponent(label)}`);
+    });
+
+    it('não devolve entidade quando o servidor recusa a etiqueta', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({ ok: false, status: 404 } as Response);
+
+      const result = await lookupAndResolveQr(
+        `ARQ-EQP-${equipmentId}`,
+        laboratoryId,
+        mockFetch as unknown as typeof fetch,
+      );
+
+      expect(result.entity).toBeUndefined();
+      expect(result.parsed.type).toBe('EQUIPMENT');
     });
   });
 });

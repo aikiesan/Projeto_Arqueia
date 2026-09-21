@@ -23,6 +23,7 @@ function repository(overrides: Partial<EquipmentRepository> = {}): EquipmentRepo
   return {
     list: vi.fn(),
     findActiveById: vi.fn(),
+    findActiveByQrIdentifier: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     ...overrides,

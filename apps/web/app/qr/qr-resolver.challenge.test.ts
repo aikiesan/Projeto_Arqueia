@@ -2,6 +2,34 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { lookupAndResolveQr, parseQrCode, resolveQrDestination } from './qr-resolver';
 
+const challengeEquipmentId = 'aa111111-1111-4111-a111-111111111111';
+const challengeLaboratoryId = 'bb222222-2222-4222-a222-222222222222';
+
+/** Corpo que o endpoint devolve — validado contra `equipmentSchema`. */
+const challengeEquipment = {
+  archivedAt: null,
+  assetTag: null,
+  benchOptionId: null,
+  catalogOptionId: 'cc333333-3333-4333-a333-333333333333',
+  code: 'CP2B-EQP-99',
+  createdAt: '2026-09-21T12:00:00.000Z',
+  id: challengeEquipmentId,
+  laboratoryId: challengeLaboratoryId,
+  name: 'Espectrômetro de Massa',
+  notes: null,
+  reservationPolicy: {
+    absenceReleaseMinutes: 30,
+    maxReservationMinutes: 240,
+    requiresApproval: false,
+    requiresTraining: false,
+  },
+  responsibleUserId: null,
+  serialNumber: 'SN-998877',
+  spaceOptionId: null,
+  status: 'AVAILABLE',
+  updatedAt: '2026-09-21T12:00:00.000Z',
+};
+
 describe('QR Resolver — Adversarial & Stress Challenge Suite', () => {
   describe('parseQrCode — Malformed, Edge Case, and Adversarial Inputs', () => {
     it('handles empty strings and whitespace-only inputs without crashing', () => {
@@ -240,37 +268,33 @@ describe('QR Resolver — Adversarial & Stress Challenge Suite', () => {
             json: async () => ({ items: [] }),
           } as Response;
         }
-        if (url.includes('/api/equipment?')) {
+        if (url.startsWith('/api/equipment/by-qr?')) {
           return {
             ok: true,
             status: 200,
-            json: async () => ({
-              items: [
-                {
-                  id: 'eq-uuid-1111',
-                  laboratoryId: 'lab-cp2b',
-                  code: 'CP2B-EQP-99',
-                  name: 'Espectrômetro de Massa',
-                  model: 'Orbitrap Exploris 120',
-                  serialNumber: 'SN-998877',
-                  status: 'AVAILABLE',
-                },
-              ],
-            }),
+            json: async () => challengeEquipment,
           } as Response;
         }
         return { ok: false, status: 404 } as Response;
       });
 
-      const result = await lookupAndResolveQr('eq-uuid-1111', 'lab-cp2b', mockFetch as unknown as typeof fetch);
+      const result = await lookupAndResolveQr(
+        challengeEquipmentId,
+        'lab-cp2b',
+        mockFetch as unknown as typeof fetch,
+      );
 
+      // O identificador cru não casa com prefixo de etiqueta e chega UNKNOWN;
+      // quem confirma que é equipamento é o servidor, ao resolvê-lo.
       expect(result.parsed.type).toBe('EQUIPMENT');
-      expect(result.parsed.identifier).toBe('eq-uuid-1111');
+      expect(result.parsed.identifier).toBe(challengeEquipmentId);
       expect(result.entity).toBeDefined();
       expect(result.entity?.title).toBe('Espectrômetro de Massa');
-      expect(result.entity?.subtitle).toBe('Orbitrap Exploris 120');
+      expect(result.entity?.subtitle).toBe('CP2b-EQP-99'); // canonicalizado pelo contrato
       expect(result.entity?.status).toBe('AVAILABLE');
-      expect(result.destinationUrl).toBe('/agenda?laboratory=lab-cp2b&equipmentId=eq-uuid-1111');
+      expect(result.destinationUrl).toBe(
+        `/agenda?laboratory=${challengeLaboratoryId}&equipmentId=${challengeEquipmentId}`,
+      );
     });
   });
 });

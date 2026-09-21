@@ -8,7 +8,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 
 import { LogoutButton } from '../logout-button';
 import { createWorkspacePresentation } from '../presentation';
-import { lookupAndResolveQr, type QrResolutionResult } from './qr-resolver';
+import {
+  lookupAndResolveQr,
+  shouldOpenAgendaDirectly,
+  type QrResolutionResult,
+} from './qr-resolver';
 import { BASE_PATH, basePathFetch, withBasePath } from '../lib/base-path';
 
 interface DetectedBarcode {
@@ -207,16 +211,25 @@ export function QrPageClient() {
 
       try {
         setCheckInMessage(null);
-      setCheckInError(null);
-      const result = await lookupAndResolveQr(trimmed, laboratoryId ?? undefined, basePathFetch);
+        setCheckInError(null);
+        const result = await lookupAndResolveQr(trimmed, laboratoryId ?? undefined, basePathFetch);
         setResolvedResult(result);
+
+        // Quem escaneou a etiqueta já disse o que quer. Sem check-in pendente,
+        // o cartão de prévia seria só um toque a mais no caminho da agenda.
+        if (shouldOpenAgendaDirectly(result)) {
+          // Antes de sair: sem isto o loop relê a mesma etiqueta durante a navegação.
+          setCameraActive(false);
+          // `basePath` está no next.config, então o router já aplica o prefixo.
+          router.push(result.destinationUrl);
+        }
       } catch (err) {
         setScannerError(err instanceof Error ? err.message : 'Não foi possível consultar o código.');
       } finally {
         setResolving(false);
       }
     },
-    [laboratoryId],
+    [laboratoryId, router],
   );
 
   // Auto-resolve if ?code= parameter was passed in URL

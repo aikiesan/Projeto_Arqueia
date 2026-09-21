@@ -1,18 +1,18 @@
 import {
   CHECK_IN_EARLY_TOLERANCE_MINUTES,
   CHECK_IN_LOOKUP_WINDOW_HOURS,
+  equipmentSchema,
+  parseQrCode,
   scheduleResponseSchema,
+  type Equipment,
+  type ParsedQrCode,
+  type QrEntityType,
 } from '@arqueia/contracts';
 
-export type QrEntityType = 'BATCH' | 'EQUIPMENT' | 'SPACE' | 'UNKNOWN';
-
-export interface ParsedQrCode {
-  readonly raw: string;
-  readonly type: QrEntityType;
-  readonly identifier: string;
-  readonly originalUrl?: string;
-  readonly actionHint?: 'withdraw' | 'reserve' | 'view';
-}
+// `parseQrCode` vive em `@arqueia/contracts`: o servidor precisa ler a etiqueta
+// exatamente como o cliente lê, senão os dois discordam sobre o que foi escaneado.
+export { parseQrCode };
+export type { ParsedQrCode, QrEntityType };
 
 export type CheckInState =
   | 'ELIGIBLE'
@@ -52,55 +52,26 @@ export interface QrResolutionResult {
 }
 
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-interface EquipmentListItem {
-  readonly id: string;
-  readonly laboratoryId: string;
-  readonly code: string;
-  readonly name: string;
-  readonly model?: string | null;
-  readonly serialNumber?: string | null;
-  readonly status: string;
-}
-
 /**
- * Acha um equipamento pelo UUID gravado na etiqueta.
+ * Resolve a etiqueta no servidor.
  *
- * A API de equipamentos não expõe busca por id (`search` casa nome/código), e
- * não há endpoint GET por id — então paginamos e casamos no cliente. O limite de
- * páginas evita varrer um laboratório inteiro por um código inválido.
+ * Antes isto era uma varredura no cliente: até cinco páginas de 50 equipamentos
+ * dentro de um laboratório *adivinhado*, o que falhava para equipamento de outro
+ * laboratório ou além dos 250 primeiros. Agora o servidor resolve por id ou
+ * código e decide a autorização pelo laboratório do próprio equipamento.
  */
-async function findEquipmentById(
-  equipmentId: string,
-  laboratoryId: string | undefined,
+async function resolveEquipmentByQr(
+  rawCode: string,
   customFetch: typeof fetch,
-): Promise<EquipmentListItem | null> {
-  if (!laboratoryId) return null;
+): Promise<Equipment | null> {
+  const response = await customFetch(
+    `/api/equipment/by-qr?code=${encodeURIComponent(rawCode)}`,
+    { cache: 'no-store' },
+  ).catch(() => null);
+  if (!response?.ok) return null;
 
-  let cursor: string | null = null;
-  for (let page = 0; page < 5; page += 1) {
-    const query = new URLSearchParams({ laboratoryId, limit: '50' });
-    if (cursor) query.set('cursor', cursor);
-
-    const response = await customFetch(`/api/equipment?${query.toString()}`, {
-      cache: 'no-store',
-    }).catch(() => null);
-    if (!response?.ok) return null;
-
-    const body = (await response.json()) as {
-      items: readonly EquipmentListItem[];
-      pageInfo?: { hasNextPage: boolean; nextCursor: string | null };
-    };
-
-    const matched = body.items.find((item) => item.id.toLowerCase() === equipmentId.toLowerCase());
-    if (matched) return matched;
-
-    if (!body.pageInfo?.hasNextPage || !body.pageInfo.nextCursor) return null;
-    cursor = body.pageInfo.nextCursor;
-  }
-
-  return null;
+  const parsed = equipmentSchema.safeParse(await response.json().catch(() => null));
+  return parsed.success ? parsed.data : null;
 }
 
 /**
@@ -205,117 +176,6 @@ async function resolveCheckInIntent(
     ...base,
     hint: 'Você não possui reserva ativa para este equipamento agora.',
     state: 'NONE',
-  };
-}
-
-/**
- * Parses raw text, barcode or QR string into a typed operational entity structure.
- */
-export function parseQrCode(input: string): ParsedQrCode {
-  const raw = input.trim();
-  if (!raw) {
-    return { actionHint: 'view', identifier: '', raw: '', type: 'UNKNOWN' };
-  }
-
-  // Check if input is a complete URL
-  if (/^https?:\/\//i.test(raw)) {
-    try {
-      const url = new URL(raw);
-      // /estoque?batch=... or ?batchId=...
-      if (url.pathname.includes('/estoque')) {
-        const batchParam = url.searchParams.get('batch') ?? url.searchParams.get('batchId');
-        if (batchParam) {
-          return {
-            actionHint: 'withdraw',
-            identifier: batchParam,
-            originalUrl: raw,
-            raw,
-            type: 'BATCH',
-          };
-        }
-      }
-      // /agenda?equipment=... or ?equipmentId=...
-      if (url.pathname.includes('/agenda')) {
-        const eqpParam = url.searchParams.get('equipmentId') ?? url.searchParams.get('equipment');
-        if (eqpParam) {
-          return {
-            actionHint: 'reserve',
-            identifier: eqpParam,
-            originalUrl: raw,
-            raw,
-            type: 'EQUIPMENT',
-          };
-        }
-      }
-      // /qr?code=...
-      if (url.pathname.includes('/qr')) {
-        const codeParam = url.searchParams.get('code');
-        if (codeParam) {
-          const inner = parseQrCode(codeParam);
-          return { ...inner, originalUrl: raw, raw };
-        }
-      }
-    } catch {
-      // ignore URL parse errors
-    }
-  }
-
-  // Batch QR prefixes: ARQ-LOT-..., ARQ-CP2B-PRD-..., LOT-..., QR-...
-  const arqLotMatch = /^ARQ-LOT-(.+)$/i.exec(raw);
-  if (arqLotMatch?.[1]) {
-    return {
-      actionHint: 'withdraw',
-      identifier: arqLotMatch[1],
-      raw,
-      type: 'BATCH',
-    };
-  }
-
-  if (/^ARQ-CP2B-PRD-/i.test(raw) || /^LOT-/i.test(raw) || /^QR-LOT-/i.test(raw)) {
-    return {
-      actionHint: 'withdraw',
-      identifier: raw,
-      raw,
-      type: 'BATCH',
-    };
-  }
-
-  // Equipment QR prefixes: ARQ-EQP-..., CP2B-EQP-..., EQP-..., QR-EQP-...
-  const arqEqpMatch = /^ARQ-EQP-(.+)$/i.exec(raw);
-  if (arqEqpMatch?.[1]) {
-    return {
-      actionHint: 'reserve',
-      identifier: arqEqpMatch[1],
-      raw,
-      type: 'EQUIPMENT',
-    };
-  }
-
-  if (/^CP2B-EQP-/i.test(raw) || /^EQP-/i.test(raw) || /^QR-EQP-/i.test(raw)) {
-    return {
-      actionHint: 'reserve',
-      identifier: raw,
-      raw,
-      type: 'EQUIPMENT',
-    };
-  }
-
-  // Space QR prefixes: ARQ-SPC-..., ARQ-LOC-..., SPC-...
-  const arqSpcMatch = /^(?:ARQ-SPC-|ARQ-LOC-|SPC-)(.+)$/i.exec(raw);
-  if (arqSpcMatch?.[1]) {
-    return {
-      actionHint: 'view',
-      identifier: arqSpcMatch[1],
-      raw,
-      type: 'SPACE',
-    };
-  }
-
-  return {
-    actionHint: 'view',
-    identifier: raw,
-    raw,
-    type: 'UNKNOWN',
   };
 }
 
@@ -466,33 +326,13 @@ export async function lookupAndResolveQr(
 
     // 2. Try Equipment Lookup
     if (parsed.type === 'EQUIPMENT' || parsed.type === 'UNKNOWN') {
-      // A etiqueta grava o UUID, que o filtro `search` (nome/código) não acha:
-      // nesse caso paginamos e casamos por id.
-      let matched: EquipmentListItem | null = UUID_PATTERN.test(parsed.identifier)
-        ? await findEquipmentById(parsed.identifier, laboratoryId, customFetch)
-        : null;
-
-      if (!matched) {
-        const searchLabParam = laboratoryId ? `laboratoryId=${encodeURIComponent(laboratoryId)}&` : '';
-        const eqpSearchUrl = `/api/equipment?${searchLabParam}search=${encodeURIComponent(parsed.identifier)}&limit=5`;
-        const eqpRes = await customFetch(eqpSearchUrl, { cache: 'no-store' }).catch(() => null);
-
-        if (eqpRes?.ok) {
-          const eqpPage = (await eqpRes.json()) as { items: readonly EquipmentListItem[] };
-          matched =
-            eqpPage.items.find(
-              (e) =>
-                e.id.toLowerCase() === parsed.identifier.toLowerCase() ||
-                e.code.toLowerCase() === parsed.identifier.toLowerCase() ||
-                e.code.toLowerCase() === parsed.raw.toLowerCase() ||
-                e.name.toLowerCase().includes(parsed.identifier.toLowerCase()),
-            ) ?? null;
-        }
-      }
+      const matched = await resolveEquipmentByQr(parsed.raw, customFetch);
 
       {
         if (matched) {
-          const targetLab = matched.laboratoryId || laboratoryId || '';
+          // O laboratório vem do equipamento resolvido: é ele quem manda, não o
+          // laboratório aberto na tela nem um palpite.
+          const targetLab = matched.laboratoryId;
           // Falha na agenda degrada para o comportamento antigo (sem check-in).
           const checkIn = targetLab
             ? await resolveCheckInIntent(matched.id, targetLab, customFetch).catch(() => undefined)
@@ -504,8 +344,9 @@ export async function lookupAndResolveQr(
               checkIn,
               code: matched.code,
               details: [
-                ...(matched.model ? [{ label: 'Modelo', value: matched.model }] : []),
-                ...(matched.serialNumber ? [{ label: 'Nº de Série', value: matched.serialNumber }] : []),
+                ...(matched.serialNumber
+                  ? [{ label: 'Nº de Série', value: matched.serialNumber }]
+                  : []),
                 { label: 'Status', value: matched.status },
               ],
               directActionHref: `/agenda?laboratory=${targetLab}&equipmentId=${matched.id}`,
@@ -513,7 +354,7 @@ export async function lookupAndResolveQr(
               secondaryActionHref: `/equipamentos?laboratory=${targetLab}&search=${encodeURIComponent(matched.code)}`,
               secondaryActionLabel: 'Ficha Técnica',
               status: matched.status,
-              subtitle: matched.model ?? 'Equipamento',
+              subtitle: matched.code,
               title: matched.name,
             },
             parsed: { ...parsed, identifier: matched.id, type: 'EQUIPMENT' },
@@ -526,4 +367,22 @@ export async function lookupAndResolveQr(
   }
 
   return { destinationUrl, parsed };
+}
+
+/**
+ * Decide se o scan deve abrir a agenda sozinho.
+ *
+ * Quem escaneia a etiqueta já disse o que quer. Só vale parar no cartão de
+ * prévia quando há algo a fazer ali que a agenda não faz: registrar o check-in
+ * de uma reserva ativa ou prestes a começar. Fora isso, o destino é a agenda do
+ * equipamento, já filtrada.
+ *
+ * Função pura e exportada para ser testada sem montar a página.
+ */
+export function shouldOpenAgendaDirectly(result: QrResolutionResult): boolean {
+  if (result.parsed.type !== 'EQUIPMENT') return false;
+  if (!result.entity) return false;
+
+  const state = result.entity.checkIn?.state;
+  return state !== 'ELIGIBLE' && state !== 'IN_PROGRESS';
 }
