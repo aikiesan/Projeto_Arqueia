@@ -82,35 +82,40 @@ Use os nomes efetivamente definidos em `.env.example`; não versione `.env` e n�
 ```bash
 cd /data/arqueia/repo
 npm ci
-set -a
-. ./.env
-set +a
-NEXT_PUBLIC_BASE_PATH=/arqueia npm run build
-npm run db:migrate
-pm2 startOrRestart infrastructure/pm2/ecosystem.config.js --update-env
+(
+  set -a
+  . ./.env
+  set +a
+  NEXT_PUBLIC_BASE_PATH=/arqueia npm run build
+  npm run db:migrate
+  pm2 startOrRestart infrastructure/pm2/ecosystem.config.js --update-env
+)
 pm2 save
 pm2 startup
 ```
+
+Os parênteses abrem um subshell: as variáveis do `.env` valem só para os comandos de dentro e somem quando ele termina (ver [Carregar o `.env`](#carregar-o-env)).
 
 Execute o comando `sudo` mostrado por `pm2 startup` para habilitar a restauração após reboot. Seed é permitido apenas em desenvolvimento/homologação.
 
 ### Primeiro administrador
 
-Em banco novo, execute uma única vez. `read -s` impede que a senha apareça na tela ou no histórico:
+Em banco novo, execute uma única vez. `read -s` impede que a senha apareça na tela ou no histórico, e o subshell descarta a senha e o `.env` ao terminar:
 
 ```bash
 cd /data/arqueia/repo
-set -a
-. ./.env
-set +a
+(
+  set -a
+  . ./.env
+  set +a
 
-read -r -p 'Nome completo: ' BOOTSTRAP_ADMIN_NAME
-read -r -p 'E-mail @unicamp.br: ' BOOTSTRAP_ADMIN_EMAIL
-read -r -s -p 'Senha (12–128 caracteres): ' BOOTSTRAP_ADMIN_PASSWORD
-echo
-export BOOTSTRAP_ADMIN_NAME BOOTSTRAP_ADMIN_EMAIL BOOTSTRAP_ADMIN_PASSWORD
-npm run db:bootstrap-admin
-unset BOOTSTRAP_ADMIN_NAME BOOTSTRAP_ADMIN_EMAIL BOOTSTRAP_ADMIN_PASSWORD
+  read -r -p 'Nome completo: ' BOOTSTRAP_ADMIN_NAME
+  read -r -p 'E-mail @unicamp.br: ' BOOTSTRAP_ADMIN_EMAIL
+  read -r -s -p 'Senha (12–128 caracteres): ' BOOTSTRAP_ADMIN_PASSWORD
+  echo
+  export BOOTSTRAP_ADMIN_NAME BOOTSTRAP_ADMIN_EMAIL BOOTSTRAP_ADMIN_PASSWORD
+  npm run db:bootstrap-admin
+)
 ```
 
 O comando cria a instituição/laboratório básicos quando necessário e se recusa a executar se já houver ADMIN ativo. Depois do primeiro login, novos administradores e usuários são criados pela interface auditada.
@@ -168,41 +173,76 @@ Promova `dev -> homolog -> prod`. O script interrompe o deploy se build, migraç
 Rodam a partir de `/data/arqueia/repo`, lendo `DATABASE_URL` do `.env`. Nenhuma
 delas escreve no banco.
 
-```bash
-cd /data/arqueia/repo
-set -a; . ./.env; set +a
-```
+### Carregar o `.env`
+
+**Nunca** rode `set -a; . ./.env; set +a` direto no shell interativo. A
+`DATABASE_URL` de produção e os segredos ficam exportados até a sessão fechar, e
+todo comando rodado depois nesse shell os herda. Carregue o `.env` num escopo que
+morre com o comando:
+
+- **Do notebook (Git Bash), em sessão de disparo único.** O shell remoto termina
+  junto com o bloco. As aspas em `'EOF'` fazem `$VAR` expandir na VM, não no
+  notebook. `vm` é a função do `~/.bashrc` que abre o `ssh` na VM; sem ela, use
+  o seu comando `ssh` no lugar.
+
+  ```bash
+  vm bash -ls <<'EOF'
+  cd /data/arqueia/repo
+  set -a; . ./.env; set +a
+  npm run --silent agenda:check
+  EOF
+  ```
+
+- **Já dentro da VM, num subshell.** Os parênteses descartam as variáveis ao
+  terminar; confira com `env | grep -c DATABASE_URL`, que deve dar `0`.
+
+  ```bash
+  (cd /data/arqueia/repo && set -a && . ./.env && set +a && npm run --silent agenda:check)
+  ```
+
+Os exemplos abaixo usam o subshell. Use `npm run --silent`: sem ele o npm escreve
+o cabeçalho `> arqueia@0.0.0 …` no stdout, e o cabeçalho vai parar dentro do CSV ou
+do HTML redirecionado.
+
+> O `npm test` também não deve rodar na VM. As suítes de integração
+> (`*.integration.test.ts` e o desafio de `packages/database`) gravam em tabelas
+> append-only e só aceitam banco cujo nome termina em `_test`. O banco de produção
+> se chama `arqueia`, então elas se recusam a rodar, mas a regra continua valendo.
 
 ### Por que esta etiqueta não abre a agenda?
 
 ```bash
-npm run qr:resolve -- 'ARQ-EQP-<uuid>'
-# ou colando a URL inteira lida pela câmera:
-npm run qr:resolve -- 'https://cp2b.unicamp.br/arqueia/qr?code=ARQ-EQP-<uuid>'
+# Pelo código legível impresso na etiqueta
+(cd /data/arqueia/repo && set -a && . ./.env && set +a && npm run --silent qr:resolve -- 'EQ-SHIMADZU-GC2030')
+
+# Ou colando a URL inteira lida pela câmera
+(cd /data/arqueia/repo && set -a && . ./.env && set +a && npm run --silent qr:resolve -- 'https://cp2b.unicamp.br/arqueia/qr?code=ARQ-EQP-b4405199-1333-409d-9438-8f99de4cbfaf')
 ```
 
-Imprime a classificação do código, o equipamento e o laboratório encontrados e a
-URL que a etiqueta deveria abrir. Distingue os três casos que a tela confunde:
-código ilegível, equipamento inexistente e equipamento **arquivado**. Sai com
-código 1 quando a etiqueta não resolve.
+Aceita o código legível, o payload `ARQ-EQP-…` ou a URL da etiqueta. Imprime a
+classificação do código, o equipamento e o laboratório encontrados e a URL que a
+etiqueta deveria abrir. Distingue os casos que a tela confunde: código ilegível,
+equipamento inexistente, equipamento **arquivado** e código repetido em mais de um
+laboratório. Sai com código 1 quando a etiqueta não resolve.
 
 ### Gerar etiquetas em lote
 
 ```bash
 # Planilha com o payload de cada equipamento
-npm run qr:labels -- --laboratory=CP2b > /tmp/etiquetas.csv
+(cd /data/arqueia/repo && set -a && . ./.env && set +a && npm run --silent qr:labels -- --laboratory=CP2b) > /tmp/etiquetas.csv
 
 # Folha pronta para impressão (abre no navegador e manda imprimir)
-npm run qr:labels -- --laboratory=CP2b --format=html > /tmp/etiquetas.html
+(cd /data/arqueia/repo && set -a && . ./.env && set +a && npm run --silent qr:labels -- --laboratory=CP2b --format=html) > /tmp/etiquetas.html
 ```
 
 Sem `--laboratory`, exporta todos os laboratórios. O payload é idêntico ao que o
-app grava na etiqueta individual.
+app grava na etiqueta individual. No CSV, todo campo vem entre aspas: ao recortar
+o payload com `awk -F,`, tire as aspas antes de passá-lo ao `qr:resolve`.
 
 ### Auditar a consistência da agenda
 
 ```bash
-npm run agenda:check
+(cd /data/arqueia/repo && set -a && . ./.env && set +a && npm run --silent agenda:check)
 ```
 
 Procura as separações entre `equipment_occupations` (que segura o horário) e
@@ -223,9 +263,11 @@ duplicado entre laboratórios. Sai com código 1 se houver ocorrência **crític
 cd /data/arqueia/repo
 git switch --detach COMMIT_CONHECIDO
 npm ci
-set -a
-. ./.env
-set +a
-NEXT_PUBLIC_BASE_PATH=/arqueia npm run build
-pm2 startOrRestart infrastructure/pm2/ecosystem.config.js --update-env
+(
+  set -a
+  . ./.env
+  set +a
+  NEXT_PUBLIC_BASE_PATH=/arqueia npm run build
+  pm2 startOrRestart infrastructure/pm2/ecosystem.config.js --update-env
+)
 ```
