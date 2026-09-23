@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { runAgendaChecks, formatFindings, hasCriticalFinding, AGENDA_CHECKS } from './agenda-check.js';
-import { parseArgs, requireDatabaseUrl } from './cli-runtime.js';
+import { isDirectExecution, parseArgs, requireDatabaseUrl } from './cli-runtime.js';
 import { buildQrPayload, renderCsv, renderPrintableHtml, toLabels } from './qr-labels.js';
 import { diagnose, type ResolvedQrRow } from './qr-resolve.js';
 
@@ -147,5 +147,39 @@ describe('agenda:check', () => {
       expect(check.sql).toMatch(/^\s*SELECT/);
       expect(check.sql).not.toMatch(/\b(INSERT|UPDATE|DELETE|DROP|ALTER)\b/i);
     }
+  });
+});
+
+describe('isDirectExecution', () => {
+  const windowsUrl =
+    'file:///C:/Users/Lucas/Documents/Projeto_Arqueia/packages/database/src/cli/qr-labels.ts';
+  const windowsScript =
+    'C:\\Users\\Lucas\\Documents\\Projeto_Arqueia\\packages\\database\\src\\cli\\qr-labels.ts';
+
+  /**
+   * Regressão: no Windows as três CLIs saíam em silêncio, com código 0. A
+   * comparação usava `URL.pathname`, que ali vira `/C:/Users/...`.
+   */
+  it('reconhece a execução direta com caminho do Windows', () => {
+    expect(isDirectExecution(windowsUrl, windowsScript, 'win32')).toBe(true);
+  });
+
+  it('ignora a caixa da letra da unidade no Windows', () => {
+    expect(isDirectExecution(windowsUrl, windowsScript.replace(/^C:/, 'c:'), 'win32')).toBe(true);
+  });
+
+  it('reconhece a execução direta no Linux da VM', () => {
+    expect(
+      isDirectExecution(
+        'file:///data/arqueia/repo/packages/database/src/cli/qr-labels.ts',
+        '/data/arqueia/repo/packages/database/src/cli/qr-labels.ts',
+        'linux',
+      ),
+    ).toBe(true);
+  });
+
+  it('não dispara quando o módulo é importado por outro script', () => {
+    expect(isDirectExecution(windowsUrl, 'C:\\Users\\Lucas\\outro.ts', 'win32')).toBe(false);
+    expect(isDirectExecution(windowsUrl, undefined, 'win32')).toBe(false);
   });
 });
