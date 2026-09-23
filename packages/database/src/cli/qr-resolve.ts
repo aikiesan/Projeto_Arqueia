@@ -44,31 +44,34 @@ interface EquipmentQrRow {
 }
 
 /**
- * Procura arquivados de propósito: uma etiqueta colada num equipamento
- * arquivado é exatamente o caso que o suporte precisa distinguir de "código
- * inexistente" — os dois falham igual na tela.
+ * Procura como a API procura — UUID pelo id, código legível pelo `code` — mas
+ * inclui arquivados e devolve **todos** os candidatos, não só o primeiro. É o
+ * que permite explicar por que a etiqueta falha: arquivado, ambíguo e
+ * inexistente parecem iguais na tela.
+ *
+ * Cada ramo referencia exatamente os parâmetros que recebe. A primeira versão
+ * mandava `[null, código]` para um SQL que só usava `$2`: o Postgres não
+ * consegue inferir o tipo de um `$1` que ninguém lê, e toda consulta por código
+ * abortava com "could not determine data type of parameter $1".
  */
 export async function findEquipmentForQr(
   pool: DatabasePool,
   identifier: string,
-): Promise<ResolvedQrRow | null> {
-  const sql = `
-    SELECT e.id AS equipment_id, e.code AS equipment_code, e.name AS equipment_name,
-           e.status AS equipment_status, (e.archived_at IS NOT NULL) AS archived,
-           l.id AS laboratory_id, l.code AS laboratory_code, l.name AS laboratory_name
-      FROM equipment e
-      JOIN laboratories l ON l.id = e.laboratory_id
-     WHERE ${isUuidIdentifier(identifier) ? 'e.id = $1::uuid OR ' : ''}upper(e.code) = upper($2)
-     LIMIT 1`;
+): Promise<readonly ResolvedQrRow[]> {
+  const match = isUuidIdentifier(identifier) ? 'e.id = $1::uuid' : 'upper(e.code) = upper($1)';
+  const result = await pool.query<EquipmentQrRow>(
+    `SELECT e.id AS equipment_id, e.code AS equipment_code, e.name AS equipment_name,
+            e.status AS equipment_status, (e.archived_at IS NOT NULL) AS archived,
+            l.id AS laboratory_id, l.code AS laboratory_code, l.name AS laboratory_name
+       FROM equipment e
+       JOIN laboratories l ON l.id = e.laboratory_id
+      WHERE ${match}
+      ORDER BY e.archived_at IS NULL DESC, l.code ASC
+      LIMIT 20`,
+    [identifier],
+  );
 
-  const result = await pool.query<EquipmentQrRow>(sql, [
-    isUuidIdentifier(identifier) ? identifier : null,
-    identifier,
-  ]);
-  const row = result.rows[0];
-  if (row === undefined) return null;
-
-  return {
+  return result.rows.map((row) => ({
     archived: row.archived,
     equipmentCode: row.equipment_code,
     equipmentId: row.equipment_id,
@@ -77,13 +80,13 @@ export async function findEquipmentForQr(
     laboratoryCode: row.laboratory_code,
     laboratoryId: row.laboratory_id,
     laboratoryName: row.laboratory_name,
-  };
+  }));
 }
 
 /** Núcleo puro: dado o que o banco devolveu, qual é o veredito? */
 export function diagnose(
   raw: string,
-  equipment: ResolvedQrRow | null,
+  candidates: readonly ResolvedQrRow[],
   publicOrigin: string,
   basePath: string,
 ): QrDiagnosis {
@@ -104,22 +107,36 @@ export function diagnose(
     };
   }
 
-  if (equipment === null) {
+  // Mesma regra de `findActiveByQrIdentifier` na API: resolve só com
+  // exatamente um equipamento ativo. Aqui ela só ganha a explicação do porquê.
+  const active = candidates.filter((candidate) => !candidate.archived);
+
+  if (active.length > 1) {
+    const laboratories = active.map((candidate) => candidate.laboratoryCode).join(', ');
     return {
       ...base,
       destinationUrl: null,
       equipment: null,
-      verdict: `Nenhum equipamento com id ou código "${parsed.identifier}".`,
+      verdict: `Código AMBÍGUO: "${parsed.identifier}" existe em ${active.length} laboratórios (${laboratories}). O servidor recusa resolvê-lo — use a etiqueta com UUID.`,
     };
   }
 
-  if (equipment.archived) {
-    return {
-      ...base,
-      destinationUrl: null,
-      equipment,
-      verdict: 'Equipamento ARQUIVADO: a etiqueta não resolve até ele ser reativado.',
-    };
+  const equipment = active[0];
+  if (equipment === undefined) {
+    const archived = candidates[0];
+    return archived === undefined
+      ? {
+          ...base,
+          destinationUrl: null,
+          equipment: null,
+          verdict: `Nenhum equipamento com id ou código "${parsed.identifier}".`,
+        }
+      : {
+          ...base,
+          destinationUrl: null,
+          equipment: archived,
+          verdict: 'Equipamento ARQUIVADO: a etiqueta não resolve até ele ser reativado.',
+        };
   }
 
   const prefix = basePath === '/' ? '' : basePath;
@@ -160,14 +177,14 @@ export async function runQrResolve(
   if (!raw) throw new Error('uso: npm run qr:resolve -- <código ou URL da etiqueta>');
 
   const parsed = parseQrCode(raw);
-  const equipment =
+  const candidates =
     parsed.type === 'EQUIPMENT' || parsed.type === 'UNKNOWN'
       ? await withPool((pool) => findEquipmentForQr(pool, parsed.identifier), environment)
-      : null;
+      : [];
 
   return diagnose(
     raw,
-    equipment,
+    candidates,
     options.origin ?? environment.PUBLIC_ORIGIN ?? 'https://cp2b.unicamp.br',
     options.basePath ?? environment.NEXT_PUBLIC_BASE_PATH ?? '/arqueia',
   );
