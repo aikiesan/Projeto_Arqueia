@@ -5,9 +5,13 @@ import { fileURLToPath } from 'node:url';
 import { MigrationBuilder } from 'node-pg-migrate';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { createDatabasePool, type DatabasePool } from './client.js';
+import type { DatabasePool } from './client.js';
+import {
+  connectIntegrationDatabase,
+  resolveIntegrationDatabase,
+} from './testing/integration-database.js';
 
-const databaseUrl = process.env.DATABASE_URL;
+const integrationDatabase = resolveIntegrationDatabase();
 
 const schedulingMigrationPath = fileURLToPath(
   new URL('../migrations/004_scheduling.cjs', import.meta.url),
@@ -86,7 +90,7 @@ describe('Milestone 3 Empirical Challenge: Migration DDL & Contract Invariants',
   });
 });
 
-describe.skipIf(databaseUrl === undefined)(
+describe.skipIf(!integrationDatabase.enabled)(
   'Milestone 3 Empirical Challenge: Live PostgreSQL Stress & Concurrency Suite',
   () => {
   let pool: DatabasePool;
@@ -104,8 +108,7 @@ describe.skipIf(databaseUrl === undefined)(
   const fixtureSuffix = challengeLabId.slice(0, 8);
 
   beforeAll(async () => {
-      pool = createDatabasePool({ connectionString: databaseUrl!, maxConnections: 12 });
-      await pool.query('SELECT 1');
+      pool = await connectIntegrationDatabase(integrationDatabase, 12);
 
       // Seed test sandbox hierarchy
       await pool.query(
@@ -205,7 +208,8 @@ describe.skipIf(databaseUrl === undefined)(
   });
 
   afterAll(async () => {
-    await pool.end();
+    // Sem pool, o guarda recusou o banco no beforeAll e nada foi gravado.
+    if (pool) await pool.end();
   });
 
   describe('PostgreSQL Exclusion Constraint (equipment_occupations_no_overlap_excl)', () => {

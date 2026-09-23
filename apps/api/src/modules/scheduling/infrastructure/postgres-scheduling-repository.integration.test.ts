@@ -1,4 +1,8 @@
-import { createDatabasePool, type DatabasePool } from '@arqueia/database';
+import {
+  connectIntegrationDatabase,
+  resolveIntegrationDatabase,
+  type DatabasePool,
+} from '@arqueia/database';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -10,7 +14,7 @@ import {
 } from '../domain/scheduling.errors.js';
 import { PostgresSchedulingRepository } from './postgres-scheduling-repository.js';
 
-const databaseUrl = process.env.DATABASE_URL;
+const integrationDatabase = resolveIntegrationDatabase();
 const laboratoryBId = 'a0000000-0000-4000-8000-000000000001';
 const projectBId = 'a0000000-0000-4000-8000-000000000002';
 const equipmentAId = 'a0000000-0000-4000-8000-000000000003';
@@ -26,7 +30,7 @@ interface SeedScope {
   catalog_option_id: string;
 }
 
-describe.skipIf(databaseUrl === undefined)('PostgresSchedulingRepository integration', () => {
+describe.skipIf(!integrationDatabase.enabled)('PostgresSchedulingRepository integration', () => {
   let pool: DatabasePool;
   let repository: PostgresSchedulingRepository;
   let seed: SeedScope;
@@ -54,7 +58,7 @@ describe.skipIf(databaseUrl === undefined)('PostgresSchedulingRepository integra
   }
 
   beforeAll(async () => {
-    pool = createDatabasePool({ connectionString: databaseUrl!, maxConnections: 8 });
+    pool = await connectIntegrationDatabase(integrationDatabase, 8);
     repository = new PostgresSchedulingRepository(pool);
 
     const seedResult = await pool.query<SeedScope>(
@@ -123,6 +127,8 @@ describe.skipIf(databaseUrl === undefined)('PostgresSchedulingRepository integra
   });
 
   afterAll(async () => {
+    // O Vitest roda o afterAll mesmo se o beforeAll falhou. Sem pool, o guarda
+    // recusou o banco, e a limpeza não pode apagar nada nele.
     if (pool) {
       await cleanFixtures();
       await pool.end();

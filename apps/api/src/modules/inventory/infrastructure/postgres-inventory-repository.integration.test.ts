@@ -1,14 +1,18 @@
 import { randomUUID } from 'node:crypto';
 
-import { createDatabasePool, type DatabasePool } from '@arqueia/database';
+import {
+  connectIntegrationDatabase,
+  resolveIntegrationDatabase,
+  type DatabasePool,
+} from '@arqueia/database';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { InsufficientStockError } from '../domain/inventory.errors.js';
 import { PostgresInventoryRepository } from './postgres-inventory-repository.js';
 
-const databaseUrl = process.env.DATABASE_URL;
+const integrationDatabase = resolveIntegrationDatabase();
 
-describe.skipIf(databaseUrl === undefined)('PostgresInventoryRepository concurrency integration', () => {
+describe.skipIf(!integrationDatabase.enabled)('PostgresInventoryRepository concurrency integration', () => {
   let pool: DatabasePool;
   let repository: PostgresInventoryRepository;
 
@@ -26,8 +30,7 @@ describe.skipIf(databaseUrl === undefined)('PostgresInventoryRepository concurre
   };
 
   beforeAll(async () => {
-    pool = createDatabasePool({ connectionString: databaseUrl!, maxConnections: 4 });
-    await pool.query('SELECT 1');
+    pool = await connectIntegrationDatabase(integrationDatabase, 4);
     repository = new PostgresInventoryRepository(pool);
 
     await pool.query(
@@ -76,7 +79,8 @@ describe.skipIf(databaseUrl === undefined)('PostgresInventoryRepository concurre
   });
 
   afterAll(async () => {
-    await pool.end();
+    // Sem pool, o guarda recusou o banco no beforeAll e nada foi gravado.
+    if (pool) await pool.end();
   });
 
   it('allows exactly one of two competing withdrawals and preserves the derived balance', async () => {
