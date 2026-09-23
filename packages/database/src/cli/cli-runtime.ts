@@ -1,4 +1,5 @@
-import { resolve } from 'node:path';
+import { posix, win32 } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { createDatabasePool, type DatabasePool } from '../client.js';
 
@@ -66,11 +67,30 @@ export async function withPool<T>(
   }
 }
 
-/** `true` quando o módulo foi chamado diretamente, e não importado por um teste. */
-export function isDirectExecution(moduleUrl: string): boolean {
-  const invokedPath = process.argv[1];
+/**
+ * `true` quando o módulo foi chamado diretamente, e não importado por um teste.
+ *
+ * Usa `fileURLToPath`, como `bootstrap-admin.ts`. A primeira versão comparava
+ * `new URL(moduleUrl).pathname`, que no Windows vira `/C:/Users/...` e resolve
+ * para `C:\C:\Users\...`: nunca batia com o caminho do script, e as CLIs saíam
+ * com código 0 sem imprimir nada. No Linux da VM funcionava, por isso passou.
+ *
+ * `platform` e `invokedPath` só existem para o teste simular o Windows.
+ */
+export function isDirectExecution(
+  moduleUrl: string,
+  invokedPath: string | undefined = process.argv[1],
+  platform: NodeJS.Platform = process.platform,
+): boolean {
   if (invokedPath === undefined) return false;
-  return resolve(invokedPath) === resolve(new URL(moduleUrl).pathname);
+
+  const windows = platform === 'win32';
+  const paths = windows ? win32 : posix;
+  const modulePath = paths.resolve(fileURLToPath(moduleUrl, { windows }));
+  const scriptPath = paths.resolve(invokedPath);
+
+  // A letra da unidade pode chegar como `c:` ou `C:` conforme quem abriu o shell.
+  return windows ? modulePath.toLowerCase() === scriptPath.toLowerCase() : modulePath === scriptPath;
 }
 
 export function runCli(label: string, main: () => Promise<string | void>): void {
