@@ -175,12 +175,13 @@ describe('auditoria das suítes que abrem conexão real', () => {
     expect(suites.filter(({ source }) => bypass.test(source)).map(({ file }) => file)).toEqual([]);
   });
 
-  it('as três suítes que escrevem no banco passam pelo guarda', () => {
+  it('as quatro suítes que escrevem no banco passam pelo guarda', () => {
     const guarded = suites
       .filter(({ source }) => source.includes('connectIntegrationDatabase('))
       .map(({ file }) => file)
       .sort();
     expect(guarded).toEqual([
+      'apps/api/src/modules/field-reports/infrastructure/postgres-field-report-repository.integration.test.ts',
       'apps/api/src/modules/inventory/infrastructure/postgres-inventory-repository.integration.test.ts',
       'apps/api/src/modules/scheduling/infrastructure/postgres-scheduling-repository.integration.test.ts',
       'packages/database/src/scheduling-exclusion-and-ledger-invariants.challenge.test.ts',

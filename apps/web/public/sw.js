@@ -1,7 +1,7 @@
 /* global Response, URL, caches, fetch, self */
 
-const STATIC_CACHE = 'arqueia-static-v4';
-const OFFLINE_CACHE = 'arqueia-offline-v1';
+const STATIC_CACHE = 'arqueia-static-v5';
+const OFFLINE_CACHE = 'arqueia-offline-v2';
 
 // Arquivo estatico: nao passa pelo build do Next, entao nao ha NEXT_PUBLIC_*.
 // O prefixo vem da propria URL do script ('/arqueia/sw.js' -> '/arqueia').
@@ -24,8 +24,8 @@ const OFFLINE_HTML = `<!DOCTYPE html>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #f4f6f3;
-      color: #123f34;
+      background: #fbf8f0;
+      color: #1e3e4c;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -36,7 +36,7 @@ const OFFLINE_HTML = `<!DOCTYPE html>
     }
     .card {
       background: #ffffff;
-      border: 1px solid #d4ddd6;
+      border: 1px solid #e6dcc6;
       border-radius: 16px;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
       max-width: 420px;
@@ -44,9 +44,9 @@ const OFFLINE_HTML = `<!DOCTYPE html>
       text-align: center;
     }
     h1 { font-size: 1.25rem; font-weight: 800; margin: 0.75rem 0 0.5rem; }
-    p { font-size: 0.9rem; line-height: 1.5; color: #4a5d54; margin: 0 0 1.5rem; }
+    p { font-size: 0.9rem; line-height: 1.5; color: #5a5850; margin: 0 0 1.5rem; }
     button {
-      background: #123f34;
+      background: #1e3e4c;
       border: 0;
       border-radius: 8px;
       color: #ffffff;
@@ -56,7 +56,7 @@ const OFFLINE_HTML = `<!DOCTYPE html>
       min-height: 44px;
       padding: 0.6rem 1.5rem;
     }
-    button:hover { background: #0b2922; }
+    button:hover { background: #162f3a; }
   </style>
 </head>
 <body>

@@ -10,7 +10,8 @@ import { ZodValidationPipe } from '../../shared/interface/zod-validation.pipe.js
 import { PostgresPublicScheduleReader } from './postgres-public-schedule-reader.js';
 
 /**
- * Agenda pública — o ÚNICO controller do Arqueia sem JwtAuthGuard.
+ * Agenda pública — servida sem JwtAuthGuard. O outro controller público é o de
+ * informes (`PublicFieldReportController`), que grava conteúdo sem sessão.
  *
  * Tudo aqui é servido para a internet aberta, sem sessão. Duas regras ao mexer
  * neste arquivo:

@@ -31,6 +31,7 @@ O Arqueia implementa autorização baseada na tupla **(Usuário, Papel, Laborat�
 | `equipment.read` | Consultar catálogo e estado de equipamentos | ✅ | ✅ | ❌ | ✅ |
 | `equipment.report-incident` | Registrar ocorrências/falhas em equipamento | ✅ | ✅ | ❌ | ✅ |
 | `equipment.manage` | Cadastrar equipamentos e regras de uso | ❌ | ✅ | ❌ | ✅ |
+| `field-report.review` | Ler e triar os informes enviados pelo QR (ver nota abaixo) | ❌ | ❌ | ❌ | ✅ |
 | `scheduling.reserve` | Criar e gerenciar suas próprias reservas | ✅ | ✅ | ❌ | ✅ |
 | `scheduling.cancel` | Cancelar reservas próprias (ou de terceiros para técnicos) | ✅ (Próprias) | ✅ (Todas do lab) | ❌ | ✅ |
 | `scheduling.approve` | Aprovar reservas que requerem autorização | ❌ | ✅ | ❌ | ✅ |
@@ -38,6 +39,12 @@ O Arqueia implementa autorização baseada na tupla **(Usuário, Papel, Laborat�
 | `controlled.authorize` | Autorizar custódia/retirada de produto controlado | ❌ | ❌ | ✅ | ✅ |
 | `management.report.read` | Acessar relatórios gerenciais e dashboards do lab | ❌ | ✅ | ❌ | ✅ |
 | `audit.read` | Consultar trilha de auditoria imutável do lab | ❌ | ✅ | ❌ | ✅ |
+
+> **Informes (`field-report.review`)**: além do `ADMIN`, a permissão é concedida ao papel
+> laboratorial `GESTOR_ACESSO_CP2B` (a coordenação, ADR-009), que não tem coluna nesta
+> tabela. Alunos e pós-docs compartilham `USUARIO` ("Usuário Pesquisador"), por isso a
+> leitura **não** segue a categoria acadêmica. O **envio** de informes não exige permissão
+> nem conta: é o formulário público `/informar` (ver `docs/plan/INFORMES-E-IDENTIDADE-CP2B.md`).
 
 ---
 

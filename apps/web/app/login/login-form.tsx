@@ -71,7 +71,7 @@ export function LoginForm({
           </div>
           <div className="login-cp2b-endorsement">
             <span>Uma plataforma</span>
-            <Image alt="CP2b" height={63} priority src={withBasePath('/brand/cp2b-logo.svg')} width={166} />
+            <Image alt="CP2b" height={63} priority src={withBasePath('/brand/cp2b-logo-on-dark.svg')} width={166} />
           </div>
         </div>
         <div className="login-brand-message">
@@ -138,6 +138,9 @@ export function LoginForm({
 
         <a className="login-public-agenda" href={withBasePath('/agenda-publica')}>
           Ver agenda da semana sem entrar
+        </a>
+        <a className="login-public-agenda" href={withBasePath('/informar')}>
+          Avisar um problema ou pedir apoio (sem login)
         </a>
         <div className="login-cp2b-mobile">
           <span>Uma iniciativa</span>

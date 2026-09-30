@@ -11,15 +11,16 @@ Fluxos críticos a cobrir (ver `AGENTS.md` §5):
 
 ## Suítes de integração com banco real
 
-Três suítes gravam no banco de `DATABASE_URL`, inclusive em `stock_movements` e
-`audit_events`, que são append-only e recusam `DELETE`:
+Quatro suítes gravam no banco de `DATABASE_URL`, inclusive em `stock_movements`,
+`audit_events` e `field_reports`, que são append-only e recusam `DELETE`:
 
 - `packages/database/src/scheduling-exclusion-and-ledger-invariants.challenge.test.ts`
 - `apps/api/src/modules/inventory/infrastructure/postgres-inventory-repository.integration.test.ts`
 - `apps/api/src/modules/scheduling/infrastructure/postgres-scheduling-repository.integration.test.ts`
+- `apps/api/src/modules/field-reports/infrastructure/postgres-field-report-repository.integration.test.ts`
 
 Elas só rodam quando o nome do banco termina em `_test`, como o `arqueia_test` da
-CI. Qualquer outro nome faz as três serem puladas, inclusive o `arqueia` do
+CI. Qualquer outro nome faz as quatro serem puladas, inclusive o `arqueia` do
 desenvolvimento e o da produção. Antes de escrever, cada suíte confere também
 `current_database()` no servidor. O guarda mora em
 `packages/database/src/testing/integration-database.ts`, e o teste dele reprova

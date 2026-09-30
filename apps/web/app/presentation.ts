@@ -84,6 +84,15 @@ export function createWorkspacePresentation(
     });
   }
 
+  if (principalCan(principal, 'field-report.review', activeLaboratory?.id)) {
+    moduleNavigation.push({
+      description: 'Avisos enviados pelo QR',
+      href: '/informes',
+      icon: 'alerta',
+      label: 'Informes',
+    });
+  }
+
   moduleNavigation.push({
     description: 'Manual e documentação',
     href: '/guia',

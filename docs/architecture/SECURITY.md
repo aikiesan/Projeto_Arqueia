@@ -23,6 +23,16 @@ A fundação de segurança é parte da Fase 1 (não é "para depois"). Requisito
 - Tokens de acompanhamento **não previsíveis** (aleatórios), com expiração e escopo mínimo.
 - Rate limiting no endpoint público; proteção contra enumeração e spam de solicitações.
 
+## Informes pelo QR (única escrita pública de conteúdo, fora do login)
+- `POST /api/public/field-reports` aceita informes **sem sessão**, por decisão do laboratório.
+- Controles: mesma origem no BFF, corpo ≤ 16 KiB, campo-armadilha contra robôs, contrato
+  `.strict()` que só aceita os campos do formulário, limite de 10 envios por origem a cada
+  15 min (em memória; IP não vai ao banco — ADR-009 §10).
+- Nenhum endpoint público lê informes. Leitura e triagem exigem `field-report.review`
+  (coordenação), avaliada no servidor pelo laboratório do próprio informe.
+- Conteúdo imutável e sem DELETE no banco (gatilho); a auditoria guarda a transição, nunca o
+  texto nem o contato de quem enviou.
+
 ## Transporte e segredos
 - TLS obrigatório (Let's Encrypt; cert existente expandido para o subdomínio — `ADR-002`).
 - Segredos apenas em `.env` no servidor; somente `.env.example` versionado.

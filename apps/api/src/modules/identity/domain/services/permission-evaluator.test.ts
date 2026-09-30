@@ -7,7 +7,10 @@ import { PermissionEvaluator } from './permission-evaluator.js';
 const labA = '7d444840-9dc0-11d1-b245-5ffdce74fad2';
 const labB = 'e902893a-9d22-3c7e-a7b8-d6e313b71d9f';
 
-function principal(role: 'USUARIO' | 'TECNICO', admin = false): AuthenticatedPrincipal {
+function principal(
+  role: 'USUARIO' | 'TECNICO' | 'GESTOR_ACESSO_CP2B',
+  admin = false,
+): AuthenticatedPrincipal {
   const now = '2026-08-14T00:00:00.000Z';
   const userId = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 
@@ -74,6 +77,14 @@ describe('PermissionEvaluator', () => {
 
     expect(evaluator.can(admin, 'identity.user.manage')).toBe(true);
     expect(evaluator.can(admin, 'inventory.manage', labB)).toBe(true);
+  });
+
+  it('lets only the laboratory coordination and administrators review field reports', () => {
+    expect(evaluator.can(principal('GESTOR_ACESSO_CP2B'), 'field-report.review', labA)).toBe(true);
+    expect(evaluator.can(principal('GESTOR_ACESSO_CP2B'), 'field-report.review', labB)).toBe(false);
+    expect(evaluator.can(principal('USUARIO'), 'field-report.review', labA)).toBe(false);
+    expect(evaluator.can(principal('TECNICO'), 'field-report.review', labA)).toBe(false);
+    expect(evaluator.can(principal('USUARIO', true), 'field-report.review', labB)).toBe(true);
   });
 
   it('denies archived memberships and suspended users', () => {

@@ -17,6 +17,7 @@
 | **Movimentação de Estoque / Reagentes** | Controle e custódia de insumos | *A determinar formalmente* (Candidatas: Art. 7º, II / III) | Rastreabilidade e prestação de contas de projetos de pesquisa | `REQUIRES INSTITUTIONAL VALIDATION` |
 | **Trilha de Auditoria e Logs do Sistema** | Segurança e accountability | *A determinar formalmente* (Candidatas: Art. 7º, II / IX) | Proteção lógica, integridade e rastreabilidade forense | `REQUIRES INSTITUTIONAL VALIDATION` |
 | **Versionamento de Documentos / POPs** | Rastreabilidade de protocolos | *A determinar formalmente* (Candidata: Art. 7º, III) | Histórico de metodologia científica em laboratório | `REQUIRES INSTITUTIONAL VALIDATION` |
+| **Recebimento de informes pelo QR (sem login)** | Avisos de problema, manutenção, uso de insumo e pedidos de apoio à coordenação | *A determinar formalmente* (Candidatas: Art. 7º, III / IX) | Manutenção e segurança da infraestrutura. Identificação opcional; IP não é gravado; leitura restrita à coordenação | `REQUIRES INSTITUTIONAL VALIDATION` |
 
 ---
 
