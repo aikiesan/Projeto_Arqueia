@@ -10,7 +10,7 @@ export default function manifest(): MetadataRoute.Manifest {
   const scope = `${basePath}/`;
 
   return {
-    background_color: '#f4f6f3',
+    background_color: '#fbf8f0',
     description: 'Gestão, rastreabilidade e compartilhamento de infraestrutura laboratorial.',
     display: 'standalone',
     icons: [
@@ -34,6 +34,6 @@ export default function manifest(): MetadataRoute.Manifest {
     scope,
     short_name: 'Arqueia',
     start_url: scope,
-    theme_color: '#123f34',
+    theme_color: '#1e3e4c',
   };
 }

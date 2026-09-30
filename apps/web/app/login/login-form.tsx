@@ -71,7 +71,7 @@ export function LoginForm({
           </div>
           <div className="login-cp2b-endorsement">
             <span>Uma plataforma</span>
-            <Image alt="CP2b" height={63} priority src={withBasePath('/brand/cp2b-logo.svg')} width={166} />
+            <Image alt="CP2b" height={63} priority src={withBasePath('/brand/cp2b-logo-on-dark.svg')} width={166} />
           </div>
         </div>
         <div className="login-brand-message">

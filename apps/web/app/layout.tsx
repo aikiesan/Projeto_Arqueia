@@ -34,7 +34,7 @@ export const viewport: Viewport = {
   // os campos do formulário — o comportamento esperado no Android e no iOS.
   interactiveWidget: 'resizes-content',
   maximumScale: 5,
-  themeColor: '#123f34',
+  themeColor: '#1e3e4c',
   viewportFit: 'cover',
   width: 'device-width',
 };
