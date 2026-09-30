@@ -139,6 +139,9 @@ export function LoginForm({
         <a className="login-public-agenda" href={withBasePath('/agenda-publica')}>
           Ver agenda da semana sem entrar
         </a>
+        <a className="login-public-agenda" href={withBasePath('/informar')}>
+          Avisar um problema ou pedir apoio (sem login)
+        </a>
         <div className="login-cp2b-mobile">
           <span>Uma iniciativa</span>
           <Image alt="CP2b" height={50} src={withBasePath('/brand/cp2b-logo.svg')} width={132} />
