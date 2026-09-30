@@ -29,12 +29,15 @@ Legenda: ✅ permitido · 🟡 permitido com condição · ❌ negado
 | Marcar usuário habilitado / aprovar treinamento | ❌ | ✅ | ✅ |
 | Registrar manutenção/calibração | ❌ | ✅ | ✅ |
 | Reportar problema em equipamento | ✅ | ✅ | ✅ |
+| Enviar informe pelo QR (`/informar`, sem login)³ | ✅ | ✅ | ✅ |
+| Ler e triar informes (`/informes`)³ | ❌ | ❌ | ✅ |
 | Triar/aprovar solicitação multiusuário | ❌ | ✅ | ✅ |
 | Ver relatórios/custos | ❌ | ✅ | ✅ |
 | Gerenciar usuários e permissões | ❌ | ❌ | ✅ |
 | Configurar catálogos globais / labs | ❌ | ❌ | ✅ |
 
 ¹ **Controlado:** exige autenticação adicional (FR-CTL-2) e papel autorizado; registra cadeia de custódia. Visualização da existência pode ser liberada conforme política.
+³ **Informes:** qualquer pessoa com a etiqueta QR envia, mesmo sem conta. Ler e triar é da coordenação: papel `GESTOR_ACESSO_CP2B` no laboratório (e `ADMIN`). Categoria acadêmica não concede permissão (ADR-009).
 ² **Reserva por Usuário:** condicionada a estar **habilitado** no equipamento (FR-EQP-3) e às regras do equipamento (treinamento obrigatório, aprovação do técnico — FR-AGD-4).
 
 ## Regras de autorização (invariantes)

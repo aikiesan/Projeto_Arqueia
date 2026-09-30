@@ -32,6 +32,9 @@
 | `stock_movements` | `purpose`, `reason` | VARCHAR(255), VARCHAR(255) | Dado de Pesquisa Operacional | Justificativa de consumo de insumo e prestação de contas | `REQUIRES INSTITUTIONAL VALIDATION` |
 | `audit_events` | `actor_id` | UUID (nullable) | Trilha de Auditoria | Identificação do autor de ações sensíveis (criação, edição, login) | `REQUIRES INSTITUTIONAL VALIDATION` |
 | `documents` | `author_id` | UUID | Autoria Operacional | Rastreabilidade de autoria de Procedimentos Operacionais Padrão | `REQUIRES INSTITUTIONAL VALIDATION` |
+| `field_reports` | `message` | VARCHAR(2000) | Texto livre (pode conter dado pessoal digitado pelo remetente) | Informe enviado pelo QR sem login: problema, manutenção, uso de insumo ou pedido de apoio. Imutável após o envio | `REQUIRES INSTITUTIONAL VALIDATION` |
+| `field_reports` | `reporter_name`, `reporter_contact` | VARCHAR(120), VARCHAR(160) (nullable) | Dado Pessoal / Contato — **opcional** | Retorno ao remetente, somente se ele quiser se identificar | `REQUIRES INSTITUTIONAL VALIDATION` |
+| `field_reports` | `review_note`, `reviewed_by_user_id` | VARCHAR(1000), UUID (nullable) | Dado Operacional | Triagem pela coordenação (quem tratou e como) | `REQUIRES INSTITUTIONAL VALIDATION` |
 
 ---
 

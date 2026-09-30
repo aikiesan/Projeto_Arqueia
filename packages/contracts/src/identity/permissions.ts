@@ -14,6 +14,7 @@ export const identityPermissions = [
   'equipment.read',
   'equipment.report-incident',
   'equipment.manage',
+  'field-report.review',
   'scheduling.read',
   'scheduling.reserve',
   'scheduling.cancel-own',
@@ -45,6 +46,7 @@ export const LABORATORY_ROLE_PERMISSIONS = {
     'scheduling.reserve',
     'scheduling.cancel-own',
     'scheduling.approve',
+    'field-report.review',
   ],
   TECNICO: [
     'identity.user.read',

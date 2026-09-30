@@ -17,6 +17,7 @@
 | **Token de Acesso JWT** | `JWT_ACCESS_TTL_SECONDS` | 15 minutos (900s) | Minimização da janela de exposição em caso de interceptação de token. |
 | **Bloqueio por Força Bruta** | `local_credentials.locked_until` | 15 minutos (900s) | Mitigação de ataques de força bruta contra senhas. |
 | **Janela de Rate Limiting** | `AuthRateLimiterService` | 60 segundos (10 requisições) | Proteção dos endpoints sensíveis de autenticação. |
+| **Limite de envio de informes** | `FIELD_REPORT_RATE_LIMIT` (memória da API) | 15 minutos (10 envios por origem) | Anti-abuso do formulário público; o IP não é gravado em banco (ADR-009 §10). |
 | **Sessões Inativas / Revogadas** | `auth_sessions` | 30 dias após revogação/expiração | Limpeza periódica de tokens expirados e manutenção de banco. |
 
 ### 1.2. Prazos Documentais Institucionais (Submetidos à Validação da UNICAMP)
@@ -27,6 +28,7 @@
 | **Movimentações de Estoque / Reagentes** | `stock_movements`, `batches` | *A determinar pela UNICAMP* | Controle patrimonial, fomento e eventual material controlado | `REQUIRES INSTITUTIONAL VALIDATION` |
 | **Trilha de Auditoria do Sistema** | `audit_events` | *A determinar pela UNICAMP* | Segurança, accountability e Tabela de Temporalidade institucional | `REQUIRES INSTITUTIONAL VALIDATION` |
 | **Documentos e POPs Versionados** | `documents` | *A determinar pela UNICAMP* | Ciclo de vida do equipamento e metodologia de pesquisa | `REQUIRES INSTITUTIONAL VALIDATION` |
+| **Informes enviados pelo QR** | `field_reports` | *Proposta: 2 anos após resolvido* | Histórico de manutenção e apoio; texto livre e contato opcional pedem prazo curto | `REQUIRES INSTITUTIONAL VALIDATION` |
 
 ---
 

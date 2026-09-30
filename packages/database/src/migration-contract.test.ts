@@ -36,6 +36,9 @@ const pseudonymousIdentityMigrationPath = fileURLToPath(
 const institutionalIdentityMigrationPath = fileURLToPath(
   new URL('../migrations/012_institutional_user_identity.cjs', import.meta.url),
 );
+const fieldReportsMigrationPath = fileURLToPath(
+  new URL('../migrations/014_field_reports.cjs', import.meta.url),
+);
 const require = createRequire(import.meta.url);
 
 function renderMigrationSql(path = migrationPath): string {
@@ -245,5 +248,33 @@ describe('stock movement ledger consistency migration invariants', () => {
     expect(migration).toContain("WHEN movement_type IN ('WITHDRAWAL', 'DISCARD') THEN -quantity");
     expect(migration).toContain('NEW.balance_after IS DISTINCT FROM expected_balance');
     expect(migration).toContain("CONSTRAINT = 'stock_movements_ledger_consistency_check'");
+  });
+});
+
+describe('field reports migration invariants', () => {
+  it('stores public reports scoped to the laboratory and to its own equipment', () => {
+    const sql = renderMigrationSql(fieldReportsMigrationPath);
+
+    expect(sql).toContain('CREATE TABLE "field_reports"');
+    expect(sql).toContain('field_reports_equipment_lab_fk');
+    expect(sql).toContain('equipment(laboratory_id, id)');
+    expect(sql).toContain("status IN ('NEW', 'IN_REVIEW', 'RESOLVED')");
+    expect(sql).toContain('char_length(btrim(message)) >= 10');
+    expect(sql).toContain('WHERE archived_at IS NULL');
+    expect(sql).toContain('field_reports_set_updated_at');
+  });
+
+  it('keeps what the reporter wrote immutable and refuses DELETE', () => {
+    const sql = renderMigrationSql(fieldReportsMigrationPath);
+
+    expect(sql).toContain('BEFORE UPDATE OR DELETE ON field_reports');
+    expect(sql).toContain('NEW.message IS DISTINCT FROM OLD.message');
+    expect(sql).toContain('NEW.reporter_contact IS DISTINCT FROM OLD.reporter_contact');
+  });
+
+  it('does not persist network identifiers of anonymous reporters (ADR-009 §10)', () => {
+    const sql = renderMigrationSql(fieldReportsMigrationPath);
+
+    expect(sql).not.toMatch(/ip_address|user_agent/);
   });
 });

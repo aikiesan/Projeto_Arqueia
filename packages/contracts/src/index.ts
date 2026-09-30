@@ -1,5 +1,6 @@
 export * from './catalog/index.js';
 export * from './equipment/index.js';
+export * from './field-reports/index.js';
 export * from './common/canonical-code.js';
 export * from './common/entity.js';
 export * from './common/pagination.js';
