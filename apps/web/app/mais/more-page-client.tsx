@@ -5,6 +5,7 @@ import { ArqueiaIcon, WorkspaceShell, type NavigationItem } from '@arqueia/ui';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
+import { WorkspaceNotifications } from '../components/notifications/workspace-notifications';
 import { BASE_PATH, withBasePath } from '../lib/base-path';
 import { LogoutButton } from '../logout-button';
 import { createWorkspacePresentation } from '../presentation';
@@ -141,6 +142,8 @@ export function MorePageClient() {
       laboratories={laboratoryRail}
       mobileNavigation={presentation.mobileNavigation}
       moduleNavigation={presentation.moduleNavigation}
+      notifications={<WorkspaceNotifications scope={presentation.notificationScope} />}
+      reportAction={presentation.reportAction}
       qrAction={{ href: qrHref, label: 'Ler QR Code' }}
       sectionLabel="Mais opções"
       userInitials={presentation.userInitials}

@@ -15,6 +15,7 @@ import { ArqueiaIcon, WorkspaceShell } from '@arqueia/ui';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 
+import { WorkspaceNotifications } from '../components/notifications/workspace-notifications';
 import { LogoutButton } from '../logout-button';
 import { useInteractionFeedback } from '../interaction-feedback';
 import { principalCan } from '../lib/permissions';
@@ -186,6 +187,7 @@ export function EquipmentPageClient() {
   return (
     <WorkspaceShell
       {...presentation}
+      notifications={<WorkspaceNotifications scope={presentation.notificationScope} />}
       activeModuleHref="/equipamentos"
       appName="Arqueia"
       basePath={BASE_PATH}

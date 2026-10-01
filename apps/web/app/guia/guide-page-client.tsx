@@ -5,6 +5,7 @@ import { WorkspaceShell } from '@arqueia/ui';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
+import { WorkspaceNotifications } from '../components/notifications/workspace-notifications';
 import { createWorkspacePresentation } from '../presentation';
 import { BASE_PATH, withBasePath } from '../lib/base-path';
 
@@ -98,6 +99,8 @@ export function GuidePageClient() {
       laboratories={laboratoryRail}
       mobileNavigation={presentation.mobileNavigation}
       moduleNavigation={presentation.moduleNavigation}
+      notifications={<WorkspaceNotifications scope={presentation.notificationScope} />}
+      reportAction={presentation.reportAction}
       qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Guia de Uso"
       userInitials={userInitials}

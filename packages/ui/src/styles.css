@@ -174,15 +174,184 @@
   width: 44px;
 }
 
-.arqueia-notification-dot {
+/*
+ * Ações do topo: "Informar" e o sino. Ficam juntas na coluna do meio da barra
+ * para que nada se desloque quando uma delas não é exibida.
+ */
+.arqueia-topbar-actions {
+  align-items: center;
+  display: flex;
+  gap: 0.35rem;
+}
+
+/* Lima com tinta petróleo (7,4:1): o mesmo par do botão de destaque do site do CP2b. */
+.arqueia-report-action {
+  align-items: center;
+  background: var(--arqueia-accent);
+  border-radius: 9999px;
+  box-shadow: inset 0 0 0 1px rgb(30 62 76 / 18%);
+  color: var(--arqueia-brand-900);
+  display: inline-flex;
+  font-size: 0.8rem;
+  font-weight: 800;
+  gap: 0.35rem;
+  min-height: 40px;
+  padding: 0 0.85rem 0 0.7rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.arqueia-report-action:hover {
+  background: #a3cc2a;
+}
+
+/* Sino: o contador só aparece quando há algo; não existe mais bolinha fixa. */
+.arqueia-notifications {
+  /* No celular o painel se ancora à barra inteira (posicionada), não ao sino. */
+  position: static;
+}
+
+.arqueia-notification-count {
   background: var(--arqueia-danger);
   border: 2px solid white;
+  border-radius: 9999px;
+  color: white;
+  font-size: 0.62rem;
+  font-weight: 800;
+  height: 18px;
+  line-height: 14px;
+  min-width: 18px;
+  padding: 0 4px;
+  position: absolute;
+  right: 2px;
+  text-align: center;
+  top: 4px;
+}
+
+.arqueia-notification-panel {
+  background: var(--arqueia-surface);
+  border: 1px solid var(--arqueia-line);
+  border-radius: var(--arqueia-radius-md);
+  box-shadow: var(--arqueia-shadow-lg);
+  left: 0.75rem;
+  overflow: hidden;
+  position: absolute;
+  right: 0.75rem;
+  top: calc(100% + 6px);
+  z-index: 40;
+}
+
+.arqueia-notification-header {
+  align-items: center;
+  border-bottom: 1px solid var(--arqueia-line);
+  display: flex;
+  justify-content: space-between;
+  padding: 0.8rem 1rem;
+}
+
+.arqueia-notification-header strong {
+  color: var(--arqueia-brand-900);
+  font-size: 0.88rem;
+}
+
+.arqueia-notification-header span {
+  background: var(--arqueia-brand-100);
+  border-radius: 9999px;
+  color: var(--arqueia-brand-700);
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.2rem 0.55rem;
+}
+
+.arqueia-notification-list {
+  list-style: none;
+  margin: 0;
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+  padding: 0.35rem;
+}
+
+.arqueia-notification-item {
+  align-items: start;
+  border-radius: 10px;
+  color: inherit;
+  display: grid;
+  gap: 0.15rem 0.6rem;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  min-height: 44px;
+  padding: 0.65rem;
+  text-decoration: none;
+}
+
+.arqueia-notification-item:hover {
+  background: var(--arqueia-surface-muted);
+}
+
+.arqueia-notification-mark {
+  background: var(--arqueia-brand-500);
   border-radius: 50%;
   height: 8px;
-  position: absolute;
-  right: 8px;
-  top: 8px;
+  margin-top: 0.35rem;
   width: 8px;
+}
+
+.arqueia-notification-item.is-urgent .arqueia-notification-mark {
+  background: var(--arqueia-danger);
+}
+
+.arqueia-notification-copy {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.arqueia-notification-copy strong {
+  font-size: 0.8rem;
+}
+
+.arqueia-notification-copy span {
+  color: var(--arqueia-ink-600);
+  font-size: 0.76rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arqueia-notification-item small {
+  color: var(--arqueia-ink-600);
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.arqueia-notification-empty {
+  color: var(--arqueia-ink-600);
+  font-size: 0.8rem;
+  margin: 0;
+  padding: 1.1rem 1rem;
+}
+
+.arqueia-notification-all {
+  border-top: 1px solid var(--arqueia-line);
+  color: var(--arqueia-brand-700);
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 750;
+  padding: 0.8rem 1rem;
+  text-align: center;
+  text-decoration: none;
+}
+
+/* Telas muito estreitas: o "Informar" vira só o megafone (o nome continua no aria-label). */
+@media (max-width: 359px) {
+  .arqueia-report-action {
+    justify-content: center;
+    padding: 0;
+    width: 40px;
+  }
+
+  .arqueia-report-action-label {
+    display: none;
+  }
 }
 
 .arqueia-profile {
@@ -551,6 +720,17 @@
     justify-content: end;
     min-height: 65px;
     padding: 0.65rem 1.25rem;
+  }
+
+  .arqueia-notifications {
+    position: relative;
+  }
+
+  .arqueia-notification-panel {
+    left: auto;
+    right: 0;
+    top: calc(100% + 8px);
+    width: 360px;
   }
 
 

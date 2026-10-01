@@ -6,6 +6,7 @@ import { ArqueiaIcon, WorkspaceShell } from '@arqueia/ui';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
+import { WorkspaceNotifications } from '../components/notifications/workspace-notifications';
 import { LogoutButton } from '../logout-button';
 import { createWorkspacePresentation } from '../presentation';
 import {
@@ -412,6 +413,8 @@ export function QrPageClient() {
       laboratories={laboratoryRail}
       mobileNavigation={presentation.mobileNavigation}
       moduleNavigation={presentation.moduleNavigation}
+      notifications={<WorkspaceNotifications scope={presentation.notificationScope} />}
+      reportAction={presentation.reportAction}
       qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Leitor QR Code"
       userInitials={presentation.userInitials}

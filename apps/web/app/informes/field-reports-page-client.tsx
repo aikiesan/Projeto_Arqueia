@@ -18,6 +18,8 @@ import {
   FIELD_REPORT_KIND_PRESENTATION,
   FIELD_REPORT_STATUS_LABEL,
 } from '../components/field-reports/field-report-labels';
+import { FIELD_REPORTS_CHANGED_EVENT } from '../components/notifications/field-report-notifications';
+import { WorkspaceNotifications } from '../components/notifications/workspace-notifications';
 import { FieldReportQrDialog } from '../components/field-reports/field-report-qr-dialog';
 import { BASE_PATH, withBasePath } from '../lib/base-path';
 import { principalCan } from '../lib/permissions';
@@ -279,6 +281,8 @@ export function FieldReportsPageClient(): React.JSX.Element {
         setReports((current) => current.map((item) => (item.id === updated.id ? updated : item)));
         setNotice(`${updated.reference} agora está “${FIELD_REPORT_STATUS_LABEL[updated.status]}”.`);
         void loadSummary();
+        // O sino do topo recarrega na hora, sem esperar o próximo ciclo.
+        window.dispatchEvent(new Event(FIELD_REPORTS_CHANGED_EVENT));
       } catch {
         setNotice('Não foi possível atualizar o informe. Tente novamente.');
       }
@@ -312,6 +316,8 @@ export function FieldReportsPageClient(): React.JSX.Element {
       laboratories={laboratoryRail}
       mobileNavigation={presentation.mobileNavigation}
       moduleNavigation={presentation.moduleNavigation}
+      notifications={<WorkspaceNotifications scope={presentation.notificationScope} />}
+      reportAction={presentation.reportAction}
       qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Informes"
       userInitials={presentation.userInitials}

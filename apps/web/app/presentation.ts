@@ -16,7 +16,16 @@ export interface WorkspacePresentation {
   readonly laboratories: readonly LaboratoryRailItem[];
   readonly mobileNavigation: readonly NavigationItem[];
   readonly moduleNavigation: readonly NavigationItem[];
+  /** De onde o sino lê e se ele lê: só quem revisa informes recebe notificações deles. */
+  readonly notificationScope: NotificationScope;
+  /** Ação "Informar" do topo: abre o formulário de informes já no laboratório ativo. */
+  readonly reportAction: Pick<NavigationItem, 'href' | 'label'>;
   readonly userInitials: string;
+}
+
+export interface NotificationScope {
+  readonly laboratoryId: string;
+  readonly canReviewFieldReports: boolean;
 }
 
 const CP2B_LOGO = '/brand/cp2b-avatar.svg';
@@ -127,6 +136,12 @@ export function createWorkspacePresentation(
       ...item,
       href: withLaboratoryContext(item.href, laboratoryId),
     })),
+    notificationScope: {
+      laboratoryId: laboratoryId ?? '',
+      canReviewFieldReports:
+        laboratoryId !== undefined && principalCan(principal, 'field-report.review', laboratoryId),
+    },
+    reportAction: { href: withLaboratoryContext('/informar', laboratoryId), label: 'Informar' },
     userInitials: initials(principal.user.name),
   };
 }

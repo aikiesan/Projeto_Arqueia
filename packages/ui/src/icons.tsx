@@ -8,8 +8,8 @@ export type ArqueiaIconName =
   | 'estoque'
   | 'gestao'
   | 'guia'
+  | 'informar'
   | 'inicio'
-
   | 'laboratorio'
   | 'mais'
   | 'qr'
@@ -30,6 +30,8 @@ const paths: Readonly<Record<ArqueiaIconName, React.ReactNode>> = {
   estoque: <><path d="m4 7 8-4 8 4-8 4-8-4Z"/><path d="m4 7 8 4 8-4M4 12l8 4 8-4M4 17l8 4 8-4"/></>,
   gestao: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></>,
   guia: <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>,
+  // Megafone: "avisar a coordenação". Ícone da ação Informar no topo do app.
+  informar: <><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1Z"/><path d="M15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12"/></>,
   inicio: <><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10M9 20v-6h6v6"/></>,
 
   laboratorio: <><path d="M9 3h6M10 3v6l-6 10a1.5 1.5 0 0 0 1.3 2h13.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/><path d="M7.5 15h9"/></>,
