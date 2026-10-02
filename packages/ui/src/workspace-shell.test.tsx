@@ -53,6 +53,31 @@ describe('WorkspaceShell', () => {
     expect(screen.getByRole('complementary', { name: 'Painel contextual' })).toHaveTextContent('Próxima reserva');
   });
 
+  it('não mostra um sino falso quando o app não fornece notificações', () => {
+    const { container } = render(<WorkspaceShell {...props} />);
+
+    expect(screen.queryByRole('button', { name: /Notificações/ })).not.toBeInTheDocument();
+    expect(container.querySelector('.arqueia-notification-dot')).toBeNull();
+  });
+
+  it('exibe a ação Informar e o sino fornecidos pelo app no topo', () => {
+    render(
+      <WorkspaceShell
+        {...props}
+        basePath="/arqueia"
+        notifications={<button aria-label="Notificações" type="button" />}
+        reportAction={{ href: '/informar?laboratory=lab-cp2b', label: 'Informar' }}
+      />,
+    );
+
+    const banner = screen.getByRole('banner');
+    expect(within(banner).getByRole('link', { name: 'Informar' })).toHaveAttribute(
+      'href',
+      '/arqueia/informar?laboratory=lab-cp2b',
+    );
+    expect(within(banner).getByRole('button', { name: 'Notificações' })).toBeInTheDocument();
+  });
+
   it('limita as dimensoes intrinsecas dos logos do laboratorio', () => {
     const { container } = render(<WorkspaceShell {...props} />);
 

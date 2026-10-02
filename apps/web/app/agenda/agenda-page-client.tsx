@@ -31,6 +31,7 @@ import {
   zonedDateTimeToIso,
   type ScheduleSlotSelection,
 } from '../components/scheduling';
+import { WorkspaceNotifications } from '../components/notifications/workspace-notifications';
 import { createWorkspacePresentation } from '../presentation';
 import { BASE_PATH, withBasePath } from '../lib/base-path';
 
@@ -697,6 +698,8 @@ export function AgendaPageClient() {
       laboratories={laboratoryRail}
       mobileNavigation={presentation.mobileNavigation}
       moduleNavigation={presentation.moduleNavigation}
+      notifications={<WorkspaceNotifications scope={presentation.notificationScope} />}
+      reportAction={presentation.reportAction}
       qrAction={{ href: `/qr?laboratory=${activeLaboratory.id}`, label: 'Ler QR Code' }}
       sectionLabel="Agenda Operacional"
       userInitials={initials}

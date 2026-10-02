@@ -8,6 +8,7 @@ import {
   QuickActions,
   TodayReservationsCard,
 } from './components/home';
+import { WorkspaceNotifications } from './components/notifications/workspace-notifications';
 import { LogoutButton } from './logout-button';
 import type { WorkspacePresentation } from './presentation';
 import { BASE_PATH, withBasePath } from './lib/base-path';
@@ -73,6 +74,8 @@ export function HomeDashboard({ presentation, summary }: HomeDashboardProps) {
       laboratories={presentation.laboratories}
       mobileNavigation={presentation.mobileNavigation}
       moduleNavigation={presentation.moduleNavigation}
+      notifications={<WorkspaceNotifications scope={presentation.notificationScope} />}
+      reportAction={presentation.reportAction}
       qrAction={{
         href: presentation.activeLaboratoryId ? `/qr?laboratory=${presentation.activeLaboratoryId}` : '/qr',
         label: 'Ler QR Code',

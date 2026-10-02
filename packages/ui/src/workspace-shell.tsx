@@ -31,7 +31,11 @@ export interface WorkspaceShellProps {
   readonly laboratories: readonly LaboratoryRailItem[];
   readonly mobileNavigation: readonly NavigationItem[];
   readonly moduleNavigation: readonly NavigationItem[];
+  /** Sino do topo (ex.: `NotificationCenter`). Sem ele, o topo não mostra sino. */
+  readonly notifications?: ReactNode;
   readonly qrAction: Pick<NavigationItem, 'href' | 'label'>;
+  /** Ação "Informar" do topo, sempre visível no web e no celular. */
+  readonly reportAction?: Pick<NavigationItem, 'href' | 'label'> | undefined;
   readonly sectionLabel: string;
   readonly userInitials: string;
   readonly userLabel: string;
@@ -76,7 +80,9 @@ export function WorkspaceShell({
   laboratories,
   mobileNavigation,
   moduleNavigation,
+  notifications,
   qrAction,
+  reportAction,
   sectionLabel,
   userInitials,
   userLabel,
@@ -149,10 +155,20 @@ export function WorkspaceShell({
             </span>
             <span><strong>{appName}</strong><small>{currentContext}</small></span>
           </div>
-          <button className="arqueia-alert-button" type="button" aria-label="Notificações">
-            <ArqueiaIcon name="alerta" size={20} />
-            <span className="arqueia-notification-dot" />
-          </button>
+          <div className="arqueia-topbar-actions">
+            {reportAction ? (
+              <a
+                aria-label={reportAction.label}
+                className="arqueia-report-action"
+                href={joinBasePath(basePath, reportAction.href)}
+                title={reportAction.label}
+              >
+                <ArqueiaIcon name="informar" size={20} />
+                <span aria-hidden="true" className="arqueia-report-action-label">{reportAction.label}</span>
+              </a>
+            ) : null}
+            {notifications}
+          </div>
           <details className="arqueia-user-menu">
             <summary className="arqueia-profile" aria-label={`Abrir menu de ${userLabel}`}>
               <span>{userInitials}</span>

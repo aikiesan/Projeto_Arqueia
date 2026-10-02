@@ -1,6 +1,7 @@
 import { WorkspaceShell } from '@arqueia/ui';
 import { redirect } from 'next/navigation';
 
+import { WorkspaceNotifications } from '../components/notifications/workspace-notifications';
 import { LogoutButton } from '../logout-button';
 import { loadLaboratories, loadPrincipal } from '../lib/session';
 import { createWorkspacePresentation } from '../presentation';
@@ -31,6 +32,8 @@ export default async function ProfilePage() {
       laboratories={presentation.laboratories}
       mobileNavigation={presentation.mobileNavigation}
       moduleNavigation={presentation.moduleNavigation}
+      notifications={<WorkspaceNotifications scope={presentation.notificationScope} />}
+      reportAction={presentation.reportAction}
       qrAction={{
         href: presentation.activeLaboratoryId ? `/qr?laboratory=${presentation.activeLaboratoryId}` : '/qr',
         label: 'Ler QR Code',

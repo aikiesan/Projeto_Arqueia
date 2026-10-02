@@ -3,8 +3,8 @@ import { expect, test, type Page } from '@playwright/test';
 /**
  * Informes: o aluno envia pela etiqueta QR sem login; só a coordenação lê.
  *
- * Cada execução envia no máximo dois informes por projeto do Playwright, bem
- * abaixo do teto de envios por origem da API (FIELD_REPORT_RATE_LIMIT).
+ * Cada execução envia no máximo três informes por projeto do Playwright (seis
+ * no total), abaixo do teto de envios por origem da API (FIELD_REPORT_RATE_LIMIT).
  */
 const basePath = (process.env.E2E_BASE_PATH ?? '').replace(/\/$/, '');
 const administratorEmail = process.env.E2E_ADMIN_EMAIL ?? 'admin@unicamp.br';
@@ -71,5 +71,32 @@ test.describe('Informes pelo QR', () => {
 
     await expect(page.getByText(/agora está “Em análise”/)).toBeVisible();
     await expect(card.getByText('Em análise', { exact: true })).toBeVisible();
+  });
+
+  test('o sino avisa a coordenação e o Informar do topo abre o formulário', async ({ page }) => {
+    const laboratoryId = await cp2bLaboratoryId(page);
+    const message = `Balança descalibrada — sino e2e ${Date.now()} (${test.info().project.name}).`;
+    await submitReport(page, laboratoryId, message);
+
+    const destination = `/?laboratory=${laboratoryId}`;
+    await page.goto(`${prefixed('/login')}?next=${encodeURIComponent(destination)}`);
+    await page.getByLabel('E-mail').fill(administratorEmail);
+    await page.getByLabel('Senha').fill(administratorPassword);
+    await page.getByRole('button', { name: 'Entrar' }).click();
+    await expect.poll(() => new URL(page.url()).pathname).toBe(prefixed('/'));
+
+    const banner = page.getByRole('banner');
+    const bell = banner.getByRole('button', { name: /Notificações: \d+ novas?/ });
+    await expect(bell).toBeVisible();
+    await bell.click();
+    const panel = page.getByRole('region', { name: 'Informes novos' });
+    await expect(panel.getByText(message)).toBeVisible();
+    await panel.getByRole('link', { name: /Ver todos os informes/ }).click();
+    await expect.poll(() => new URL(page.url()).pathname).toBe(prefixed('/informes'));
+
+    await page.getByRole('banner').getByRole('link', { name: 'Informar' }).click();
+    await expect.poll(() => new URL(page.url()).pathname).toBe(prefixed('/informar'));
+    expect(new URL(page.url()).searchParams.get('laboratory')).toBe(laboratoryId);
+    await expect(page.getByRole('heading', { name: 'Avise a coordenação' })).toBeVisible();
   });
 });
