@@ -29,6 +29,10 @@ describe('LoginForm Component', () => {
     const report = within(shortcuts).getByRole('link', { name: /Informar/ });
     expect(agenda).toHaveAttribute('href', '/agenda-publica');
     expect(report).toHaveAttribute('href', '/informar');
+    expect(within(shortcuts).getByRole('link', { name: /Boas práticas/ })).toHaveAttribute(
+      'href',
+      '/boas-praticas',
+    );
 
     const form = container.querySelector('form');
     expect(form).not.toBeNull();

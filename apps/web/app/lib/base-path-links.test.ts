@@ -56,6 +56,8 @@ function hasUnprefixedHref(tag: string): boolean {
 
   const value = href[1] ?? '';
   if (value.includes('withBasePath') || value.includes('joinBasePath')) return false;
+  // Externo de propósito: `externalUrl` recusa qualquer coisa que não seja https://.
+  if (value.includes('externalUrl(')) return false;
 
   const literal = /^[{]?["'`]?([^"'`{}]*)/.exec(value)?.[1] ?? '';
   if (literal.startsWith('#') || /^[a-z]+:/i.test(literal) || literal.startsWith('//')) return false;
@@ -93,5 +95,13 @@ describe('Links internos sob basePath', () => {
 
     expect(anchorTags(daApi).filter(hasUnprefixedHref)).toHaveLength(1);
     expect(anchorTags(corrigido).filter(hasUnprefixedHref)).toHaveLength(0);
+  });
+
+  it('aceita link externo só quando marcado com externalUrl', () => {
+    const semMarca = '<a href={GUIDE.url}>PDF</a>';
+    const marcado = '<a href={externalUrl(GUIDE.url)}>PDF</a>';
+
+    expect(anchorTags(semMarca).filter(hasUnprefixedHref)).toHaveLength(1);
+    expect(anchorTags(marcado).filter(hasUnprefixedHref)).toHaveLength(0);
   });
 });

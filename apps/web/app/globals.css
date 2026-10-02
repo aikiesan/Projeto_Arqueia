@@ -3798,6 +3798,35 @@ a:active {
   background: rgb(30 62 76 / 10%);
 }
 
+/* Terceiro atalho, mais discreto: ocupa a linha inteira, ícone ao lado do texto. */
+.login-quick-card.is-practices {
+  align-items: center;
+  background: var(--arqueia-surface);
+  border: 2px solid var(--arqueia-brand-900);
+  box-shadow: none;
+  color: var(--arqueia-brand-900);
+  gap: 0.75rem;
+  grid-column: 1 / -1;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-height: 0;
+  padding: 0.7rem 0.9rem;
+}
+
+.login-quick-card.is-practices .login-quick-icon {
+  background: var(--arqueia-brand-100);
+  color: var(--arqueia-brand-700);
+  margin-bottom: 0;
+}
+
+.login-quick-copy {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.login-quick-card.is-practices small {
+  color: var(--arqueia-ink-600);
+}
+
 .login-divider {
   align-items: center;
   color: var(--arqueia-ink-600);
@@ -5020,5 +5049,509 @@ textarea {
 @media (min-width: 760px) {
   .field-reports-summary {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* ==========================================================================
+   Boas práticas de laboratório (/boas-praticas e aba do Guia de Uso).
+   O essencial fica sempre aberto; o resto em seções recolhíveis, para o
+   celular. Cores dos riscos seguem o mapa de risco (NR-5).
+   ========================================================================== */
+
+.gp-guide {
+  display: grid;
+  gap: 1rem;
+}
+
+.gp-source {
+  align-items: center;
+  background: var(--arqueia-surface-muted);
+  border-radius: var(--arqueia-radius-md);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+  justify-content: space-between;
+  padding: 0.8rem 1rem;
+}
+
+.gp-source p {
+  color: var(--arqueia-ink-600);
+  flex: 1 1 260px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.gp-source cite {
+  color: var(--arqueia-ink-800);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.gp-download {
+  align-items: center;
+  border: 2px solid var(--arqueia-brand-900);
+  border-radius: 9999px;
+  color: var(--arqueia-brand-900);
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 800;
+  min-height: 40px;
+  padding: 0 0.95rem;
+  text-decoration: none;
+}
+
+.gp-download:hover {
+  background: var(--arqueia-brand-900);
+  color: white;
+}
+
+.gp-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.gp-toc a {
+  background: var(--arqueia-surface);
+  border: 1px solid var(--arqueia-line);
+  border-radius: 9999px;
+  color: var(--arqueia-ink-800);
+  font-size: 0.76rem;
+  font-weight: 700;
+  min-height: 36px;
+  padding: 0.45rem 0.85rem;
+  text-decoration: none;
+}
+
+.gp-toc a.is-emergency {
+  background: #fbe9e9;
+  border-color: #e7b3b3;
+  color: #8f2d2d;
+}
+
+.gp-card {
+  background: var(--arqueia-surface);
+  border: 1px solid var(--arqueia-line);
+  border-radius: var(--arqueia-radius-lg);
+  box-shadow: var(--arqueia-shadow-sm);
+  padding: 1rem 1.1rem;
+  scroll-margin-top: 80px;
+}
+
+.gp-card-heading {
+  display: grid;
+  gap: 0.15rem;
+  margin-bottom: 0.7rem;
+}
+
+.gp-card-heading h2,
+.gp-card-heading h3,
+.gp-summary-copy h2,
+.gp-summary-copy h3 {
+  color: var(--arqueia-brand-900);
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.gp-card-heading small,
+.gp-summary-copy small {
+  color: var(--arqueia-ink-600);
+  font-size: 0.76rem;
+}
+
+.gp-essentials {
+  display: grid;
+  gap: 1rem;
+}
+
+.gp-checklist {
+  display: grid;
+  gap: 0.55rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.gp-checklist li {
+  align-items: start;
+  display: grid;
+  font-size: 0.86rem;
+  gap: 0.6rem;
+  grid-template-columns: 22px minmax(0, 1fr);
+  line-height: 1.5;
+}
+
+.gp-check {
+  align-items: center;
+  background: var(--arqueia-brand-100);
+  border-radius: 50%;
+  color: var(--arqueia-brand-700);
+  display: flex;
+  height: 22px;
+  justify-content: center;
+  margin-top: 0.05rem;
+  width: 22px;
+}
+
+.gp-group + .gp-group {
+  margin-top: 0.9rem;
+}
+
+.gp-group-title {
+  color: var(--arqueia-brand-700);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin: 0.4rem 0 0.5rem;
+  text-transform: uppercase;
+}
+
+.gp-muted {
+  color: var(--arqueia-ink-600);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  margin: 0.35rem 0 0;
+}
+
+.gp-emergency {
+  background: #fff7f6;
+  border-color: #e7b3b3;
+}
+
+.gp-emergency .gp-card-heading h2,
+.gp-emergency .gp-card-heading h3 {
+  color: #8f2d2d;
+}
+
+.gp-emergency-grid {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.gp-emergency-step {
+  background: var(--arqueia-surface);
+  border: 1px solid #f0d2d2;
+  border-radius: var(--arqueia-radius-sm);
+  padding: 0.65rem 0.8rem;
+}
+
+.gp-emergency-step strong {
+  color: #8f2d2d;
+  font-size: 0.82rem;
+}
+
+.gp-emergency-step p {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 0.2rem 0 0;
+}
+
+.gp-contacts {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.gp-contact {
+  align-items: center;
+  background: var(--arqueia-surface);
+  border: 1px solid #f0d2d2;
+  border-radius: var(--arqueia-radius-sm);
+  display: grid;
+  gap: 0.5rem 0.9rem;
+  padding: 0.7rem 0.8rem;
+}
+
+.gp-contact strong {
+  font-size: 0.86rem;
+}
+
+.gp-contact p {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  margin: 0.15rem 0 0;
+}
+
+.gp-contact.is-svc {
+  border-color: #8f2d2d;
+  box-shadow: inset 4px 0 0 #8f2d2d;
+}
+
+.gp-contact-phones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.gp-emergency-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.gp-call,
+.gp-report {
+  align-items: center;
+  border-radius: 9999px;
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 700;
+  gap: 0.35rem;
+  min-height: 44px;
+  padding: 0 1rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.gp-call {
+  background: #8f2d2d;
+  color: white;
+}
+
+.gp-report {
+  background: var(--arqueia-accent);
+  box-shadow: inset 0 0 0 1px rgb(30 62 76 / 18%);
+  color: var(--arqueia-brand-900);
+  font-weight: 800;
+}
+
+.gp-emergency-note {
+  color: var(--arqueia-ink-600);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  margin: 0.7rem 0 0;
+}
+
+.gp-collapsible {
+  padding: 0;
+}
+
+.gp-collapsible summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  list-style: none;
+  min-height: 56px;
+  padding: 0.9rem 1.1rem;
+}
+
+.gp-collapsible summary::-webkit-details-marker {
+  display: none;
+}
+
+.gp-collapsible summary:focus-visible {
+  border-radius: var(--arqueia-radius-lg);
+  outline: 3px solid var(--arqueia-focus);
+  outline-offset: 2px;
+}
+
+.gp-summary-copy {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.gp-summary-chevron {
+  color: var(--arqueia-ink-600);
+  font-size: 1.2rem;
+  transition: transform var(--interaction-fast) var(--interaction-ease);
+}
+
+.gp-collapsible[open] .gp-summary-chevron {
+  transform: rotate(180deg);
+}
+
+.gp-collapsible-body {
+  border-top: 1px solid var(--arqueia-line);
+  padding: 0.9rem 1.1rem 1.1rem;
+}
+
+.gp-risks {
+  display: grid;
+  gap: 0.6rem;
+  list-style: none;
+  margin: 0 0 0.8rem;
+  padding: 0;
+}
+
+.gp-risk {
+  border: 1px solid var(--arqueia-line);
+  border-left: 5px solid;
+  border-radius: var(--arqueia-radius-sm);
+  padding: 0.65rem 0.8rem;
+}
+
+.gp-risk strong {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.86rem;
+  gap: 0.4rem;
+}
+
+.gp-risk strong small {
+  color: var(--arqueia-ink-600);
+  font-weight: 600;
+}
+
+.gp-risk-dot {
+  border-radius: 50%;
+  display: inline-block;
+  height: 10px;
+  width: 10px;
+}
+
+.gp-risk p {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 0.25rem 0 0;
+}
+
+.gp-levels {
+  display: grid;
+  gap: 0.45rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.gp-levels li {
+  display: grid;
+  font-size: 0.82rem;
+  gap: 0.15rem;
+  line-height: 1.45;
+}
+
+.gp-levels strong {
+  color: var(--arqueia-ink-800);
+}
+
+.gp-defs {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0 0 0.8rem;
+}
+
+.gp-defs > div {
+  border-bottom: 1px solid var(--arqueia-line);
+  padding-bottom: 0.5rem;
+}
+
+.gp-defs dt {
+  color: var(--arqueia-ink-950);
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.gp-defs dd {
+  color: var(--arqueia-ink-600);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 0.15rem 0 0;
+}
+
+.gp-search {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.8rem;
+}
+
+.gp-search span {
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+.gp-search input {
+  border: 1px solid #8a8475;
+  border-radius: var(--arqueia-radius-sm);
+  box-sizing: border-box;
+  font-size: 1rem;
+  min-height: 44px;
+  padding: 0.55rem 0.7rem;
+  width: 100%;
+}
+
+.gp-search input:focus-visible {
+  outline: 3px solid var(--arqueia-focus);
+  outline-offset: 2px;
+}
+
+.gp-reminders {
+  background: var(--arqueia-brand-900);
+  border-radius: var(--arqueia-radius-lg);
+  color: white;
+  display: grid;
+  gap: 0.4rem;
+  list-style: none;
+  margin: 0;
+  padding: 1rem 1.2rem;
+}
+
+.gp-reminders li {
+  font-size: 0.86rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.gp-reminders li::before {
+  color: var(--arqueia-accent);
+  content: '— ';
+}
+
+/* Página pública /boas-praticas */
+.gp-public {
+  max-width: 980px;
+}
+
+.gp-public,
+.gp-public * {
+  box-sizing: border-box;
+}
+
+.gp-public-intro {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1.2rem 0 1rem;
+}
+
+.gp-public-intro h1 {
+  color: var(--arqueia-brand-900);
+  font-size: clamp(1.45rem, 4vw, 2rem);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.gp-public-intro p {
+  color: var(--arqueia-ink-600);
+  font-size: 0.88rem;
+  line-height: 1.55;
+  margin: 0;
+  max-width: 62ch;
+}
+
+@media (min-width: 760px) {
+  .gp-essentials {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gp-emergency-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gp-contact {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .gp-risks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gp-defs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

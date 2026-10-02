@@ -217,6 +217,10 @@ export function PublicAgendaClient(): React.JSX.Element {
           Esta página é pública e mostra as reservas da semana. Para reservar um equipamento ou
           fazer check-in, entre no sistema.
         </p>
+        <p>
+          Vai usar o laboratório? Leia as{' '}
+          <a href={withBasePath('/boas-praticas')}>boas práticas de laboratório</a>.
+        </p>
       </footer>
     </main>
   );

@@ -332,6 +332,10 @@ export function FieldReportFormClient(): React.JSX.Element {
           Esta página é pública e só recebe informes: ninguém vê o que outras pessoas enviaram.
           Para reservar um equipamento, entre no sistema.
         </p>
+        <p>
+          Antes de usar o laboratório, leia as{' '}
+          <a href={withBasePath('/boas-praticas')}>boas práticas de laboratório</a>.
+        </p>
       </footer>
     </main>
   );

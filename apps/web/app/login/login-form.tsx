@@ -111,6 +111,15 @@ export function LoginForm({
               <strong>Informar</strong>
               <small>Problema, manutenção, insumo ou pedido de apoio</small>
             </a>
+            <a className="login-quick-card is-practices" href={withBasePath('/boas-praticas')}>
+              <span aria-hidden="true" className="login-quick-icon">
+                <ArqueiaIcon name="seguranca" size={24} />
+              </span>
+              <span className="login-quick-copy">
+                <strong>Boas práticas</strong>
+                <small>Segurança no laboratório e contatos de emergência</small>
+              </span>
+            </a>
           </div>
         </nav>
 
