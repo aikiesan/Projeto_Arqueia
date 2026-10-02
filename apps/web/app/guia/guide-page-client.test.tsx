@@ -5,10 +5,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GuidePageClient } from './guide-page-client';
 
 const replace = vi.fn();
-let mockSearchParams = new URLSearchParams();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn(), replace }),
-  useSearchParams: () => mockSearchParams,
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 const now = '2026-08-14T00:00:00.000Z';
@@ -54,42 +53,8 @@ function json(body: unknown) {
   return { ok: true, status: 200, json: async () => body } as Response;
 }
 
-function mockGuideFetch() {
-  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-    const url = String(input);
-    if (url === '/api/session') return json({ principal });
-    if (url === '/api/laboratories') return json([laboratory]);
-    throw new Error(`URL inesperada: ${url}`);
-  });
-}
-
 describe('GuidePageClient', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-    mockSearchParams = new URLSearchParams();
-  });
-
-  it('abre direto na aba de boas práticas pelo link ?secao=boas-praticas', async () => {
-    mockSearchParams = new URLSearchParams({ secao: 'boas-praticas' });
-    mockGuideFetch();
-
-    render(<GuidePageClient />);
-
-    expect(
-      await screen.findByRole('heading', { level: 3, name: '9. Boas Práticas de Laboratório' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 3, name: 'Antes de entrar' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '/boas-praticas' })).toHaveAttribute('href', '/boas-praticas');
-  });
-
-  it('ignora seção desconhecida na URL e abre a visão geral', async () => {
-    mockSearchParams = new URLSearchParams({ secao: 'nao-existe' });
-    mockGuideFetch();
-
-    render(<GuidePageClient />);
-
-    expect(await screen.findByText(/1\. Visão Geral & Arquitetura/)).toBeInTheDocument();
-  });
+  afterEach(() => vi.restoreAllMocks());
 
   it('renders guide page editorial metadata and navigation tabs', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {

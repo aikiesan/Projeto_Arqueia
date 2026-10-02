@@ -25,6 +25,10 @@
   as combinações comuns num laboratório de biogás e bioprodutos (metano, H₂S, amônia, ácidos,
   oxidantes), com busca sem acento, e aponta a tabela completa no PDF.
 - **Público, sem login.** Quem ainda não tem conta também precisa das regras antes de entrar.
+- **Item próprio do menu, fora do Guia de Uso.** A primeira versão era a aba 9 do Guia de Uso.
+  A coordenação pediu que fosse um item da navegação lateral: segurança é consulta do dia a dia,
+  não manual do sistema. Logado, o item **Boas Práticas** ("Segurança no laboratório") abre
+  `/seguranca`, com o shell, para todos os papéis. Fica logo antes do Guia de Uso.
 
 ## Onde aparece
 
@@ -32,7 +36,7 @@
 |---|---|
 | `/boas-praticas` | página pública (em `PUBLIC_PATHS`), com Informar e Ver agenda no topo |
 | Tela de login | terceiro atalho "Boas práticas", abaixo de Ver agenda e Informar |
-| Guia de Uso | aba **9. Boas Práticas de Laboratório**; abre direto com `/guia?secao=boas-praticas` |
+| Menu lateral (logado) | item **Boas Práticas**, que abre `/seguranca` com o shell; no celular, aparece em **Mais** |
 | Agenda pública e formulário de informes | link no rodapé |
 
 ## Conteúdo (um só módulo: `components/good-practices/good-practices-content.ts`)
@@ -71,9 +75,14 @@
   - download externo em nova aba;
   - o sumário abre a seção;
   - busca;
-  - nível de título no Guia.
-- Telas: página pública, aba do Guia por `?secao=`, atalho no login.
+  - nível de título dentro do shell.
+- Navegação: o item aparece para todos os papéis, antes do Guia de Uso, com o laboratório ativo.
+- Telas:
+  - página pública;
+  - `/seguranca`: item ativo no menu e Informar no laboratório da URL; sem sessão, volta ao login;
+  - atalho no login e card no Mais.
 - `externalUrl()` marca link externo deliberado, aceito pela varredura de `basePath`. A
   varredura ganhou um caso que prova isso.
-- e2e (`tests/e2e/good-practices.spec.ts`): do login até `/boas-praticas` sem sessão, com o
-  contato da Central de Segurança.
+- e2e (`tests/e2e/good-practices.spec.ts`):
+  - do login até `/boas-praticas` sem sessão, com o contato da Central de Segurança;
+  - logado, do menu (desktop) ou do Mais (celular) até `/seguranca`.

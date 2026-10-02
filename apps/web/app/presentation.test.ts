@@ -65,3 +65,21 @@ describe('createWorkspacePresentation — Informar e notificações', () => {
     ).toBe(false);
   });
 });
+
+describe('createWorkspacePresentation — Boas Práticas no menu lateral', () => {
+  it('todo papel vê Boas Práticas logo antes do Guia de Uso, no laboratório ativo', () => {
+    for (const role of ['USUARIO', 'TECNICO', 'GESTOR_ACESSO_CP2B'] as const) {
+      const { moduleNavigation } = createWorkspacePresentation(principal(role), [cp2b, other], cp2b.id);
+      const labels = moduleNavigation.map((item) => item.label);
+      const index = labels.indexOf('Boas Práticas');
+
+      expect(moduleNavigation[index]).toEqual({
+        description: 'Segurança no laboratório',
+        href: `/seguranca?laboratory=${cp2b.id}`,
+        icon: 'seguranca',
+        label: 'Boas Práticas',
+      });
+      expect(labels[index + 1]).toBe('Guia de Uso');
+    }
+  });
+});

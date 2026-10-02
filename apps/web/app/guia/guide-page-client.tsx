@@ -2,10 +2,9 @@
 
 import type { AuthenticatedPrincipal, Laboratory } from '@arqueia/contracts';
 import { WorkspaceShell } from '@arqueia/ui';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
-import { GoodPracticesGuide } from '../components/good-practices/good-practices-guide';
 import { WorkspaceNotifications } from '../components/notifications/workspace-notifications';
 import { createWorkspacePresentation } from '../presentation';
 import { BASE_PATH, withBasePath } from '../lib/base-path';
@@ -25,31 +24,12 @@ async function readJson<T>(url: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-const GUIDE_SECTIONS = [
-  { id: 'visao-geral', title: '1. Visão Geral & Filosofia' },
-  { id: 'equipamentos', title: '2. Equipamentos & Políticas' },
-  { id: 'agenda', title: '3. Agenda & Reservas Recorrentes' },
-  { id: 'estoque', title: '4. Estoque & Livro-Razão' },
-  { id: 'usuarios', title: '5. Usuários & Permissões RBAC' },
-  { id: 'gestao', title: '6. Gestão, Analytics & Auditoria' },
-  { id: 'qr', title: '7. Leituras de QR Code' },
-  { id: 'tecnico', title: '8. Referência Técnica' },
-  { id: 'boas-praticas', title: '9. Boas Práticas de Laboratório' },
-] as const;
-
-const GUIDE_SECTION_IDS: ReadonlySet<string> = new Set(GUIDE_SECTIONS.map((section) => section.id));
-
 export function GuidePageClient() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const [pageData, setPageData] = useState<PageData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // `?secao=boas-praticas` abre direto numa aba (links do app e da tela de login).
-  const [activeTab, setActiveTab] = useState<string>(() => {
-    const requested = searchParams?.get('secao');
-    return requested && GUIDE_SECTION_IDS.has(requested) ? requested : 'visao-geral';
-  });
+  const [activeTab, setActiveTab] = useState<string>('visao-geral');
 
   useEffect(() => {
     void (async () => {
@@ -98,7 +78,16 @@ export function GuidePageClient() {
     shortName: lab.code.slice(0, 2),
   }));
 
-  const sections = GUIDE_SECTIONS;
+  const sections = [
+    { id: 'visao-geral', title: '1. Visão Geral & Filosofia' },
+    { id: 'equipamentos', title: '2. Equipamentos & Políticas' },
+    { id: 'agenda', title: '3. Agenda & Reservas Recorrentes' },
+    { id: 'estoque', title: '4. Estoque & Livro-Razão' },
+    { id: 'usuarios', title: '5. Usuários & Permissões RBAC' },
+    { id: 'gestao', title: '6. Gestão, Analytics & Auditoria' },
+    { id: 'qr', title: '7. Leituras de QR Code' },
+    { id: 'tecnico', title: '8. Referência Técnica' },
+  ];
 
   return (
     <WorkspaceShell
@@ -276,19 +265,6 @@ export function GuidePageClient() {
             <div style={{ background: '#f0fdf4', border: '1px solid #86efac', padding: '0.75rem 1rem', borderRadius: '6px', marginTop: '1rem', fontSize: '0.85rem', color: '#166534' }}>
               ✅ <strong>Leitor QR Integrado:</strong> A leitura direta via câmera do smartphone e entrada manual de códigos está disponível na rota <code>/qr</code>, acessível pelo botão central da barra inferior de navegação móvel.
             </div>
-          </section>
-        )}
-
-        {activeTab === 'boas-praticas' && (
-          <section id="boas-praticas">
-            <span className="section-kicker">Segurança no Laboratório</span>
-            <h3 style={{ fontSize: '1.25rem', margin: '0.2rem 0 0.75rem' }}>9. Boas Práticas de Laboratório</h3>
-            <p style={{ lineHeight: 1.6, color: 'var(--arqueia-ink-600)', margin: '0 0 1rem' }}>
-              O mesmo conteúdo fica aberto, sem login, em{' '}
-              <a href={withBasePath('/boas-praticas')}>/boas-praticas</a> — compartilhe com quem ainda
-              não tem conta.
-            </p>
-            <GoodPracticesGuide headingLevel={3} reportHref={presentation.reportAction.href} />
           </section>
         )}
 
