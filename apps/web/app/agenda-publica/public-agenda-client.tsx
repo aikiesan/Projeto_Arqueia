@@ -1,6 +1,7 @@
 'use client';
 
 import type { PublicLaboratory, PublicScheduleResponse } from '@arqueia/contracts';
+import { ArqueiaIcon } from '@arqueia/ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { basePathFetch, withBasePath } from '../lib/base-path';
@@ -118,9 +119,19 @@ export function PublicAgendaClient(): React.JSX.Element {
             <small>Agenda pública de equipamentos</small>
           </span>
         </a>
-        <a className="public-agenda-login" href={withBasePath('/login')}>
-          Entrar para reservar
-        </a>
+        <div className="public-agenda-actions">
+          {/* Quem vê um problema na agenda avisa dali mesmo, sem login. */}
+          <a
+            className="public-agenda-report"
+            href={withBasePath(laboratoryId ? `/informar?laboratory=${laboratoryId}` : '/informar')}
+          >
+            <ArqueiaIcon name="informar" size={18} />
+            Informar
+          </a>
+          <a className="public-agenda-login" href={withBasePath('/login')}>
+            Entrar para reservar
+          </a>
+        </div>
       </header>
 
       <section className="public-agenda-controls">

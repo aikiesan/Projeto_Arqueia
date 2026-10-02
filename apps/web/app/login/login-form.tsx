@@ -1,6 +1,7 @@
 'use client';
 
 import { bffPublicLoginResponseSchema, localLoginInputSchema } from '@arqueia/contracts';
+import { ArqueiaIcon } from '@arqueia/ui';
 import Image from 'next/image';
 import { useState, type FormEvent } from 'react';
 import { navigateTo, withBasePath } from '../lib/base-path';
@@ -85,6 +86,36 @@ export function LoginForm({
           <span className="login-arqueia-mark" aria-hidden="true">A</span>
           <div><strong>Arqueia</strong><small>Projeto CP2b</small></div>
         </div>
+
+        {/*
+          Atalhos públicos antes do formulário: quem chega pelo site do CP2b
+          (aluno, visitante) vê de cara que não precisa de conta para consultar
+          a agenda nem para avisar a coordenação.
+        */}
+        <nav aria-labelledby="login-quick-title" className="login-quick-access">
+          <p className="login-quick-title" id="login-quick-title">
+            <span>Sem login</span> Para alunos e visitantes
+          </p>
+          <div className="login-quick-grid">
+            <a className="login-quick-card is-agenda" href={withBasePath('/agenda-publica')}>
+              <span aria-hidden="true" className="login-quick-icon">
+                <ArqueiaIcon name="agenda" size={26} />
+              </span>
+              <strong>Ver agenda</strong>
+              <small>Reservas da semana de cada equipamento</small>
+            </a>
+            <a className="login-quick-card is-report" href={withBasePath('/informar')}>
+              <span aria-hidden="true" className="login-quick-icon">
+                <ArqueiaIcon name="informar" size={26} />
+              </span>
+              <strong>Informar</strong>
+              <small>Problema, manutenção, insumo ou pedido de apoio</small>
+            </a>
+          </div>
+        </nav>
+
+        <p className="login-divider"><span>Tem conta? Entre para reservar</span></p>
+
         <span className="section-kicker">Acesso seguro</span>
         <h2 id="auth-title">Entrar no Arqueia</h2>
         <p>Use as credenciais da sua conta para continuar.</p>
@@ -136,12 +167,6 @@ export function LoginForm({
 
         <p className="login-security">Sua sessão é protegida e as permissões são verificadas no servidor.</p>
 
-        <a className="login-public-agenda" href={withBasePath('/agenda-publica')}>
-          Ver agenda da semana sem entrar
-        </a>
-        <a className="login-public-agenda" href={withBasePath('/informar')}>
-          Avisar um problema ou pedir apoio (sem login)
-        </a>
         <div className="login-cp2b-mobile">
           <span>Uma iniciativa</span>
           <Image alt="CP2b" height={50} src={withBasePath('/brand/cp2b-logo.svg')} width={132} />
