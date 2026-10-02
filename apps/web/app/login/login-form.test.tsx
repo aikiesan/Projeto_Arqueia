@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LoginForm } from './login-form';
@@ -19,6 +19,20 @@ describe('LoginForm Component', () => {
     expect(
       screen.getByText('Sua sessão é protegida e as permissões são verificadas no servidor.'),
     ).toBeInTheDocument();
+  });
+
+  it('mostra antes do formulário os atalhos sem login para agenda e informes', () => {
+    const { container } = render(<LoginForm next="/" />);
+
+    const shortcuts = screen.getByRole('navigation', { name: /Sem login/ });
+    const agenda = within(shortcuts).getByRole('link', { name: /Ver agenda/ });
+    const report = within(shortcuts).getByRole('link', { name: /Informar/ });
+    expect(agenda).toHaveAttribute('href', '/agenda-publica');
+    expect(report).toHaveAttribute('href', '/informar');
+
+    const form = container.querySelector('form');
+    expect(form).not.toBeNull();
+    expect(shortcuts.compareDocumentPosition(form as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('renders mobile brand endorsement panel', () => {

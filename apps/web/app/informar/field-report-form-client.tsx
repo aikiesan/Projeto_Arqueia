@@ -9,6 +9,7 @@ import {
   type PublicLaboratory,
   type SubmitFieldReportResult,
 } from '@arqueia/contracts';
+import { ArqueiaIcon } from '@arqueia/ui';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useId, useState, type FormEvent } from 'react';
 
@@ -160,6 +161,7 @@ export function FieldReportFormClient(): React.JSX.Element {
           </span>
         </a>
         <a className="public-agenda-login" href={withBasePath('/agenda-publica')}>
+          <ArqueiaIcon name="agenda" size={18} />
           Ver agenda
         </a>
       </header>

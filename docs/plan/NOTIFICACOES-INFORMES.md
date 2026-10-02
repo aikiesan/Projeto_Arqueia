@@ -63,6 +63,18 @@ Nenhuma mudança em API, contrato, banco ou permissão.
 - `e2e` (desktop e celular): o sino mostra o informe recém-enviado, "Ver todos" abre o compilado
   e o Informar do topo abre o formulário.
 
+## Atalhos sem login na entrada
+
+Alunos e visitantes chegam pelo site do CP2b na tela de login. Ali, "Ver agenda" e "Informar"
+eram links pequenos no fim do cartão, abaixo da dobra no celular. Agora:
+
+- **Login:** dois cartões grandes, **antes** do formulário, sob o selo "Sem login · para alunos e
+  visitantes": **Ver agenda** (verde-escuro) e **Informar** (lima, o mesmo do topo do app).
+  Lado a lado no celular e no desktop; um sobre o outro abaixo de 340 px. O formulário vem logo
+  depois ("Tem conta? Entre para reservar") e continua na primeira tela do celular.
+- **Agenda pública:** botão **Informar** no cabeçalho, já com o laboratório exibido.
+- **Formulário de informes:** o "Ver agenda" do cabeçalho ganha o ícone de calendário.
+
 ## Próximo passo possível
 
 **Push com o app fechado** (Web Push). Exige:
