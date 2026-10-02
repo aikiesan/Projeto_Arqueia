@@ -4,10 +4,11 @@ import { NextResponse, type NextRequest } from 'next/server';
 // server-only modules like next/headers.
 const SESSION_COOKIE_NAME = 'arqueia_session';
 const LOGIN_PATH = '/login';
-// Rotas servidas sem sessão. A agenda pública e o formulário de informes são
-// abertos por decisão do laboratório; qualquer adição aqui expõe a página à
-// internet. `/informar` só ENVIA: a leitura dos informes (`/informes`) exige sessão.
-const PUBLIC_PATHS = new Set<string>([LOGIN_PATH, '/agenda-publica', '/informar']);
+// Rotas servidas sem sessão. A agenda pública, o formulário de informes e as
+// boas práticas são abertos por decisão do laboratório; qualquer adição aqui
+// expõe a página à internet. `/informar` só ENVIA: a leitura dos informes
+// (`/informes`) exige sessão. `/boas-praticas` é conteúdo estático, sem dados.
+const PUBLIC_PATHS = new Set<string>([LOGIN_PATH, '/agenda-publica', '/informar', '/boas-praticas']);
 
 export function proxy(request: NextRequest): NextResponse {
   const hasSession = request.cookies.has(SESSION_COOKIE_NAME);
