@@ -102,6 +102,14 @@ export function createWorkspacePresentation(
     });
   }
 
+  // Para todo mundo: segurança não depende de papel.
+  moduleNavigation.push({
+    description: 'Segurança no laboratório',
+    href: '/seguranca',
+    icon: 'seguranca',
+    label: 'Boas Práticas',
+  });
+
   moduleNavigation.push({
     description: 'Manual e documentação',
     href: '/guia',

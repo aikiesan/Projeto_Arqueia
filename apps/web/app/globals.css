@@ -5526,6 +5526,27 @@ textarea {
   margin: 0;
 }
 
+/* Página /seguranca, dentro do shell: o h1 é do shell, aqui só o resumo. */
+.gp-page-intro {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.gp-page-intro h2 {
+  color: var(--arqueia-brand-900);
+  font-size: clamp(1.2rem, 3.4vw, 1.55rem);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.gp-page-intro a {
+  color: var(--arqueia-brand-700);
+  font-weight: 700;
+  text-underline-offset: 2px;
+}
+
+.gp-page-intro p,
 .gp-public-intro p {
   color: var(--arqueia-ink-600);
   font-size: 0.88rem;

@@ -117,6 +117,7 @@ describe('MorePageClient', () => {
     const modules = await screen.findByRole('region', { name: 'Outros módulos' });
     expect(within(modules).getByRole('link', { name: /Equipamentos/i })).toBeInTheDocument();
     expect(within(modules).getByRole('link', { name: /Guia de Uso/i })).toBeInTheDocument();
+    expect(within(modules).getByRole('link', { name: /Boas Práticas/ })).toBeInTheDocument();
     expect(within(modules).queryByRole('link', { name: /Usuários/i })).not.toBeInTheDocument();
     expect(within(modules).queryByRole('link', { name: /Gestão/i })).not.toBeInTheDocument();
 
