@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Guia de uso da Arqueia</title>
+<link rel="stylesheet" href="bootstrap-icons.min.css">
+<style>
+@font-face{font-family:'Neulis Sans';src:url(Neulis_Sans_Regular.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Neulis Sans';src:url(Neulis_Sans_Medium.woff2) format('woff2');font-weight:500}
+@font-face{font-family:'Neulis Sans';src:url(Neulis_Sans_Semi_Bold.woff2) format('woff2');font-weight:600}
+@font-face{font-family:'Neulis Sans';src:url(Neulis_Sans_Bold.woff2) format('woff2');font-weight:700}
+@font-face{font-family:'Neulis Sans';src:url(Neulis_Sans_Black.woff2) format('woff2');font-weight:900}
+@font-face{font-family:'Neulis Neue';src:url(Neulis_Neue_Bold.woff2) format('woff2');font-weight:700}
+@font-face{font-family:'Neulis Neue';src:url(Neulis_Neue_Black.woff2) format('woff2');font-weight:900}
+@font-face{font-family:'Caveat';src:url(Caveat-Variable.woff2) format('woff2');font-weight:400 700}
+@page{size:1920px 1080px;margin:0}
+/* Paleta da Arqueia = tokens de packages/ui/src/styles.css (mesmos do site do CP2b) */
+:root{
+  --paper:#FBF8F0;--kraft:#F3EAD8;--line:#E6DCC6;--soft:#F3ECDD;--ink:#1B2A33;--muted:#5A5850;
+  --petrol:#1E3E4C;--gd:#00573A;--green:#5CA032;--lime:#B6E03B;--amber:#D37402;--danger:#C54B4B;
+  --tape:rgba(240,219,164,.92);--shadow:3px 5px 0 rgba(59,42,28,.16);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#777}
+body{font-family:'Neulis Sans',Verdana,sans-serif;color:var(--ink);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.slide{width:1920px;height:1080px;position:relative;overflow:hidden;background:var(--paper);page-break-after:always;break-after:page;padding:50px 80px 0}
+.slide:last-child{page-break-after:auto;break-after:auto}
+.grain{position:absolute;inset:0;pointer-events:none;opacity:.5;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .36 0 0 0 0 .26 0 0 0 0 .13 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E")}
+/* cabeçalho */
+.head{position:relative;z-index:2;margin-bottom:24px}
+.hand{display:inline-block;position:relative;font-family:'Caveat',cursive;font-weight:700;font-size:34px;line-height:1;color:var(--gd);background:#fff;padding:8px 18px 6px;transform:rotate(-2deg);box-shadow:2px 3px 0 rgba(59,42,28,.14);margin:0 0 12px 8px}
+.hand::before{content:"";position:absolute;left:-16px;top:-10px;width:62px;height:22px;background:var(--tape);transform:rotate(-24deg)}
+h1{font-family:'Neulis Neue','Neulis Sans';font-weight:900;font-size:62px;line-height:1.03;letter-spacing:-.01em;margin:0;color:var(--petrol)}
+h1 .hl{background:linear-gradient(transparent 58%,rgba(182,224,59,.8) 58%,rgba(182,224,59,.8) 92%,transparent 92%);padding:0 6px}
+.sub{font-size:25px;color:var(--muted);margin:10px 0 0;max-width:1560px;line-height:1.3}
+.sub b{color:var(--petrol)}
+.head .badge{position:absolute;right:0;top:12px}
+/* rodapé */
+.foot{position:absolute;left:0;right:0;bottom:0;height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 80px;font-size:17px;color:var(--muted);border-top:2px dashed var(--line);background:var(--paper);z-index:6}
+.foot b{color:var(--petrol)}
+.foot .pg{font-weight:800;color:var(--petrol);font-size:19px}
+/* selos e tags */
+.badge{display:inline-flex;align-items:center;gap:8px;font-weight:900;font-size:19px;letter-spacing:.06em;padding:8px 16px;border-radius:999px;text-transform:uppercase;white-space:nowrap}
+.b-novo{background:var(--lime);color:var(--petrol)}
+.b-reno{background:var(--amber);color:#fff}
+.b-quem{background:var(--petrol);color:#fff}
+.b-sem{background:var(--gd);color:#fff}
+.tag{display:inline-flex;align-items:center;gap:8px;font-weight:900;font-size:18px;letter-spacing:.1em;padding:6px 15px;border-radius:999px}
+.t-antes{background:#E3DED3;color:#5A5850}
+.t-depois{background:var(--gd);color:#fff}
+/* moldura de navegador */
+.shot{position:relative;background:#fff;border-radius:12px;box-shadow:var(--shadow),0 0 0 1.5px var(--line)}
+.shot .bar{height:34px;background:#EEE6D6;border-radius:12px 12px 0 0;display:flex;align-items:center;gap:7px;padding:0 14px;border-bottom:1.5px solid var(--line)}
+.shot .bar i.d{display:block;width:11px;height:11px;border-radius:50%;background:#D9CFBC}
+.shot .bar .url{margin-left:12px;flex:1;background:#FBF8F0;border-radius:999px;font-size:15px;color:#6b6658;padding:4px 14px;font-weight:600;font-family:ui-monospace,Menlo,monospace;white-space:nowrap;overflow:hidden}
+.shot .bar .url b{color:var(--petrol)}
+.iw{position:relative;line-height:0}
+.iw>img{width:100%;display:block}
+.shot .iw>img{border-radius:0 0 12px 12px}
+.shot.nobar .iw>img{border-radius:12px}
+.dlg{position:relative;line-height:0;border-radius:16px;box-shadow:var(--shadow),0 0 0 1.5px var(--line);background:#fff}
+.dlg>img{width:100%;display:block;border-radius:16px}
+.shot.old{filter:saturate(.85)}
+.tape{position:absolute;width:120px;height:30px;background:var(--tape);z-index:4}
+/* celular */
+.phone{position:relative;background:#16242C;border-radius:46px;padding:12px;box-shadow:4px 7px 0 rgba(59,42,28,.18),0 0 0 2px #2c3b44}
+.phone::before{content:"";position:absolute;left:50%;top:4px;width:64px;height:5px;margin-left:-32px;border-radius:4px;background:#3a4a53;z-index:3}
+.phone .iw>img{border-radius:34px}
+/* marcadores */
+.pin{position:absolute;z-index:5;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:var(--amber);color:#fff;font-weight:900;font-size:25px;line-height:1;display:grid;place-items:center;border:3.5px solid #fff;box-shadow:0 3px 0 rgba(0,0,0,.18),0 0 0 7px rgba(211,116,2,.28)}
+.pin.sm{width:40px;height:40px;margin:-20px 0 0 -20px;font-size:21px;box-shadow:0 2px 0 rgba(0,0,0,.18),0 0 0 5px rgba(211,116,2,.28)}
+.pin.g{background:var(--gd);box-shadow:0 3px 0 rgba(0,0,0,.18),0 0 0 7px rgba(0,87,58,.22)}
+.ring{position:absolute;z-index:4;border:4px solid var(--amber);border-radius:14px;box-shadow:0 0 0 4px rgba(255,255,255,.75)}
+.ring.g{border-color:var(--gd)}
+.hand-ico{position:absolute;z-index:6;font-size:46px;color:var(--petrol);filter:drop-shadow(2px 2px 0 #fff) drop-shadow(-2px -2px 0 #fff);transform:rotate(-18deg)}
+.legend{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:15px}
+.legend li{display:flex;gap:14px;align-items:flex-start;font-size:22px;line-height:1.22;font-weight:700;color:var(--petrol)}
+.legend li small{display:block;font-weight:400;color:var(--muted);font-size:18px;margin-top:3px;line-height:1.28}
+.legend.c li{font-size:20px}.legend.c li small{font-size:17px}
+.n{flex:0 0 38px;height:38px;border-radius:50%;background:var(--amber);color:#fff;font-weight:900;font-size:20px;display:grid;place-items:center;box-shadow:0 2px 0 rgba(0,0,0,.15)}
+.n.sm{flex-basis:32px;height:32px;font-size:17px}
+.n.g{background:var(--gd)}
+/* passos */
+.step{display:flex;align-items:center;gap:14px;font-weight:800;font-size:25px;color:var(--petrol);margin-bottom:14px;line-height:1.15}
+.step .num{flex:0 0 50px;height:50px;border-radius:14px;background:var(--petrol);color:var(--lime);font-family:'Neulis Neue';font-weight:900;font-size:30px;display:grid;place-items:center}
+.step small{display:block;font-weight:400;color:var(--muted);font-size:18px;margin-top:2px}
+.flow-arrow{display:flex;align-items:center;justify-content:center;color:var(--amber)}
+.flow-arrow svg{width:64px;height:64px}
+/* utilitários */
+.row{display:flex;gap:28px}.col{display:flex;flex-direction:column}
+.cap{font-size:18px;color:var(--muted);margin-top:10px;line-height:1.3}
+.cap b{color:var(--petrol)}
+.card{background:#fff;border-radius:14px;box-shadow:var(--shadow),0 0 0 1.5px var(--line);padding:20px 24px;position:relative}
+.card h3{margin:0 0 6px;font-size:24px;color:var(--petrol);font-weight:800;line-height:1.15}
+.card p{margin:0;font-size:19px;line-height:1.32;color:var(--muted)}
+.card p b{color:var(--petrol)}
+.big{font-family:'Neulis Neue';font-weight:900;font-size:72px;line-height:.95;color:var(--gd)}
+.handnote{font-family:'Caveat';font-weight:700;color:var(--amber);font-size:32px;line-height:1}
+.ico{width:58px;height:58px;border-radius:14px;display:grid;place-items:center;font-size:30px;background:var(--soft);color:var(--gd);flex:0 0 58px}
+.ico.dk{background:var(--petrol);color:var(--lime)}
+.kraft{background:var(--kraft)}
+.chip{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:6px 14px;font-size:18px;font-weight:700;color:var(--petrol)}
+.chip i{color:var(--gd)}
+.rule{display:flex;gap:12px;align-items:flex-start;font-size:19px;line-height:1.3;color:var(--ink)}
+.rule i{color:var(--amber);font-size:23px;margin-top:1px}
+.rule b{color:var(--petrol)}
+.note{background:#FFF7E6;border:2px dashed #E8C98E;border-radius:14px;padding:14px 18px;font-size:18px;line-height:1.32;color:#5b4a2a}
+.note b{color:#7a4a00}
+.mono{font-family:ui-monospace,Menlo,monospace;font-weight:700;color:var(--petrol)}
+.test{position:absolute;z-index:6;background:var(--petrol);color:#fff;font-size:14px;line-height:1.2;font-weight:800;letter-spacing:.06em;padding:4px 10px;border-radius:8px;text-transform:uppercase;white-space:nowrap}
+.torn-bottom{position:absolute;left:0;right:0;height:18px;background:var(--paper);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='520' height='16' viewBox='0 0 520 16' preserveAspectRatio='none'%3E%3Cpath d='M0 16H520V7L509 5L498 8L488 4L476 7L466 3L455 6L443 4L432 8L421 5L411 7L399 3L388 6L377 4L365 8L355 5L343 7L332 3L321 6L310 4L298 7L288 5L277 8L265 4L254 6L243 3L232 7L221 5L209 8L198 4L187 6L176 3L164 7L153 5L143 8L131 4L120 6L109 3L98 7L87 5L75 8L64 4L53 6L42 3L31 7L20 5L9 8L0 7Z'/%3E%3C/svg%3E") repeat-x;-webkit-mask-size:520px 18px}
+/* tabela de perfis */
+table.perm{border-collapse:separate;border-spacing:0;width:100%;background:#fff;border-radius:14px;box-shadow:var(--shadow),0 0 0 1.5px var(--line);overflow:hidden}
+table.perm th,table.perm td{padding:11px 14px;font-size:20px;border-bottom:1.5px solid #F0E8D6;text-align:center}
+table.perm th{background:var(--petrol);color:#fff;font-size:18px;font-weight:800;line-height:1.15;vertical-align:bottom}
+table.perm th small{display:block;font-weight:400;color:#cfe0e6;font-size:15px;margin-top:3px}
+table.perm th i{display:block;font-size:28px;color:var(--lime);margin-bottom:4px}
+table.perm td:first-child,table.perm th:first-child{text-align:left}
+table.perm td:first-child{font-weight:700;color:var(--petrol)}
+table.perm tr:nth-child(even) td{background:#FCFAF5}
+table.perm .y{color:var(--gd);font-size:27px}
+table.perm .x{color:#cfc6b4;font-size:22px}
+table.perm .p{font-size:15px;color:var(--amber);font-weight:800;display:block;line-height:1.1}
+/* FAQ */
+.faq{display:grid;grid-template-columns:1fr 1fr;gap:16px 24px}
+.faq .q{display:flex;gap:16px;background:#fff;border-radius:14px;box-shadow:var(--shadow),0 0 0 1.5px var(--line);padding:15px 20px}
+.faq .q .ico{width:50px;height:50px;flex-basis:50px;font-size:25px}
+.faq .q h4{margin:0 0 4px;font-size:20px;color:var(--petrol);line-height:1.2}
+.faq .q p{margin:0;font-size:17px;line-height:1.3;color:var(--muted)}
+.faq .q p b{color:var(--petrol)}
+.where{display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-size:15px;font-weight:800;color:var(--gd);background:#EEF6E8;border-radius:999px;padding:3px 11px}
+/* glossário */
+.gl{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 22px}
+.gl div{background:#fff;border-radius:12px;box-shadow:var(--shadow),0 0 0 1.5px var(--line);padding:18px 22px;min-height:128px}
+.gl b{display:flex;align-items:center;gap:10px;font-size:24px;color:var(--petrol)}
+.gl b i{color:var(--gd)}
+.gl span{display:block;font-size:19px;color:var(--muted);line-height:1.32;margin-top:6px}
+.url{font-family:ui-monospace,Menlo,monospace}
+.tips .card{display:flex;gap:20px;min-height:238px;padding:24px 26px}
+.tips .ico{width:66px;height:66px;flex-basis:66px;font-size:32px}
+.tips h3{font-size:27px;margin-bottom:8px}
+.tips p{font-size:21px}
+.tips .where{font-size:17px;margin-top:12px}
+</style>
+</head>
+<body>
+
+<!-- ===================== 1. CAPA ===================== -->
+<section class="slide" style="padding:0">
+  <div class="kraft" style="position:absolute;inset:0 0 auto 0;height:742px"></div>
+  <div class="torn-bottom" style="top:726px"></div>
+  <div class="grain"></div>
+  <div style="position:absolute;left:96px;top:80px;z-index:2;width:900px">
+    <div style="display:flex;align-items:center;gap:22px;margin-bottom:44px">
+      <img src="img/arqueia.svg" style="width:96px;height:96px" alt="">
+      <div style="line-height:1.05"><div style="font-family:'Neulis Neue';font-weight:900;font-size:50px;color:var(--petrol)">Arqueia</div><div style="font-size:21px;color:var(--muted)">gestão de infraestrutura laboratorial</div></div>
+      <div style="width:2px;height:70px;background:var(--line);margin:0 6px"></div>
+      <div style="font-size:15px;letter-spacing:.12em;color:var(--muted);font-weight:700;line-height:1.3">UMA PLATAFORMA<br><img src="img/logo-cp2b.png" style="height:54px;margin-top:6px" alt="CP2b"></div>
+    </div>
+    <span class="hand" style="font-size:40px">Guia visual · outubro de 2026</span>
+    <h1 style="font-size:106px;margin-top:6px">Guia de uso<br>da <span class="hl">Arqueia</span></h1>
+    <p class="sub" style="font-size:31px;margin-top:22px;color:#3d3a33;max-width:860px">Como ver a agenda, reservar um equipamento, fazer check-in pela etiqueta QR e avisar a coordenação. <b>Passo a passo, com prints reais.</b></p>
+  </div>
+  <!-- colagem -->
+  <div style="position:absolute;right:450px;top:150px;width:600px;z-index:2">
+    <div class="shot nobar" style="transform:rotate(-4deg);padding:12px 12px 42px"><div class="iw"><img src="img/tour.jpg" style="border-radius:4px" alt=""></div><div class="tape" style="left:230px;top:-14px;transform:rotate(3deg)"></div></div>
+    <div class="handnote" style="position:absolute;left:40px;bottom:-62px;transform:rotate(-4deg);color:var(--gd)">a tela inicial no computador</div>
+  </div>
+  <div class="phone" style="position:absolute;right:110px;top:70px;width:290px;z-index:3;transform:rotate(5deg)"><div class="iw"><img src="img/qr-done-mob.jpg" alt=""></div></div>
+  <div class="handnote" style="position:absolute;right:440px;top:610px;z-index:3;transform:rotate(-3deg)">e o check-in pelo celular →</div>
+  <div style="position:absolute;left:96px;right:96px;top:800px;font-family:'Caveat';font-weight:700;font-size:32px;color:var(--gd);z-index:2">o que você vai encontrar aqui:</div>
+  <div style="position:absolute;left:96px;right:96px;top:852px;display:flex;flex-wrap:nowrap;gap:14px;z-index:2">
+    <span class="chip" style="font-size:19px;padding:9px 16px"><i class="bi bi-calendar-week"></i> Agenda e reservas</span>
+    <span class="chip" style="font-size:19px;padding:9px 16px"><i class="bi bi-qr-code-scan"></i> Check-in pela etiqueta QR</span>
+    <span class="chip" style="font-size:19px;padding:9px 16px"><i class="bi bi-megaphone-fill"></i> Informar sem login</span>
+    <span class="chip" style="font-size:19px;padding:9px 16px"><i class="bi bi-shield-check"></i> Boas práticas e emergência</span>
+    <span class="chip" style="font-size:19px;padding:9px 16px"><i class="bi bi-phone"></i> No celular</span>
+    <span class="chip" style="font-size:19px;padding:9px 16px"><i class="bi bi-people-fill"></i> Técnicos e coordenação</span>
+  </div>
+  <div style="position:absolute;left:96px;bottom:60px;font-size:20px;color:var(--muted);z-index:2">Centro Paulista de Estudos em Biogás e Bioprodutos · <b class="url" style="color:var(--petrol)">cp2b.unicamp.br/arqueia</b></div>
+</section>
+
+<!-- ===================== 2. O QUE É ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Para começar</span><h1>O laboratório do CP2b em <span class="hl">um só lugar</span></h1><p class="sub">A Arqueia organiza o uso dos equipamentos e o dia a dia do laboratório. Funciona no <b>computador</b> e no <b>celular</b>.</p></div>
+  <div class="row" style="gap:26px;margin-top:8px">
+    <div class="card" style="flex:1;padding:28px 30px">
+      <div class="ico dk" style="width:76px;height:76px;font-size:40px;margin-bottom:18px"><i class="bi bi-calendar-check"></i></div>
+      <h3 style="font-size:30px">Agenda de equipamentos</h3>
+      <p style="font-size:21px">Veja quem reservou cada horário, <b>reserve o seu</b> e faça <b>check-in pela etiqueta QR</b> do equipamento.</p>
+      <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap"><span class="badge b-quem" style="font-size:15px">alunos</span><span class="badge b-quem" style="font-size:15px">pesquisadores</span></div>
+      <div style="margin-top:20px;height:170px;border-radius:10px;overflow:hidden;box-shadow:0 0 0 1.5px var(--line)"><img src="img/agenda-prox.jpg" style="width:100%;height:100%;object-fit:cover;object-position:0 30%" alt=""></div>
+    </div>
+    <div class="card" style="flex:1;padding:28px 30px">
+      <div class="ico dk" style="width:76px;height:76px;font-size:40px;margin-bottom:18px"><i class="bi bi-megaphone-fill"></i></div>
+      <h3 style="font-size:30px">Avisos para a coordenação</h3>
+      <p style="font-size:21px">Problema, manutenção, insumo ou pedido de apoio. <b>Sem login</b>, em menos de um minuto. Você recebe um protocolo.</p>
+      <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap"><span class="badge b-sem" style="font-size:15px">qualquer pessoa</span></div>
+      <div style="margin-top:20px;height:170px;border-radius:10px;overflow:hidden;box-shadow:0 0 0 1.5px var(--line)"><img src="img/inf1-mob.jpg" style="width:100%;height:100%;object-fit:cover;object-position:0 46%" alt=""></div>
+    </div>
+    <div class="card" style="flex:1;padding:28px 30px">
+      <div class="ico dk" style="width:76px;height:76px;font-size:40px;margin-bottom:18px"><i class="bi bi-box-seam"></i></div>
+      <h3 style="font-size:30px">Estoque e gestão</h3>
+      <p style="font-size:21px">Lotes de reagentes, retiradas, equipamentos, indicadores e o histórico de tudo o que foi feito.</p>
+      <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap"><span class="badge b-quem" style="font-size:15px">técnicos</span><span class="badge b-quem" style="font-size:15px">administradores</span></div>
+      <div style="margin-top:20px;height:170px;border-radius:10px;overflow:hidden;box-shadow:0 0 0 1.5px var(--line)"><img src="img/gestao.jpg" style="width:100%;height:100%;object-fit:cover;object-position:0 62%" alt=""></div>
+    </div>
+  </div>
+  <div class="row" style="gap:26px;margin-top:30px;align-items:stretch">
+    <div class="card kraft" style="flex:1.25;display:flex;gap:22px;align-items:center;box-shadow:none;border:2px dashed #DCCBA5">
+      <div class="ico" style="width:70px;height:70px;font-size:36px;flex-basis:70px;background:#fff"><i class="bi bi-gear-wide-connected"></i></div>
+      <div><h3>Na fase piloto: o Cromatógrafo Gasoso (GC-2030NS)</h3><p>Para começar, o CP2b liberou só o <b>Cromatógrafo Gasoso para Biogás Shimadzu <span style="white-space:nowrap">GC-2030NS</span></b> na agenda. Novos equipamentos entram aos poucos.</p></div>
+    </div>
+    <div class="card" style="flex:1;display:flex;gap:22px;align-items:center">
+      <div class="ico" style="width:70px;height:70px;font-size:36px;flex-basis:70px"><i class="bi bi-shield-lock"></i></div>
+      <div><h3>Cada pessoa vê o que pode usar</h3><p>O menu muda conforme o seu perfil (o Estoque aparece para todos, mas só os técnicos o usam). Se tentar algo que o seu perfil não permite, a Arqueia avisa (slide 4).</p></div>
+    </div>
+  </div>
+  <div style="margin-top:26px;font-size:21px;color:var(--muted)"><i class="bi bi-signpost-split" style="font-size:26px;color:var(--amber);vertical-align:-3px;margin-right:10px"></i>Neste guia: <b style="color:var(--petrol)">sem login</b> (slides 6–7) · <b style="color:var(--petrol)">com conta</b> (8–13) · <b style="color:var(--petrol)">coordenação e técnicos</b> (14–15) · <b style="color:var(--petrol)">celular, dicas e ajuda</b> (16–21)</div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">02 / 21</span></div>
+</section>
+
+<!-- ===================== 3. COMO ACESSAR ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Como acessar</span><h1>Duas portas de <span class="hl">entrada</span></h1><p class="sub">Pelo menu do site do CP2b ou direto pelo endereço <b class="url">cp2b.unicamp.br/arqueia</b>.</p></div>
+  <div class="row" style="gap:40px;align-items:flex-start">
+    <div class="col" style="width:830px;gap:18px">
+      <div class="step"><span class="num">1</span><div>No site do CP2b, clique no botão <span style="background:var(--petrol);color:#fff;border-radius:999px;padding:3px 14px;font-size:21px">Arqueia</span><small>Ela fica no canto direito do menu, ao lado de PILAR-2b.</small></div></div>
+      <div class="shot" style="width:830px"><div class="bar"><i class="d"></i><i class="d"></i><i class="d"></i><span class="url">cp2b.unicamp.br</span></div>
+        <div class="iw"><img src="img/site-cp2b-header.jpg" alt="">
+          <div class="ring" style="left:88%;top:47%;width:8%;height:31%"></div>
+          <i class="bi bi-hand-index-thumb-fill hand-ico" style="left:93%;top:72%"></i>
+        </div></div>
+      <div class="step" style="margin-top:30px"><span class="num">2</span><div>Ou digite o endereço no navegador<small>Funciona igual no computador e no celular.</small></div></div>
+      <div class="card" style="display:flex;align-items:center;gap:18px;padding:18px 24px"><i class="bi bi-globe2" style="font-size:36px;color:var(--gd)"></i><span class="url" style="font-size:34px;font-weight:800;color:var(--petrol)">cp2b.unicamp.br/<span style="background:rgba(182,224,59,.6);padding:0 6px;border-radius:6px">arqueia</span></span></div>
+      <div class="note" style="margin-top:18px;font-size:20px;padding:18px 22px"><b>Não tem conta?</b> Quem cria é a coordenação do laboratório (o perfil <b>Gestor de Acessos</b>). Você recebe uma <b>senha provisória</b> e troca no primeiro acesso (slide 8). Para só olhar a agenda ou avisar algo, não precisa de conta.</div>
+    </div>
+    <div class="col" style="flex:1">
+      <div class="step"><span class="num">3</span><div>A tela de entrada<small>Atalhos sem login no alto; o formulário logo abaixo.</small></div></div>
+      <div class="row" style="gap:64px;align-items:flex-start">
+        <div class="shot" style="width:304px;margin-left:34px"><div class="bar"><i class="d"></i><i class="d"></i><i class="d"></i><span class="url">…/arqueia/<b>login</b></span></div>
+          <div class="iw"><img src="img/login-card.jpg" alt="">
+            <div class="pin sm" style="left:-9%;top:24%">1</div>
+            <div class="pin sm" style="left:109%;top:24%">2</div>
+            <div class="pin sm" style="left:-9%;top:38%">3</div>
+            <div class="pin sm" style="left:-9%;top:71.3%">4</div>
+            <div class="pin sm" style="left:-9%;top:82.2%">5</div>
+            <div class="pin sm g" style="left:109%;top:91%">6</div>
+          </div></div>
+        <ul class="legend c" style="flex:1;margin-top:6px">
+          <li><span class="n">1</span><div>Ver agenda<small>Sem login: reservas da semana.</small></div></li>
+          <li><span class="n">2</span><div>Informar<small>Sem login: avise a coordenação.</small></div></li>
+          <li><span class="n">3</span><div>Boas práticas<small>Sem login: segurança e emergência.</small></div></li>
+          <li><span class="n">4</span><div>E-mail institucional<small>Termina em <b>unicamp.br</b>.</small></div></li>
+          <li><span class="n">5</span><div>Senha<small>A da sua conta Arqueia.</small></div></li>
+          <li><span class="n g">6</span><div>Entrar<small>Para reservar, fazer check-in e mais.</small></div></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">03 / 21</span></div>
+</section>
+
+<!-- ===================== 4. PERFIS ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Perfis</span><h1>Quem pode fazer <span class="hl">o quê</span></h1><p class="sub">O seu perfil define o que você pode fazer. Os nomes abaixo são os da tela <b>Usuários</b>.</p></div>
+  <table class="perm">
+    <tr><th style="width:640px;font-size:20px;vertical-align:middle">O que dá para fazer</th>
+      <th><i class="bi bi-person"></i>Visitante<small>sem login</small></th>
+      <th><i class="bi bi-mortarboard-fill"></i>Usuário Pesquisador<small>alunos e pesquisadores</small></th>
+      <th><i class="bi bi-tools"></i>Técnico de Laboratório<small>equipe técnica</small></th>
+      <th><i class="bi bi-person-badge-fill"></i>Gestor de Acessos CP2b<small>coordenação</small></th>
+      <th><i class="bi bi-stars"></i>Administrador<small>do sistema</small></th></tr>
+    <tr><td>Ver a agenda da semana</td><td class="y"><i class="bi bi-check-circle-fill"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td></tr>
+    <tr><td>Informar um problema · Boas práticas</td><td class="y"><i class="bi bi-check-circle-fill"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td></tr>
+    <tr><td>Reservar, fazer check-in e cancelar as próprias reservas</td><td class="x"><i class="bi bi-dash-lg"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td></tr>
+    <tr><td>Cuidar das reservas de outras pessoas</td><td class="x"><i class="bi bi-dash-lg"></i></td><td class="x"><i class="bi bi-dash-lg"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td></tr>
+    <tr><td>Bloquear horário para manutenção</td><td class="x"><i class="bi bi-dash-lg"></i></td><td class="x"><i class="bi bi-dash-lg"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td><td class="x"><i class="bi bi-dash-lg"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td></tr>
+    <tr><td>Estoque: entradas, retiradas e extrato</td><td class="x"><i class="bi bi-dash-lg"></i></td><td class="x"><i class="bi bi-dash-lg"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td><td class="x"><i class="bi bi-dash-lg"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td></tr>
+    <tr><td>Cadastrar e editar equipamentos</td><td class="x"><i class="bi bi-dash-lg"></i></td><td class="x"><i class="bi bi-dash-lg"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td><td class="x"><i class="bi bi-dash-lg"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td></tr>
+    <tr><td>Gestão: indicadores e histórico</td><td class="x"><i class="bi bi-dash-lg"></i></td><td class="x"><i class="bi bi-dash-lg"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td><td class="x"><i class="bi bi-dash-lg"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td></tr>
+    <tr><td>Ler e responder os informes</td><td class="x"><i class="bi bi-dash-lg"></i></td><td class="x"><i class="bi bi-dash-lg"></i></td><td class="x"><i class="bi bi-dash-lg"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td><td class="y"><i class="bi bi-check-circle-fill"></i></td></tr>
+    <tr><td style="border-bottom:0">Criar contas e dar perfis</td><td class="x" style="border-bottom:0"><i class="bi bi-dash-lg"></i></td><td class="x" style="border-bottom:0"><i class="bi bi-dash-lg"></i></td><td class="x" style="border-bottom:0"><span class="p">só vê a lista</span></td><td class="y" style="border-bottom:0"><i class="bi bi-check-circle-fill"></i><span class="p">só dá o perfil Usuário Pesquisador</span></td><td class="y" style="border-bottom:0"><i class="bi bi-check-circle-fill"></i></td></tr>
+  </table>
+  <div class="row" style="gap:24px;margin-top:20px">
+    <div class="rule" style="flex:1"><i class="bi bi-info-circle-fill"></i><span>O Estoque aparece no menu de todos, mas só os técnicos o usam. Viu um botão e não tem acesso? A Arqueia avisa: <b>“O usuário não possui permissão para executar esta ação no laboratório informado.”</b></span></div>
+    <div class="rule" style="flex:.8"><i class="bi bi-info-circle-fill"></i><span>Existe ainda o perfil <b>Responsável por Controlados</b> (produtos químicos controlados), que por enquanto só consulta o estoque.</span></div>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">04 / 21</span></div>
+</section>
+
+<!-- ===================== 5. TOUR ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Tour</span><h1>A tela inicial, <span class="hl">por partes</span></h1><p class="sub">Depois de entrar, você chega à <b>Visão geral</b>. As peças 1 a 5 aparecem em todas as telas.</p></div>
+  <div class="row" style="gap:40px;align-items:flex-start">
+    <div class="col" style="width:1270px">
+    <div class="shot"><div class="bar"><i class="d"></i><i class="d"></i><i class="d"></i><span class="url">cp2b.unicamp.br/<b>arqueia</b></span></div>
+      <div class="iw"><img src="img/tour.jpg" alt="">
+        <div class="pin" style="left:2.6%;top:28.7%">1</div>
+        <div class="pin" style="left:13%;top:70.7%">2</div>
+        <div class="pin" style="left:76.5%;top:-4%">3</div>
+        <div class="ring" style="left:83.5%;top:1.6%;width:3.4%;height:7%;border-radius:50%;border-width:3px"></div>
+        <div class="pin" style="left:85.2%;top:-4%">4</div>
+        <div class="pin" style="left:94%;top:-4%">5</div>
+        <div class="pin g" style="left:66.7%;top:29.8%">6</div>
+        <div class="pin" style="left:23.8%;top:62.9%">7</div>
+        <div class="pin" style="left:76.6%;top:92.7%">8</div>
+      </div></div>
+    <div class="row" style="gap:18px;margin-top:22px">
+      <div class="card" style="flex:1;padding:14px 18px;display:flex;gap:12px;align-items:center"><i class="bi bi-phone" style="font-size:26px;color:var(--gd)"></i><p style="font-size:17px">No celular, o menu vira a <b>barra de baixo</b> (slide 16).</p></div>
+      <div class="card" style="flex:1;padding:14px 18px;display:flex;gap:12px;align-items:center"><i class="bi bi-person-check" style="font-size:26px;color:var(--gd)"></i><p style="font-size:17px">Técnicos veem também <b>Usuários</b> e <b>Gestão</b>; a coordenação, <b>Usuários</b> e <b>Informes</b>.</p></div>
+      <div class="card" style="flex:1;padding:14px 18px;display:flex;gap:12px;align-items:center"><i class="bi bi-info-circle" style="font-size:26px;color:var(--gd)"></i><p style="font-size:17px">Em <b>Reservas de hoje</b> aparecem até 8 reservas do dia no laboratório, não só as suas (as que já estão em uso não entram).</p></div>
+    </div>
+    </div>
+    <ul class="legend c" style="flex:1;gap:13px">
+      <li><span class="n">1</span><div>Laboratórios<small>O CP2b fica aqui. Clique para trocar.</small></div></li>
+      <li><span class="n">2</span><div>Menu<small>Agenda, Estoque, Equipamentos, Boas Práticas… Muda conforme o perfil.</small></div></li>
+      <li><span class="n">3</span><div>Informar<small>Avise a coordenação de um problema.</small></div></li>
+      <li><span class="n">4</span><div>Sino<small>Avisos novos (para a coordenação).</small></div></li>
+      <li><span class="n">5</span><div>Seu nome<small>Perfil e Guia de Uso. Nesta tela também tem Sair, que não aparece em todas (slide 18).</small></div></li>
+      <li><span class="n g">6</span><div>Agenda e reservas<small>Atalho para reservar.</small></div></li>
+      <li><span class="n">7</span><div>Números do laboratório<small>Equipamentos ativos e disponíveis.</small></div></li>
+      <li><span class="n">8</span><div>Reservas de hoje<small>Clique em <b>Ver</b> para abrir a agenda.</small></div></li>
+    </ul>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">05 / 21</span></div>
+</section>
+
+<!-- ===================== 6. SEM LOGIN: AGENDA PÚBLICA + BOAS PRÁTICAS ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Sem login · 1</span><h1>Olhe a agenda e as <span class="hl">boas práticas</span></h1><p class="sub">Duas páginas abertas para qualquer pessoa: ideal para alunos e visitantes que chegam pelo site do CP2b.</p><span class="badge b-sem">sem login</span></div>
+  <div class="row" style="gap:44px;align-items:flex-start">
+    <div class="col" style="width:1040px">
+      <div class="shot"><div class="bar"><i class="d"></i><i class="d"></i><i class="d"></i><span class="url">…/arqueia/<b>agenda-publica</b></span></div>
+        <div class="iw"><img src="img/pubagenda.jpg" alt="">
+          <div class="pin" style="left:38%;top:24%">1</div>
+          <div class="pin" style="left:44.5%;top:55.5%">2</div>
+          <div class="pin" style="left:25.6%;top:81%">3</div>
+          <div class="pin" style="left:71.5%;top:6.7%">4</div>
+          <div class="pin g" style="left:91.6%;top:17.5%">5</div>
+        </div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px 22px;margin-top:20px">
+        <div class="legend c"><li><span class="n sm">1</span><div>Troque a semana<small>‹ anterior · esta · próxima ›</small></div></li></div>
+        <div class="legend c"><li><span class="n sm">2</span><div>Quem reservou<small>Horário, equipamento e nome.</small></div></li></div>
+        <div class="legend c"><li><span class="n sm">3</span><div>Bloqueio técnico<small>Horário fechado para manutenção.</small></div></li></div>
+        <div class="legend c"><li><span class="n sm">4</span><div>Informar<small>Avise a coordenação (slide 7).</small></div></li></div>
+        <div class="legend c"><li><span class="n sm g">5</span><div>Entrar para reservar<small>Leva à tela de entrada.</small></div></li></div>
+        <div class="legend c"><li><span class="n sm g"><i class="bi bi-eye-slash" style="font-size:15px"></i></span><div>Só o nome<small>Sem e-mail, projeto nem finalidade.</small></div></li></div>
+      </div>
+    </div>
+    <div class="col" style="flex:1;align-items:center">
+      <div class="row" style="gap:26px;align-items:flex-start">
+        <div class="phone" style="width:300px"><div class="iw"><img src="img/boas-mob.jpg" alt="">
+          <div class="ring" style="left:4%;top:60.3%;width:92%;height:23.7%;border-radius:18px"></div>
+          <div class="pin sm" style="left:103%;top:79%">6</div>
+        </div></div>
+        <div class="col" style="width:290px;gap:14px;margin-top:6px">
+          <div class="step" style="margin:0"><span class="num" style="flex-basis:44px;height:44px;font-size:24px">6</span><div style="font-size:22px">Boas práticas<small>…/arqueia/boas-praticas</small></div></div>
+          <p class="cap" style="margin:0;font-size:18px">Antes de entrar, durante o trabalho e <b>em caso de acidente</b>, com os telefones da Unicamp:</p>
+          <div class="card" style="padding:14px 16px">
+            <div class="rule" style="font-size:16px;margin-bottom:8px"><i class="bi bi-telephone-fill" style="font-size:18px;color:var(--danger)"></i><span><b>Central de Segurança</b><br>(19) 3521-6000 · ramal 16000</span></div>
+            <div class="rule" style="font-size:16px;margin-bottom:8px"><i class="bi bi-telephone-fill" style="font-size:18px;color:var(--danger)"></i><span><b>CIATox Campinas</b><br>(19) 3521-7555</span></div>
+            <div class="rule" style="font-size:16px;margin-bottom:8px"><i class="bi bi-telephone-fill" style="font-size:18px;color:var(--danger)"></i><span><b>PS do HC Unicamp</b><br>(19) 3521-8770 · 3521-8783</span></div>
+            <div class="rule" style="font-size:16px"><i class="bi bi-telephone-fill" style="font-size:18px;color:var(--danger)"></i><span><b>SAMU 192 · Bombeiros 193 · PM 190</b></span></div>
+          </div>
+          <p class="cap" style="margin:0;font-size:15px">Resumo do guia do HC-FMUSP (2015). Não substitui o treinamento, os procedimentos do laboratório (POPs) nem as fichas de segurança dos produtos (FISPQs).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">06 / 21</span></div>
+</section>
+
+<!-- ===================== 7. SEM LOGIN: INFORMAR ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Sem login · 2</span><h1>Avise a coordenação <span class="hl">em 1 minuto</span></h1><p class="sub">Viu um problema, precisa de manutenção, usou um insumo ou quer pedir apoio? Use o <b>Informar</b>. Não precisa de conta.</p><span class="badge b-sem">sem login</span></div>
+  <div class="row" style="gap:0;align-items:flex-start;justify-content:space-between">
+    <div class="col" style="width:330px">
+      <div class="step"><span class="num">1</span><div>Escolha o assunto<small>4 opções.</small></div></div>
+      <div class="phone" style="width:310px"><div class="iw"><img src="img/inf1-mob.jpg" alt="">
+        <div class="ring" style="left:2.5%;top:29.5%;width:95%;height:34.8%;border-radius:16px"></div>
+      </div></div>
+    </div>
+    <div class="flow-arrow" style="margin-top:380px"><svg viewBox="0 0 64 64"><path d="M8 32h40M36 18l14 14-14 14" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="col" style="width:330px">
+      <div class="step"><span class="num">2</span><div>Conte o que houve<small>Só a mensagem é obrigatória.</small></div></div>
+      <div class="phone" style="width:310px"><div class="iw"><img src="img/inf2-mob.jpg" alt="">
+        <div class="pin sm" style="left:103%;top:14.8%">a</div>
+        <div class="pin sm" style="left:103%;top:30%">b</div>
+        <div class="pin sm" style="left:103%;top:45.3%">c</div>
+        <div class="pin sm" style="left:103%;top:60%">d</div>
+        <div class="pin sm g" style="left:103%;top:91.7%">e</div>
+      </div></div>
+    </div>
+    <ul class="legend c" style="width:300px;margin-top:150px;gap:16px;margin-left:30px">
+      <li><span class="n sm">a</span><div>Equipamento<small>Se souber qual é.</small></div></li>
+      <li><span class="n sm">b</span><div>Mensagem<small>Pelo menos 10 caracteres.</small></div></li>
+      <li><span class="n sm">c</span><div>Impede o uso agora?<small>Marque se o equipamento não pode ser usado.</small></div></li>
+      <li><span class="n sm">d</span><div>Seu nome e contato<small>Opcional: só se quiser retorno.</small></div></li>
+      <li><span class="n sm g">e</span><div>Enviar informe</div></li>
+    </ul>
+    <div class="flow-arrow" style="margin-top:380px"><svg viewBox="0 0 64 64"><path d="M8 32h40M36 18l14 14-14 14" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="col" style="width:330px">
+      <div class="step"><span class="num">3</span><div>Guarde o protocolo<small>Ex.: INF-06AEE702.</small></div></div>
+      <div class="phone" style="width:310px"><div class="iw"><img src="img/inf3-mob.jpg" alt="">
+        <div class="ring g" style="left:3%;top:28.5%;width:94%;height:22.5%;border-radius:16px"></div>
+      </div></div>
+    </div>
+    <div class="col" style="width:250px;gap:14px;margin-top:66px">
+      <div class="card" style="padding:16px 18px"><h3 style="font-size:20px"><i class="bi bi-lock-fill" style="color:var(--gd)"></i> Quem lê?</h3><p style="font-size:17px">Só a coordenação. Quem envia recebe <b>apenas o protocolo</b>.</p></div>
+      <div class="card" style="padding:16px 18px"><h3 style="font-size:20px"><i class="bi bi-signpost-2-fill" style="color:var(--gd)"></i> Onde achar</h3><p style="font-size:17px">Na tela de entrada, no botão <b>Informar</b> do topo, na agenda pública e no <b>cartaz com QR</b> colado nas bancadas.</p></div>
+      <div class="note" style="font-size:16px;padding:12px 14px">Não escreva dados sensíveis (saúde, documentos).</div>
+    </div>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">07 / 21</span></div>
+</section>
+
+<!-- ===================== 8. PRIMEIRO ACESSO ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Com conta · primeiro acesso</span><h1>Troque a <span class="hl">senha provisória</span></h1><p class="sub">No primeiro login, a Arqueia abre <b>Meu perfil</b>. Os outros módulos só liberam depois da troca.</p></div>
+  <div class="row" style="gap:36px;align-items:flex-start">
+    <div class="col" style="width:330px;gap:18px">
+      <div class="step"><span class="num">1</span><div>Entre com a senha provisória<small>A coordenação envia para você.</small></div></div>
+      <div class="card" style="padding:18px 20px"><div class="rule"><i class="bi bi-envelope-at-fill" style="color:var(--gd)"></i><span>E-mail: <b>seu.nome@unicamp.br</b></span></div><div class="rule" style="margin-top:10px"><i class="bi bi-key-fill" style="color:var(--gd)"></i><span>Senha: a <b>provisória</b></span></div></div>
+      <div class="step" style="margin-top:14px"><span class="num">2</span><div>Preencha os 3 campos<small>Ao lado, numerados.</small></div></div>
+      <ul class="legend c" style="gap:12px">
+        <li><span class="n sm">a</span><div>O aviso vermelho<small>Lembra que a troca é obrigatória.</small></div></li>
+        <li><span class="n sm">b</span><div>Senha atual<small>A provisória.</small></div></li>
+        <li><span class="n sm">c</span><div>Nova senha<small>No mínimo 12 caracteres.</small></div></li>
+        <li><span class="n sm">d</span><div>Confirmar nova senha</div></li>
+        <li><span class="n sm g">e</span><div>Atualizar Minha Senha</div></li>
+      </ul>
+    </div>
+    <div class="col" style="width:800px">
+      <div class="shot"><div class="bar"><i class="d"></i><i class="d"></i><i class="d"></i><span class="url">…/arqueia/<b>perfil</b></span></div>
+        <div class="iw"><img src="img/julia.jpg" alt="">
+          <div class="pin sm" style="left:98%;top:23%">a</div>
+          <div class="pin sm" style="left:70.5%;top:45.6%">b</div>
+          <div class="pin sm" style="left:70.5%;top:61.5%">c</div>
+          <div class="pin sm" style="left:70.5%;top:77%">d</div>
+          <div class="pin sm g" style="left:30.5%;top:90.3%">e</div>
+        </div></div>
+      <p class="cap">Exemplo com a conta de teste “Júlia Exemplo”. Depois, para trocar de novo: <b>seu nome › Perfil</b>.</p>
+    </div>
+    <div class="col" style="flex:1;gap:16px">
+      <div class="step"><span class="num">3</span><div>Pronto!<small>Você chega à Visão geral.</small></div></div>
+      <div class="shot nobar"><div class="iw"><img src="img/julia-home.jpg" alt=""></div></div>
+      <div class="card" style="padding:16px 20px">
+        <h3 style="font-size:20px">Se aparecer uma destas mensagens</h3>
+        <div class="rule" style="font-size:17px;margin-top:8px"><i class="bi bi-x-circle-fill" style="color:var(--danger);font-size:19px"></i><span>“Senha atual incorreta.” — digite de novo a provisória.</span></div>
+        <div class="rule" style="font-size:17px;margin-top:8px"><i class="bi bi-x-circle-fill" style="color:var(--danger);font-size:19px"></i><span>“A nova senha deve ter no mínimo 12 caracteres.”</span></div>
+        <div class="rule" style="font-size:17px;margin-top:8px"><i class="bi bi-x-circle-fill" style="color:var(--danger);font-size:19px"></i><span>“A nova senha e a confirmação não coincidem.”</span></div>
+      </div>
+      <div class="note"><b>Esqueceu a senha?</b> Não há “esqueci minha senha” na tela. Peça à coordenação: ela redefine e você troca de novo no próximo acesso.</div>
+    </div>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">08 / 21</span></div>
+</section>
+
+<!-- ===================== 9. RESERVAR ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Com conta · jornada principal</span><h1>Reserve um horário em <span class="hl">3 passos</span></h1><p class="sub">Menu <b>Agenda</b> › <b>Criar nova reserva</b> › preencha › <b>Confirmar Reserva</b>.</p></div>
+  <div class="row" style="gap:36px;align-items:flex-start">
+    <div class="col" style="width:610px">
+      <div class="step"><span class="num">1</span><div>Abra a Agenda e clique em<br>“Criar nova reserva”</div></div>
+      <div class="shot"><div class="bar"><i class="d"></i><i class="d"></i><i class="d"></i><span class="url">…/arqueia/<b>agenda</b></span></div>
+        <div class="iw"><img src="img/agenda.jpg" alt="">
+          <div class="ring" style="left:31.8%;top:45.3%;width:22.6%;height:9.5%"></div>
+          <div class="pin" style="left:58.5%;top:50.1%">1</div>
+          <i class="bi bi-hand-index-thumb-fill hand-ico" style="left:41%;top:54%"></i>
+        </div></div>
+      <div class="card" style="margin-top:20px;padding:16px 20px"><div class="rule"><i class="bi bi-lightbulb-fill"></i><span><b>Atalho:</b> clique num horário livre da grade. O formulário já abre com aquele dia e hora.</span></div></div>
+    </div>
+    <div class="col" style="width:540px">
+      <div class="step"><span class="num">2</span><div>Preencha<small>Com * é obrigatório.</small></div></div>
+      <div class="dlg"><img src="img/res-form.jpg" alt="">
+        <div class="pin sm" style="left:92%;top:12.4%">2</div>
+        <div class="pin sm" style="left:92%;top:24.1%">3</div>
+        <div class="pin sm" style="left:75%;top:41%">4</div>
+        <div class="pin sm" style="left:92%;top:58.8%">5</div>
+        <div class="pin sm g" style="left:101.5%;top:93.3%">6</div>
+      </div>
+      <ul class="legend c" style="margin-top:16px;gap:9px;display:grid;grid-template-columns:1fr 1fr">
+        <li><span class="n sm">2</span><div>Equipamento *</div></li>
+        <li><span class="n sm">3</span><div>Projeto<small>Texto livre, opcional.</small></div></li>
+        <li><span class="n sm">4</span><div>Data, início e término *</div></li>
+        <li><span class="n sm">5</span><div>O que vai fazer<small>Opcional, mas preencha: ajuda a coordenação.</small></div></li>
+      </ul>
+    </div>
+    <div class="col" style="flex:1">
+      <div class="step"><span class="num">3</span><div><span style="display:inline-flex;align-items:center;gap:8px"><span class="n sm g">6</span>Confirme</span><small>Aviso verde e a reserva na agenda.</small></div></div>
+      <div class="dlg" style="border-radius:10px"><img src="img/res-ok.jpg" style="border-radius:10px" alt=""></div>
+      <div class="row" style="gap:18px;margin-top:16px;align-items:flex-start">
+        <div class="col" style="width:250px;flex:0 0 250px"><div class="shot nobar"><div class="iw"><img src="img/agenda-minha.jpg" alt="">
+          <div class="ring g" style="left:20%;top:2%;width:39.5%;height:94%"></div>
+        </div></div><div class="cap" style="font-size:15px;margin-top:6px">Segunda, 19/10, às 14:00: a reserva recém-criada (teste).</div></div>
+        <div class="col" style="flex:1;gap:12px">
+          <div class="handnote" style="font-size:28px;color:var(--gd)">a sua aparece em verde, com “MINHA”</div>
+          <div class="rule" style="font-size:16px"><i class="bi bi-clock" style="font-size:19px"></i><span>Mínimo de <b>30 min</b>; não dá para reservar um horário que já passou.</span></div>
+          <div class="rule" style="font-size:16px"><i class="bi bi-hourglass-split" style="font-size:19px"></i><span>Máximo por equipamento: no cromatógrafo (GC), <b>24 h</b>.</span></div>
+          <div class="rule" style="font-size:16px"><i class="bi bi-x-octagon" style="font-size:19px;color:var(--danger)"></i><span>Horário ocupado? Aparece <b>CONFLITO</b>:</span></div>
+        </div>
+      </div>
+      <div class="dlg" style="margin-top:14px;border-radius:10px"><img src="img/walkin-conflito.jpg" style="border-radius:10px" alt=""></div>
+    </div>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">09 / 21</span></div>
+</section>
+
+<!-- ===================== 10. REPETIR E USAR AGORA ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Com conta · mais dois jeitos</span><h1>Repetir toda semana ou <span class="hl">usar agora</span></h1><p class="sub">Os dois começam na <b>Agenda</b>: um fica dentro do formulário de reserva; o outro tem botão próprio.</p></div>
+  <div class="row" style="gap:56px;align-items:flex-start">
+    <div class="col" style="width:820px">
+      <div class="step"><span class="num"><i class="bi bi-arrow-repeat" style="font-size:28px"></i></span><div>Reserva que se repete<small>Para ensaios longos ou rotina semanal.</small></div></div>
+      <div class="dlg"><img src="img/rec-form-bottom.jpg" alt="">
+        <div class="pin sm" style="left:48%;top:10.8%">1</div>
+        <div class="pin sm" style="left:94.5%;top:21%">2</div>
+        <div class="pin sm" style="left:94.5%;top:44%">3</div>
+        <div class="pin sm g" style="left:101.5%;top:92%">4</div>
+      </div>
+      <div class="dlg" style="margin-top:16px;border-radius:10px"><img src="img/rec-ok.jpg" style="border-radius:10px" alt=""></div>
+      <ul class="legend c" style="margin-top:18px;gap:10px;display:grid;grid-template-columns:1fr 1fr">
+        <li><span class="n sm">1</span><div>Marque “Repetir…”</div></li>
+        <li><span class="n sm">2</span><div>Frequência<small>Diária, semanal, quinzenal, mensal ou dias da semana.</small></div></li>
+        <li><span class="n sm">3</span><div>Repetir até a data<small>Até 179 dias depois da 1ª reserva e no máximo 100 repetições (na diária, cerca de 3 meses).</small></div></li>
+        <li><span class="n sm g">4</span><div>Confirmar Reserva<small>Datas já ocupadas são puladas; o aviso diz quantas.</small></div></li>
+      </ul>
+    </div>
+    <div class="col" style="flex:1">
+      <div class="step"><span class="num"><i class="bi bi-lightning-charge-fill" style="font-size:28px"></i></span><div>Uso imediato, sem reserva<small>Botão “⚡ Uso Imediato (QR Code)” na Agenda.</small></div></div>
+      <div class="row" style="gap:26px;align-items:flex-start">
+      <div class="dlg" style="width:600px;flex:0 0 600px"><img src="img/walkin.jpg" alt="">
+        <div class="pin sm" style="left:93%;top:16.9%">5</div>
+        <div class="pin sm" style="left:93%;top:33.5%">6</div>
+        <div class="pin sm g" style="left:101.5%;top:91%">7</div>
+      </div>
+      <ul class="legend c" style="gap:14px;flex:1;margin-top:10px">
+        <li><span class="n sm">5</span><div>Equipamento</div></li>
+        <li><span class="n sm">6</span><div>Quanto tempo<small>30 min, 1, 2, 3 ou 4 horas.</small></div></li>
+        <li><span class="n sm g">7</span><div>Iniciar Uso Imediato<small>Começa na hora e aparece como <b>Em uso</b>.</small></div></li>
+      </ul>
+      </div>
+      <div class="note" style="margin-top:20px;font-size:17px;padding:12px 16px">Apesar do “(QR Code)” no nome, este formulário <b>não abre a câmera</b>: você escolhe o equipamento na lista. Se o horário já tiver dono, aparece <b>CONFLITO</b>.</div>
+      <div class="row" style="gap:14px;margin-top:16px;align-items:center">
+        <span class="badge b-quem" style="font-size:15px">depois</span>
+        <span style="font-size:19px;color:var(--ink)">O uso aparece na grade num cartão azul, com <b style="background:#BEE3F8;color:#1A4971;padding:2px 8px;border-radius:999px">EM USO</b>. Ao terminar, toque no cartão e em <b style="white-space:nowrap">✓ Finalizar Uso</b> (slide 12).</span>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">10 / 21</span></div>
+</section>
+
+<!-- ===================== 11. CHECK-IN PELO QR ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Com conta · na bancada</span><h1>Check-in pela <span class="hl">etiqueta QR</span></h1><p class="sub">Chegou a hora da sua reserva? Aponte a câmera do celular para a etiqueta do equipamento. <b>Três passos e pronto.</b></p></div>
+  <div class="row" style="gap:0;align-items:flex-start;justify-content:space-between">
+    <div class="col" style="width:330px">
+      <div class="step"><span class="num">1</span><div>Aponte a câmera<small>A etiqueta fica no equipamento.</small></div></div>
+      <div class="card" style="padding:16px;transform:rotate(-2deg);margin-top:14px">
+        <div class="tape" style="left:100px;top:-14px;transform:rotate(-3deg)"></div>
+        <div class="iw"><img src="img/qr-sticker.jpg" alt="" style="border-radius:8px"></div>
+        <span class="test" style="right:12px;top:12px">QR de teste</span>
+      </div>
+      <p class="cap" style="font-size:18px;margin-top:22px">Use a <b>câmera normal do celular</b>: a etiqueta guarda um link que abre a Arqueia. Se pedir para entrar, entre com sua conta: você volta direto para o equipamento.</p>
+    </div>
+    <div class="flow-arrow" style="margin-top:340px"><svg viewBox="0 0 64 64"><path d="M8 32h40M36 18l14 14-14 14" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="col" style="width:330px">
+      <div class="step"><span class="num">2</span><div>Toque em<br>“Fazer check-in”</div></div>
+      <div class="phone" style="width:310px"><div class="iw"><img src="img/qr-ready-mob.jpg" alt="">
+        <div class="ring" style="left:7%;top:50%;width:86%;height:8.5%;border-radius:12px"></div>
+        <i class="bi bi-hand-index-thumb-fill hand-ico" style="left:80%;top:56%"></i>
+      </div></div>
+      <p class="cap" style="font-size:15px;margin-top:12px">Nesta tela o status ainda aparece em inglês: AVAILABLE = Disponível.</p>
+    </div>
+    <div class="flow-arrow" style="margin-top:340px"><svg viewBox="0 0 64 64"><path d="M8 32h40M36 18l14 14-14 14" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div class="col" style="width:330px">
+      <div class="step"><span class="num">3</span><div>Check-in confirmado<small>“Bom trabalho!”</small></div></div>
+      <div class="phone" style="width:310px"><div class="iw"><img src="img/qr-done-mob.jpg" alt="">
+        <div class="ring g" style="left:7%;top:44.5%;width:86%;height:8.5%;border-radius:12px"></div>
+      </div></div>
+    </div>
+    <div class="col" style="width:420px;gap:14px;margin-top:66px">
+      <div class="rule"><i class="bi bi-clock-fill"></i><span>Pela etiqueta, o check-in libera <b>15 minutos antes</b> do início da reserva.</span></div>
+      <div class="rule"><i class="bi bi-calendar2-week-fill"></i><span><b>Sem reserva agora?</b> O QR abre direto a agenda desse equipamento, para você reservar.</span></div>
+      <div class="rule"><i class="bi bi-person-fill-lock"></i><span><b>Outra pessoa reservou?</b> O QR abre a Agenda desse equipamento, onde aparecem o horário ocupado e quem reservou.</span></div>
+      <div class="rule"><i class="bi bi-keyboard-fill"></i><span><b>Câmera não leu?</b> Na Arqueia, toque no botão <b>QR</b> (no meio da barra de baixo) › “Entrada Manual” › digite o código da etiqueta.</span></div>
+      <div class="rule"><i class="bi bi-display"></i><span>No computador: abra a sua reserva na Agenda › <b>Iniciar Uso (Check-In)</b>.</span></div>
+      <div class="card kraft" style="box-shadow:none;border:2px dashed #DCCBA5;padding:14px 18px;margin-top:8px"><div class="rule" style="font-size:18px"><i class="bi bi-check2-circle" style="color:var(--gd)"></i><span><b>Terminou?</b> Toque em <b>✓ Finalizar Uso</b> na sua reserva (slide 12). Assim o equipamento fica livre para o próximo.</span></div></div>
+    </div>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">11 / 21</span></div>
+</section>
+
+<!-- ===================== 12. MINHAS RESERVAS ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Com conta · depois de reservar</span><h1>Ver, finalizar ou <span class="hl">cancelar</span></h1><p class="sub">Na Agenda, clique na sua reserva (verde, “MINHA”; em uso, fica azul). Abre uma janela com os detalhes e os botões.</p></div>
+  <div class="row" style="gap:44px;align-items:flex-start">
+    <div class="col" style="width:820px">
+      <div class="dlg"><img src="img/drawer.jpg" alt="">
+        <div class="pin" style="left:28.5%;top:4.5%">1</div>
+        <div class="pin" style="left:62%;top:48.6%">2</div>
+        <div class="pin" style="left:38%;top:76%">3</div>
+        <div class="pin g" style="left:20%;top:91%">4</div>
+        <div class="pin" style="left:65%;top:79.5%">5</div>
+        
+      </div>
+      <div class="row" style="gap:14px;margin-top:16px;align-items:center"><span class="handnote" style="font-size:28px;color:var(--gd)">depois do ✓ →</span><div class="dlg" style="border-radius:10px;width:620px"><img src="img/final-ok.jpg" style="border-radius:10px" alt=""></div></div>
+    </div>
+    <div class="col" style="flex:1;gap:16px">
+      <ul class="legend c" style="gap:12px">
+        <li><span class="n">1</span><div>Selo do topo<small>“Minha reserva” antes do uso; “Em execução” enquanto você usa.</small></div></li>
+        <li><span class="n">2</span><div>Status<small>Confirmada → Em Andamento → Concluído.</small></div></li>
+        <li><span class="n">3</span><div>Início Real (Check-In)<small>Hora em que você fez o check-in.</small></div></li>
+        <li><span class="n g">4</span><div>✓ Finalizar Uso<small>Ao terminar. Aparece o aviso verde mostrado embaixo.</small></div></li>
+        <li><span class="n">5</span><div>Cancelar Reserva<small>Só até 30 min antes do início; depois disso o botão continua na tela, mas a Arqueia recusa. Antes de cancelar, ela pergunta: “Deseja realmente cancelar este agendamento?”.</small></div></li>
+      </ul>
+      <div class="row" style="gap:18px;align-items:flex-start;margin-top:6px">
+        <div class="dlg" style="width:380px;flex:0 0 380px"><img src="img/drawer-fut.jpg" alt="">
+          <div class="ring" style="left:55.5%;top:84%;width:23.5%;height:12%;border-radius:10px"></div></div>
+        <div class="col" style="flex:1;gap:10px">
+          <div class="note" style="font-size:17px;padding:12px 14px"><b>Regra do cancelamento:</b> a sua reserva pode ser cancelada até <b>30 minutos antes</b> do início. Depois, fale com um técnico ou com a coordenação.</div>
+          <div class="dlg" style="border-radius:8px"><img src="img/cancel-ok.jpg" style="border-radius:8px" alt=""></div>
+        </div>
+      </div>
+      <div class="rule" style="font-size:17px"><i class="bi bi-funnel-fill"></i><span>Marque <b>Minhas reservas</b> na Agenda para ver só as suas.</span></div>
+      <div class="rule" style="font-size:17px"><i class="bi bi-eye-slash-fill"></i><span>Nas reservas dos outros aparecem o horário, o nome de quem reservou e o título “Equipamento Reservado”. Finalidade, projeto e amostras só aparecem para quem reservou e para técnicos e coordenação.</span></div>
+    </div>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">12 / 21</span></div>
+</section>
+
+<!-- ===================== 13. EQUIPAMENTOS ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Com conta · Equipamentos</span><h1>A ficha do equipamento e a <span class="hl">etiqueta</span></h1><p class="sub">Menu <b>Equipamentos</b>: um cartão por equipamento, com as regras de uso e dois botões.</p></div>
+  <div class="row" style="gap:60px;align-items:flex-start">
+    <div class="shot" style="width:440px;margin-left:34px;flex:0 0 440px"><div class="bar"><i class="d"></i><i class="d"></i><i class="d"></i><span class="url">…/arqueia/<b>equipamentos</b></span></div>
+      <div class="iw"><img src="img/equip.jpg" alt="">
+        <div class="pin" style="left:45%;top:6.8%">1</div>
+        <div class="pin sm" style="left:100.5%;top:58.1%">2</div>
+        <div class="pin sm" style="left:-6%;top:64.6%">3</div>
+        <div class="pin g" style="left:-7.5%;top:89.8%">4</div>
+        <div class="pin" style="left:100.5%;top:89.8%">5</div>
+      </div></div>
+    <div class="col" style="width:520px;gap:18px;margin-left:10px">
+      <ul class="legend c" style="gap:13px">
+        <li><span class="n">1</span><div>Status<small>Disponível, Em avaliação, Indisponível ou Em manutenção.</small></div></li>
+        <li><span class="n">2</span><div>Reserva máx.<small>O tempo máximo de uma reserva.</small></div></li>
+        <li><span class="n">3</span><div>Treinamento<small>Se o uso exige treinamento.</small></div></li>
+        <li><span class="n g">4</span><div>Reservar Horário<small>Abre a Agenda já com este equipamento.</small></div></li>
+        <li><span class="n">5</span><div>Etiqueta QR<small>Mostra a etiqueta para imprimir.</small></div></li>
+      </ul>
+      <div class="card" style="padding:14px 16px">
+        <h3 style="font-size:20px"><i class="bi bi-tools" style="color:var(--amber)"></i> Para técnicos</h3>
+        <div class="shot nobar" style="margin:8px 0 10px;height:155px;overflow:hidden"><div class="iw"><img src="img/equip-tecnico.jpg" alt=""></div></div>
+        <p style="font-size:16px">“Cadastrar equipamento”, a troca de status e “Editar” aparecem só para vocês.</p>
+      </div>
+    </div>
+    <div class="col" style="flex:1;gap:16px">
+      <div class="dlg" style="width:330px"><img src="img/etiqueta.jpg" alt="">
+        <div class="pin g" style="left:107%;top:93.4%">6</div>
+        <span class="test" style="left:120px;top:14px">QR de teste</span>
+      </div>
+      <div class="rule"><span class="n sm g" style="flex-basis:32px">6</span><span><b>Imprimir etiqueta</b> e colar no equipamento. É ela que faz o check-in do slide 11.</span></div>
+      <div class="note" style="font-size:16px;padding:12px 14px"><b>Atenção, técnicos:</b> no cadastro novo, “Exigir treinamento” vem marcado. Por enquanto isso <b>impede qualquer reserva</b>: a Arqueia ainda não registra quem foi treinado. Vale o mesmo para “Exigir aprovação técnica”.</div>
+    </div>
+  </div>
+  <div class="card kraft" style="position:absolute;left:80px;right:80px;bottom:76px;box-shadow:none;border:2px dashed #DCCBA5;display:flex;align-items:center;gap:20px;padding:16px 26px">
+    <div style="font-family:'Caveat';font-weight:700;font-size:30px;color:var(--gd)">atalho para reservar:</div>
+    <div class="step" style="margin:0;font-size:21px"><span class="num" style="flex-basis:42px;height:42px;font-size:22px">1</span>Menu Equipamentos</div><i class="bi bi-arrow-right" style="font-size:26px;color:var(--amber)"></i>
+    <div class="step" style="margin:0;font-size:21px"><span class="num" style="flex-basis:42px;height:42px;font-size:22px">2</span>Reservar Horário</div><i class="bi bi-arrow-right" style="font-size:26px;color:var(--amber)"></i>
+    <div class="step" style="margin:0;font-size:21px"><span class="num" style="flex-basis:42px;height:42px;font-size:22px">3</span>Agenda já só deste equipamento</div><i class="bi bi-arrow-right" style="font-size:26px;color:var(--amber)"></i>
+    <div class="step" style="margin:0;font-size:21px"><span class="num" style="flex-basis:42px;height:42px;font-size:22px">4</span>Criar nova reserva (slide 9)</div>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">13 / 21</span></div>
+</section>
+
+<!-- ===================== 14. COORDENAÇÃO: INFORMES ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Coordenação · Informes</span><h1>Os avisos chegam <span class="hl">no sino</span></h1><p class="sub">Para quem tem o perfil <b>Gestor de Acessos</b> (e administradores). Menu <b>Informes</b>: triagem em três etapas.</p><span class="badge b-quem">coordenação</span></div>
+  <div class="row" style="gap:44px;align-items:flex-start">
+    <div class="col" style="width:540px;gap:18px">
+      <div class="shot nobar"><div class="iw"><img src="img/bell.jpg" alt="">
+        <div class="pin sm" style="left:48%;top:22.6%">1</div>
+        <div class="pin sm" style="left:-1%;top:35.5%">2</div>
+        <div class="pin sm g" style="left:58%;top:93.2%">3</div>
+      </div></div>
+      <ul class="legend c" style="gap:10px">
+        <li><span class="n sm">1</span><div>Contador de informes novos<small>Atualiza sozinho a cada minuto.</small></div></li>
+        <li><span class="n sm">2</span><div>Bolinha vermelha<small>O informe diz que o equipamento não pode ser usado.</small></div></li>
+        <li><span class="n sm g">3</span><div>Ver todos os informes</div></li>
+      </ul>
+      <div class="card" style="padding:16px 20px;display:flex;align-items:center;gap:12px;justify-content:center;font-weight:800;font-size:21px;color:var(--petrol)">
+        <span style="background:#EEF6E8;color:var(--gd);border-radius:999px;padding:6px 14px">Novo</span><i class="bi bi-arrow-right" style="color:var(--amber)"></i>
+        <span style="background:#FDF0DC;color:#8a5200;border-radius:999px;padding:6px 14px">Em análise</span><i class="bi bi-arrow-right" style="color:var(--amber)"></i>
+        <span style="background:var(--gd);color:#fff;border-radius:999px;padding:6px 14px">Resolvido</span>
+      </div>
+    </div>
+    <div class="shot" style="width:660px"><div class="bar"><i class="d"></i><i class="d"></i><i class="d"></i><span class="url">…/arqueia/<b>informes</b></span></div>
+      <div class="iw"><img src="img/informes.jpg" alt="">
+        <div class="pin" style="left:74%;top:14.4%">4</div>
+        <div class="pin" style="left:-1.5%;top:33.5%">5</div>
+        <div class="pin" style="left:61%;top:50.1%">6</div>
+        <div class="pin" style="left:93%;top:79.5%">7</div>
+        <div class="pin g" style="left:44%;top:94.6%">8</div>
+      </div></div>
+    <ul class="legend c" style="flex:1;gap:13px">
+      <li><span class="n">4</span><div>QR para imprimir<small>Cartaz para colar nas bancadas. Abre o Informar.</small></div></li>
+      <li><span class="n">5</span><div>Resumo por assunto<small>Clique para filtrar.</small></div></li>
+      <li><span class="n">6</span><div>Novos · Em análise · Resolvidos</div></li>
+      <li><span class="n">7</span><div>Nota da coordenação<small>Visível só para a coordenação.</small></div></li>
+      <li><span class="n g">8</span><div>Iniciar análise / Marcar resolvido<small>Resolvido? Dá para reabrir.</small></div></li>
+      <li style="margin-top:6px"><div class="dlg" style="width:250px;flex:0 0 250px;transform:rotate(-2deg)"><img src="img/cartaz.jpg" alt=""><span class="test" style="left:112px;top:10px;font-size:12px">QR de teste</span></div><div style="font-size:18px;margin-top:40px">O cartaz do<br><b>QR para imprimir</b><small>Quem lê o QR cai direto no Informar, sem login.</small></div></li>
+    </ul>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">14 / 21</span></div>
+</section>
+
+<!-- ===================== 15. TÉCNICOS E GESTÃO ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Técnicos e coordenação</span><h1>Estoque, gestão e <span class="hl">contas</span></h1><p class="sub">Três telas de bastidor. Gestão e Usuários só aparecem no menu de quem tem acesso; o Estoque aparece para todos, mas só os técnicos operam.</p></div>
+  <div class="row" style="gap:34px;align-items:flex-start">
+    <div class="col" style="flex:1">
+      <div class="step"><span class="ico dk" style="width:50px;height:50px;flex-basis:50px;font-size:26px"><i class="bi bi-box-seam"></i></span><div>Estoque<small>Técnicos · menu Estoque</small></div></div>
+      <div class="shot"><div class="bar"><i class="d"></i><i class="d"></i><i class="d"></i><span class="url">…/arqueia/<b>estoque</b></span></div>
+        <div class="iw"><img src="img/estoque.jpg" alt="">
+          <div class="pin sm" style="left:81%;top:32.6%">1</div>
+          <div class="pin sm g" style="left:50.4%;top:94.6%">2</div>
+          <div class="pin sm" style="left:21%;top:86.2%">3</div>
+        </div></div>
+      <ul class="legend c" style="margin-top:14px;gap:6px">
+        <li><span class="n sm">1</span><div>Entrada de Lote<small>Lote, validade e quantidade; o QR do lote sai na hora.</small></div></li>
+        <li><span class="n sm g">2</span><div>Retirar<small>Pede projeto, quantidade e finalidade.</small></div></li>
+        <li><span class="n sm">3</span><div>Extrato Ledger<small>O histórico de entradas e retiradas do lote. O saldo é calculado sozinho, ninguém digita.</small></div></li>
+      </ul>
+    </div>
+    <div class="col" style="flex:1">
+      <div class="step"><span class="ico dk" style="width:50px;height:50px;flex-basis:50px;font-size:26px"><i class="bi bi-bar-chart-line-fill"></i></span><div>Gestão<small>Técnicos · menu Gestão</small></div></div>
+      <div class="shot"><div class="bar"><i class="d"></i><i class="d"></i><i class="d"></i><span class="url">…/arqueia/<b>gestao</b></span></div>
+        <div class="iw"><img src="img/gestao.jpg" alt="">
+          <div class="pin sm" style="left:91%;top:20.4%">4</div>
+          <div class="pin sm" style="left:64%;top:61%">5</div>
+          <div class="pin sm" style="left:37%;top:88.8%">6</div>
+        </div></div>
+      <ul class="legend c" style="margin-top:16px;gap:8px">
+        <li><span class="n sm">4</span><div>Período<small>7, 30 ou 90 dias.</small></div></li>
+        <li><span class="n sm">5</span><div>Indicadores<small>Horas reservadas, lotes, retiradas.</small></div></li>
+        <li><span class="n sm">6</span><div>Alertas de insumos<small>Estoque baixo e lotes a vencer. Mais abaixo, na mesma página: uso por projeto e o registro de quem fez o quê (auditoria).</small></div></li>
+      </ul>
+    </div>
+    <div class="col" style="flex:1">
+      <div class="step"><span class="ico dk" style="width:50px;height:50px;flex-basis:50px;font-size:26px"><i class="bi bi-people-fill"></i></span><div>Usuários<small>Coordenação e administradores (técnicos só veem a lista)</small></div></div>
+      <div class="dlg"><img src="img/papeis.jpg" alt="">
+        <div class="pin sm" style="left:4.6%;top:40.5%">7</div>
+        <div class="pin sm" style="left:98%;top:62%">8</div>
+        <div class="pin sm g" style="left:101.5%;top:87.7%">9</div>
+      </div>
+      <ul class="legend c" style="margin-top:16px;gap:8px">
+        <li><span class="n sm">7</span><div>Papel no laboratório<small>O perfil da pessoa no CP2b.</small></div></li>
+        <li><span class="n sm">8</span><div>Sua senha de confirmação<small>Toda troca de perfil pede a sua senha.</small></div></li>
+        <li><span class="n sm g">9</span><div>Confirmar e Atribuir Papel</div></li>
+      </ul>
+      <div class="rule" style="font-size:16px;margin-top:12px"><i class="bi bi-person-plus-fill" style="font-size:19px"></i><span><b>Novo Usuário:</b> nome, e-mail @unicamp.br, categoria e senha provisória (mín. 12).</span></div>
+      <div class="note" style="font-size:15px;padding:10px 14px;margin-top:12px">O <b>Gestor de Acessos</b> só dá o perfil Usuário Pesquisador. Técnico, Gestor e Administrador: só um administrador atribui.</div>
+    </div>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">15 / 21</span></div>
+</section>
+
+<!-- ===================== 16. CELULAR ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">No celular</span><h1>No celular, tudo <span class="hl">à mão</span></h1><p class="sub">A mesma Arqueia, com uma barra embaixo: <b>Início · Agenda · QR · Estoque · Mais</b>.</p></div>
+  <div class="row" style="gap:36px;align-items:flex-start">
+    <div class="col" style="width:290px;align-items:center">
+      <div class="phone" style="width:290px"><div class="iw"><img src="img/home-mob.jpg" alt="">
+        <div class="ring" style="left:39%;top:91%;width:22%;height:8.5%;border-radius:50%"></div>
+      </div></div>
+      <div class="cap" style="text-align:center;font-size:19px"><b>Início</b><br>O botão <b>QR</b> no centro abre o leitor.</div>
+    </div>
+    <div class="col" style="width:290px;align-items:center">
+      <div class="phone" style="width:290px"><div class="iw"><img src="img/agenda-mob.jpg" alt="">
+        <div class="ring" style="left:3%;top:51.5%;width:94%;height:7.5%;border-radius:12px"></div>
+      </div></div>
+      <div class="cap" style="text-align:center;font-size:19px"><b>Agenda</b><br>Toque no dia; as reservas aparecem em lista.</div>
+    </div>
+    <div class="col" style="width:290px;align-items:center">
+      <div class="phone" style="width:290px"><div class="iw"><img src="img/qr-manual-mob.jpg" alt="">
+        <div class="ring" style="left:3.5%;top:36.5%;width:93%;height:50%;border-radius:14px"></div>
+      </div></div>
+      <div class="cap" style="text-align:center;font-size:19px"><b>Leitor QR</b><br>Câmera ou “Entrada Manual” do código.</div>
+    </div>
+    <div class="col" style="width:290px;align-items:center">
+      <div class="phone" style="width:290px"><div class="iw"><img src="img/mais-mob.jpg" alt="">
+        <div class="ring" style="left:3%;top:46%;width:94%;height:25%;border-radius:14px"></div>
+      </div></div>
+      <div class="cap" style="text-align:center;font-size:19px"><b>Mais</b><br>Equipamentos, Boas Práticas e Guia de Uso; mais abaixo, Perfil e <b>Sair</b>.</div>
+    </div>
+    <div class="col" style="flex:1;gap:16px;margin-top:4px">
+      <div class="card" style="padding:16px 18px"><h3 style="font-size:21px"><i class="bi bi-house-add-fill" style="color:var(--gd)"></i> Vira app</h3><p style="font-size:17px">No Android (Chrome): menu ⋮ › <b>Adicionar à tela inicial</b>. No iPhone (Safari): Compartilhar › <b>Adicionar à Tela de Início</b>. A Arqueia abre em tela cheia, como um app (no iPhone, o ícone pode aparecer genérico).</p></div>
+      <div class="card" style="padding:16px 18px"><h3 style="font-size:21px"><i class="bi bi-megaphone-fill" style="color:var(--gd)"></i> Informar</h3><p style="font-size:17px">O botão verde-limão “Informar”, no topo, está em todas as telas.</p></div>
+      <div class="card" style="padding:16px 18px"><h3 style="font-size:21px"><i class="bi bi-camera-fill" style="color:var(--gd)"></i> Câmera</h3><p style="font-size:17px">Na primeira vez, o celular pede permissão. Se negar, use a entrada manual.</p></div>
+      <div class="card" style="padding:16px 18px"><h3 style="font-size:21px"><i class="bi bi-box-arrow-right" style="color:var(--gd)"></i> Sair</h3><p style="font-size:17px">Celular emprestado? Saia ao terminar: <b>Mais › Sair</b>.</p></div>
+    </div>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">16 / 21</span></div>
+</section>
+
+<!-- ===================== 17. DICAS ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Dicas e atalhos</span><h1>Pequenos truques que <span class="hl">poupam tempo</span></h1><p class="sub">Cada cartão diz <b>onde clicar</b>.</p></div>
+  <div class="tips" style="display:grid;grid-template-columns:repeat(3,1fr);gap:22px">
+    <div class="card"><div class="ico dk"><i class="bi bi-cursor-fill"></i></div><div><h3>Clique na grade</h3><p>Um horário livre da Agenda abre o formulário <b>já com dia e hora</b>.</p><span class="where"><i class="bi bi-hand-index"></i> Agenda › horário livre</span></div></div>
+    <div class="card"><div class="ico dk"><i class="bi bi-funnel-fill"></i></div><div><h3>Minhas reservas</h3><p>Marque a caixa para ver <b>só as suas</b>.</p><span class="where"><i class="bi bi-hand-index"></i> Agenda › Minhas reservas</span></div></div>
+    <div class="card"><div class="ico dk"><i class="bi bi-calendar3"></i></div><div><h3>Hoje · ‹ › · Dia/Semana</h3><p>Volte para hoje, ande de semana em semana ou veja um dia só.</p><span class="where"><i class="bi bi-hand-index"></i> Agenda › topo da grade</span></div></div>
+    <div class="card"><div class="ico dk"><i class="bi bi-qr-code"></i></div><div><h3>QR sem reserva</h3><p>Escaneou e não tem reserva? Abre a agenda <b>daquele equipamento</b>.</p><span class="where"><i class="bi bi-hand-index"></i> Câmera do celular › etiqueta</span></div></div>
+    <div class="card"><div class="ico dk"><i class="bi bi-box-arrow-up-right"></i></div><div><h3>Agenda já filtrada</h3><p>O botão leva à Agenda <b>só daquele equipamento</b>.</p><span class="where"><i class="bi bi-hand-index"></i> Equipamentos › Reservar Horário</span></div></div>
+    <div class="card"><div class="ico dk"><i class="bi bi-megaphone-fill"></i></div><div><h3>Informar logado</h3><p>O botão do topo já abre o formulário <b>no seu laboratório</b>.</p><span class="where"><i class="bi bi-hand-index"></i> Topo › Informar</span></div></div>
+    <div class="card"><div class="ico dk"><i class="bi bi-eye-fill"></i></div><div><h3>Olhar antes de entrar</h3><p>A <b>agenda pública</b> mostra a semana sem login. Bom para combinar horários.</p><span class="where"><i class="bi bi-hand-index"></i> Entrada › Ver agenda</span></div></div>
+    <div class="card"><div class="ico dk"><i class="bi bi-escape"></i></div><div><h3>Esc fecha</h3><p>A janela de detalhes da reserva e o painel do sino fecham com <b>Esc</b>.</p><span class="where"><i class="bi bi-hand-index"></i> Tecla Esc</span></div></div>
+    <div class="card"><div class="ico dk"><i class="bi bi-key-fill"></i></div><div><h3>Trocar a senha</h3><p>Quando quiser. Mínimo de 12 caracteres.</p><span class="where"><i class="bi bi-hand-index"></i> Seu nome › Perfil</span></div></div>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">17 / 21</span></div>
+</section>
+
+<!-- ===================== 18. FAQ ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Problemas comuns</span><h1>Deu algo errado? <span class="hl">Veja aqui</span></h1><p class="sub">A mensagem que aparece → o que ela quer dizer → <b>onde clicar</b>.</p></div>
+  <div class="faq">
+    <div class="q"><div class="ico dk"><i class="bi bi-door-closed-fill"></i></div><div><h4>“E-mail institucional ou senha inválidos.”</h4><p>Confira o e-mail <b>@unicamp.br</b>. Após <b>5 erros</b>, a conta fica bloqueada por <b>15 min</b> — e a mensagem é a mesma. Espere e tente de novo.</p><span class="where"><i class="bi bi-hand-index"></i> Esqueceu? Peça à coordenação</span></div></div>
+    <div class="q"><div class="ico dk"><i class="bi bi-person-lock"></i></div><div><h4>Entrei e só abre “Meu perfil”</h4><p>É a senha provisória. Troque a senha primeiro; depois o resto libera.</p><span class="where"><i class="bi bi-hand-index"></i> Meu perfil › Atualizar Minha Senha</span></div></div>
+    <div class="q"><div class="ico dk"><i class="bi bi-box-seam"></i></div><div><h4>No Estoque aparece “não possui permissão”</h4><p>Normal: o estoque é operado pelos técnicos. Para avisar que algo acabou, use o Informar.</p><span class="where"><i class="bi bi-hand-index"></i> Informar › Uso de insumos ou reagentes</span></div></div>
+    <div class="q"><div class="ico dk"><i class="bi bi-x-octagon-fill"></i></div><div><h4>“CONFLITO: O equipamento já está ocupado…”</h4><p>Alguém já reservou esse horário (ou há bloqueio técnico). Escolha outro.</p><span class="where"><i class="bi bi-hand-index"></i> Agenda › Semana</span></div></div>
+    <div class="q"><div class="ico dk"><i class="bi bi-calendar-x-fill"></i></div><div><h4>Não consigo cancelar a minha reserva</h4><p>Só dá até <b>30 min antes</b> do início (a tela avisa: “Cancelamento direto só é permitido com no mínimo 30 minutos de antecedência.”). Mais perto da hora, fale com um técnico ou com a coordenação.</p><span class="where"><i class="bi bi-hand-index"></i> Agenda › sua reserva › Cancelar Reserva</span></div></div>
+    <div class="q"><div class="ico dk"><i class="bi bi-qr-code-scan"></i></div><div><h4>Escaneei a etiqueta e caí na Agenda</h4><p>Pela etiqueta, o botão <b>Fazer check-in</b> só aparece a partir de <b>15 min antes</b> do início da sua reserva. Antes disso, o QR abre a Agenda do equipamento. Volte mais perto da hora. Sem reserva? Faça um uso imediato.</p><span class="where"><i class="bi bi-hand-index"></i> Agenda › ⚡ Uso Imediato</span></div></div>
+    <div class="q"><div class="ico dk"><i class="bi bi-exclamation-triangle-fill"></i></div><div><h4>“Não foi possível concluir a operação.”</h4><p>Confira: reserva com pelo menos <b>30 min</b> e repetição de até <b>179 dias</b> (no máximo 100 vezes).</p><span class="where"><i class="bi bi-hand-index"></i> Revise o formulário</span></div></div>
+    <div class="q"><div class="ico dk"><i class="bi bi-mortarboard-fill"></i></div><div><h4>“Este equipamento exige habilitação de treinamento…”</h4><p>O equipamento está marcado para exigir treinamento, e por enquanto isso trava a reserva. Avise a coordenação.</p><span class="where"><i class="bi bi-hand-index"></i> Informar › Informe geral</span></div></div>
+    <div class="q"><div class="ico dk"><i class="bi bi-box-arrow-right"></i></div><div><h4>Não acho o botão Sair</h4><p>Ele não aparece em todas as telas. Use a Visão geral ou, no celular, a página Mais.</p><span class="where"><i class="bi bi-hand-index"></i> Visão geral › seu nome › Sair</span></div></div>
+    <div class="q"><div class="ico dk"><i class="bi bi-camera-video-off-fill"></i></div><div><h4>A câmera dentro da Arqueia não lê o QR</h4><p>Alguns navegadores não leem por ali. Use a câmera normal do celular ou digite o código.</p><span class="where"><i class="bi bi-hand-index"></i> QR › Entrada Manual</span></div></div>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">18 / 21</span></div>
+</section>
+
+<!-- ===================== 19. GLOSSÁRIO ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Glossário</span><h1>As palavras da Arqueia, <span class="hl">sem mistério</span></h1></div>
+  <div class="gl">
+    <div><b><i class="bi bi-calendar-check"></i>Reserva</b><span>Um horário seu num equipamento. A sua aparece em verde, com “MINHA”.</span></div>
+    <div><b><i class="bi bi-lightning-charge-fill"></i>Uso imediato</b><span>Usar agora, sem reserva antes. Começa na hora; na tela, de 30 min a 4 horas.</span></div>
+    <div><b><i class="bi bi-box-arrow-in-right"></i>Check-in</b><span>Avisar que você chegou e começou a usar. Pela etiqueta QR ou na Agenda.</span></div>
+    <div><b><i class="bi bi-check2-circle"></i>Finalizar uso</b><span>Avisar que terminou. A reserva passa ao status “Concluído”.</span></div>
+    <div><b><i class="bi bi-cone-striped"></i>Bloqueio técnico</b><span>Horário fechado para manutenção ou calibração. Ninguém reserva ali.</span></div>
+    <div><b><i class="bi bi-qr-code"></i>Etiqueta QR</b><span>O quadradinho colado no equipamento. Abre a Arqueia no celular.</span></div>
+    <div><b><i class="bi bi-eye"></i>Agenda pública</b><span>A agenda da semana, aberta a todos. Mostra horário, equipamento e o nome de quem reservou.</span></div>
+    <div><b><i class="bi bi-megaphone"></i>Informe</b><span>Um aviso para a coordenação: problema, manutenção, insumo ou apoio.</span></div>
+    <div><b><i class="bi bi-hash"></i>Protocolo</b><span>O número do seu informe, como INF-06AEE702.</span></div>
+    <div><b><i class="bi bi-droplet-half"></i>Lote</b><span>Um frasco ou pacote de um produto, com validade e quantidade próprias.</span></div>
+    <div><b><i class="bi bi-journal-text"></i>Extrato (ledger)</b><span>A lista de entradas e retiradas de um lote. Não se apaga nem se edita.</span></div>
+    <div><b><i class="bi bi-person-badge"></i>Perfil (papel)</b><span>O que você pode fazer no laboratório: usuário, técnico, gestor… Não confundir com a página Perfil, onde você troca a senha.</span></div>
+    <div><b><i class="bi bi-key"></i>Senha provisória</b><span>A senha que a coordenação cria. Você troca no primeiro acesso.</span></div>
+    <div><b><i class="bi bi-building"></i>Laboratório ativo</b><span>O laboratório em que você está trabalhando (hoje, o CP2b).</span></div>
+    <div><b><i class="bi bi-bell"></i>Sino</b><span>Os informes novos, para a coordenação. Para os outros, fica vazio.</span></div>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">19 / 21</span></div>
+</section>
+
+<!-- ===================== 20. NOVIDADES ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Novidades · 15/09 → 15/10/2026</span><h1>O que mudou no <span class="hl">último mês</span></h1><p class="sub"><b>17 pacotes de mudança</b>, de 15/09 a 02/10/2026. “Antes” = a versão de 11/09.</p></div>
+  <div class="row" style="gap:36px;align-items:flex-start">
+    <div class="col" style="width:1130px;gap:16px">
+      <div class="row" style="gap:16px;align-items:center">
+        <div class="col" style="width:500px"><span class="tag t-antes" style="align-self:flex-start;margin-bottom:8px">ANTES</span><div class="shot nobar old"><div class="iw"><img src="img/old-login.jpg" alt=""></div></div></div>
+        <div class="flow-arrow" style="margin-top:36px"><svg viewBox="0 0 64 64"><path d="M8 32h40M36 18l14 14-14 14" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="col" style="width:500px"><span class="tag t-depois" style="align-self:flex-start;margin-bottom:8px">DEPOIS</span><div class="shot nobar"><div class="iw"><img src="img/new-login.jpg" alt="">
+          <div class="ring" style="left:68.5%;top:17%;width:25.5%;height:30%"></div></div></div></div>
+      </div>
+      <div class="cap" style="margin:0;font-size:19px"><b>Entrada:</b> três atalhos grandes sem login — agenda, informar e boas práticas (02/10).</div>
+      <div class="row" style="gap:16px;align-items:center;margin-top:6px">
+        <div class="col" style="width:500px"><span class="tag t-antes" style="align-self:flex-start;margin-bottom:8px">ANTES</span><div class="shot nobar old"><div class="iw"><img src="img/old-top.jpg" alt=""></div></div></div>
+        <div class="flow-arrow" style="margin-top:36px"><svg viewBox="0 0 64 64"><path d="M8 32h40M36 18l14 14-14 14" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="col" style="width:500px"><span class="tag t-depois" style="align-self:flex-start;margin-bottom:8px">DEPOIS</span><div class="shot nobar"><div class="iw"><img src="img/new-top.jpg" alt=""></div></div></div>
+      </div>
+      <div class="cap" style="margin:0;font-size:19px"><b>Topo:</b> botão <b>Informar</b> e um sino que funciona — antes, a bolinha vermelha era só enfeite (02/10).</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 22px;margin-top:4px">
+        <div class="rule" style="font-size:18px"><span class="badge b-novo" style="font-size:14px;padding:4px 10px">15/09</span><span>Check-in pela <b>etiqueta QR</b> e <b>agenda pública</b> sem login.</span></div>
+        <div class="rule" style="font-size:18px"><span class="badge b-novo" style="font-size:14px;padding:4px 10px">15/09</span><span>Reserva: <b>projeto em texto livre</b>; finalidade opcional.</span></div>
+        <div class="rule" style="font-size:18px"><span class="badge b-novo" style="font-size:14px;padding:4px 10px">21/09</span><span>O QR <b>abre direto</b> a agenda do equipamento.</span></div>
+        <div class="rule" style="font-size:18px"><span class="badge b-novo" style="font-size:14px;padding:4px 10px">30/09</span><span><b>Informes</b> pelo QR e cores do CP2b.</span></div>
+        <div class="rule" style="font-size:18px"><span class="badge b-novo" style="font-size:14px;padding:4px 10px">02/10</span><span>Sino, botão Informar e atalhos na entrada.</span></div>
+        <div class="rule" style="font-size:18px"><span class="badge b-novo" style="font-size:14px;padding:4px 10px">02/10</span><span><b>Boas Práticas</b>: página pública e item no menu.</span></div>
+      </div>
+    </div>
+    <div class="col" style="flex:1">
+      <div class="row" style="gap:12px;align-items:flex-start">
+        <div class="col" style="width:200px"><span class="tag t-antes" style="align-self:flex-start;margin-bottom:8px">ANTES</span><div class="phone old" style="width:200px;padding:8px;border-radius:32px"><div class="iw"><img src="img/old-agenda-mob.jpg" style="border-radius:24px" alt=""></div></div></div>
+        <div class="flow-arrow" style="margin-top:200px"><svg viewBox="0 0 64 64" style="width:44px;height:44px"><path d="M8 32h40M36 18l14 14-14 14" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="col" style="width:200px"><span class="tag t-depois" style="align-self:flex-start;margin-bottom:8px">DEPOIS</span><div class="phone" style="width:200px;padding:8px;border-radius:32px"><div class="iw"><img src="img/agenda-top-mob.jpg" style="border-radius:24px" alt=""></div></div></div>
+      </div>
+      <div class="cap" style="font-size:18px;margin-top:14px"><b>Agenda no celular (16/09):</b> antes vazava para o lado e os botões saíam sem estilo; agora cabe na tela e mostra <b>quem reservou</b> (veja o slide 16).</div>
+      <div class="card" style="margin-top:22px;padding:16px 20px"><h3 style="font-size:20px"><i class="bi bi-wrench-adjustable" style="color:var(--gd)"></i> Nos bastidores</h3>
+        <div class="rule" style="font-size:16px;margin-top:6px"><i class="bi bi-check2" style="font-size:18px;color:var(--gd)"></i><span>Botões que levavam a “página não encontrada” no endereço /arqueia foram corrigidos (15/09).</span></div>
+        <div class="rule" style="font-size:16px;margin-top:6px"><i class="bi bi-check2" style="font-size:18px;color:var(--gd)"></i><span>Ferramentas de diagnóstico da equipe técnica passam a rodar no Windows (23/09).</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">20 / 21</span></div>
+</section>
+
+<!-- ===================== 21. AJUDA ===================== -->
+<section class="slide"><div class="grain"></div>
+  <div class="head"><span class="hand">Ajuda</span><h1>Onde pedir <span class="hl">ajuda</span></h1></div>
+  <div class="row" style="gap:30px;align-items:stretch">
+    <div class="card" style="flex:1;padding:26px 28px"><div class="ico dk" style="width:68px;height:68px;font-size:34px;margin-bottom:14px"><i class="bi bi-megaphone-fill"></i></div><h3 style="font-size:27px">Dúvida ou problema no laboratório</h3><p style="font-size:20px"><b>Informar › Informe geral ou pedido de apoio.</b> Sem login. Guarde o protocolo.</p></div>
+    <div class="card" style="flex:1;padding:26px 28px"><div class="ico dk" style="width:68px;height:68px;font-size:34px;margin-bottom:14px"><i class="bi bi-person-badge-fill"></i></div><h3 style="font-size:27px">Conta, senha ou perfil</h3><p style="font-size:20px">Fale com a <b>coordenação do laboratório</b> (Gestor de Acessos). Ela cria contas, redefine senhas e dá o perfil Usuário Pesquisador. Técnico ou gestor: só um administrador.</p></div>
+    <div class="card" style="flex:1;padding:26px 28px"><div class="ico dk" style="width:68px;height:68px;font-size:34px;margin-bottom:14px;background:var(--danger);color:#fff"><i class="bi bi-telephone-fill"></i></div><h3 style="font-size:27px">Emergência</h3><p style="font-size:20px"><b>Central de Segurança da Unicamp: (19) 3521-6000</b> (ramal 16000). <b>SAMU 192 · Bombeiros 193 · PM 190.</b> CIATox e PS do HC: em Boas práticas.</p></div>
+  </div>
+  <div class="row" style="gap:30px;margin-top:28px;align-items:flex-start">
+    <div class="card" style="flex:1.1;padding:22px 28px">
+      <h3 style="font-size:24px"><i class="bi bi-link-45deg" style="color:var(--gd)"></i> Endereços para conferir</h3>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:9px 18px;margin-top:10px;font-size:19px;align-items:center">
+        <span class="url" style="font-weight:700;color:var(--petrol)">cp2b.unicamp.br/arqueia</span><span style="color:var(--muted)">entrada</span>
+        <span class="url" style="font-weight:700;color:var(--petrol)">…/arqueia/agenda-publica</span><span style="color:var(--muted)">agenda da semana · sem login</span>
+        <span class="url" style="font-weight:700;color:var(--petrol)">…/arqueia/informar</span><span style="color:var(--muted)">avisar a coordenação · sem login</span>
+        <span class="url" style="font-weight:700;color:var(--petrol)">…/arqueia/boas-praticas</span><span style="color:var(--muted)">segurança e emergência · sem login</span>
+        <span class="url" style="font-weight:700;color:var(--petrol)">…/arqueia/agenda</span><span style="color:var(--muted)">reservar · com conta</span>
+        <span class="url" style="font-weight:700;color:var(--petrol)">…/arqueia/qr</span><span style="color:var(--muted)">leitor QR · com conta</span>
+      </div>
+    </div>
+    <div class="note" style="flex:1;font-size:17px;padding:20px 24px">
+      <b>Sobre os prints deste guia.</b> Feitos em 15/10/2026 num computador de teste, com a versão da Arqueia de 02/10/2026 e <b>dados fictícios</b> (as pessoas “Exemplo”, as reservas, os reagentes e os informes). Como no piloto, só o cromatógrafo GC-2030NS aparece. Os QR dos prints não abrem a Arqueia real. O “antes” do slide 20 é a versão de 11/09/2026. Em produção, nomes, números e listas serão outros.<br><span style="font-size:14px;color:#8a7a5a">Versões usadas: 529a112 (depois) e 81eb596 (antes), no repositório Projeto_Arqueia.</span>
+    </div>
+  </div>
+  <div class="card kraft" style="margin-top:28px;box-shadow:none;border:2px dashed #DCCBA5;display:flex;align-items:center;gap:22px;padding:20px 28px">
+    <img src="img/arqueia.svg" style="width:62px;height:62px" alt="">
+    <div style="font-family:'Caveat';font-weight:700;font-size:34px;color:var(--gd);margin-right:8px">em resumo:</div>
+    <div class="step" style="margin:0;font-size:22px"><span class="num" style="flex-basis:44px;height:44px;font-size:24px">1</span>Olhe a agenda</div><i class="bi bi-arrow-right" style="font-size:28px;color:var(--amber)"></i>
+    <div class="step" style="margin:0;font-size:22px"><span class="num" style="flex-basis:44px;height:44px;font-size:24px">2</span>Reserve</div><i class="bi bi-arrow-right" style="font-size:28px;color:var(--amber)"></i>
+    <div class="step" style="margin:0;font-size:22px"><span class="num" style="flex-basis:44px;height:44px;font-size:24px">3</span>Check-in na etiqueta</div><i class="bi bi-arrow-right" style="font-size:28px;color:var(--amber)"></i>
+    <div class="step" style="margin:0;font-size:22px"><span class="num" style="flex-basis:44px;height:44px;font-size:24px">4</span>Finalize o uso</div>
+    <div style="margin-left:auto;font-size:20px;color:var(--muted)">Viu um problema? <b style="color:var(--petrol)">Informar.</b></div>
+  </div>
+  <div class="foot"><span><b>Arqueia</b> · Guia de uso · outubro de 2026</span><span class="pg">21 / 21</span></div>
+</section>
+
+</body>
+</html>
