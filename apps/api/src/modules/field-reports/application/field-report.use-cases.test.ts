@@ -98,6 +98,40 @@ function gateway(overrides: Partial<PublicFieldReportGateway> = {}): PublicField
 
 const permissions = new PermissionEvaluator();
 
+const alertSettings = { publicOrigin: 'https://cp2b.unicamp.br', basePath: '/arqueia' };
+
+function alerting(overrides: {
+  readonly recipients?: readonly { name: string; email: string }[];
+  readonly notify?: ReturnType<typeof vi.fn>;
+  readonly append?: ReturnType<typeof vi.fn>;
+} = {}) {
+  const notify = overrides.notify ?? vi.fn().mockResolvedValue(undefined);
+  const append = overrides.append ?? vi.fn().mockResolvedValue(undefined);
+  const people =
+    overrides.recipients ?? ([{ name: 'Fabi', email: 'fabimv@unicamp.br' }] as const);
+
+  return {
+    notify,
+    append,
+    recipients: { listForLaboratory: vi.fn().mockResolvedValue(people) },
+    notifier: { channel: 'smtp' as const, notify },
+    audit: { append },
+  };
+}
+
+function submitUseCase(
+  reports: PublicFieldReportGateway,
+  parts = alerting(),
+): SubmitFieldReportUseCase {
+  return new SubmitFieldReportUseCase(
+    reports,
+    parts.recipients,
+    parts.notifier,
+    parts.audit,
+    alertSettings,
+  );
+}
+
 describe('Envio público de informes', () => {
   const input: ParsedSubmitFieldReportInput = {
     laboratoryId: labA,
@@ -112,10 +146,102 @@ describe('Envio público de informes', () => {
   it('grava sem principal e devolve só protocolo e horário', async () => {
     const reports = gateway();
 
-    const result = await new SubmitFieldReportUseCase(reports).execute(input, context);
+    const result = await submitUseCase(reports).execute(input, context);
 
     expect(reports.submit).toHaveBeenCalledWith(input, context);
     expect(result).toEqual({ reference: 'INF-5A6B7C8D', receivedAt: now });
+  });
+
+  it('não avisa ninguém quando o informe é de rotina', async () => {
+    const parts = alerting();
+
+    await submitUseCase(gateway(), parts).execute(input, context);
+
+    expect(parts.notify).not.toHaveBeenCalled();
+    expect(parts.append).not.toHaveBeenCalled();
+  });
+
+  it('avisa quem revisa informes do laboratório quando o texto indica emergência', async () => {
+    const parts = alerting();
+    const urgent = { ...input, message: 'SOCORRRO, vazamento de solvente na capela.' };
+
+    await submitUseCase(gateway(), parts).execute(urgent, context);
+
+    expect(parts.recipients.listForLaboratory).toHaveBeenCalledWith(labA);
+    expect(parts.notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reference: 'INF-5A6B7C8D',
+        recipients: [{ name: 'Fabi', email: 'fabimv@unicamp.br' }],
+        reviewUrl: 'https://cp2b.unicamp.br/arqueia/informes',
+      }),
+    );
+  });
+
+  it('avisa quando o equipamento foi marcado como parado, sem palavra nenhuma', async () => {
+    const parts = alerting();
+
+    await submitUseCase(gateway(), parts).execute({ ...input, blocksUse: true }, context);
+
+    expect(parts.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ reasons: ['blocks_use'] }),
+    );
+  });
+
+  it('grava o informe mesmo quando o e-mail falha, e registra a falha na auditoria', async () => {
+    const parts = alerting({
+      notify: vi.fn().mockRejectedValue(new Error('smtp recusou a conexão')),
+    });
+    const urgent = { ...input, message: 'URGENTE: a capela parou.' };
+
+    const result = await submitUseCase(gateway(), parts).execute(urgent, context);
+
+    expect(result).toEqual({ reference: 'INF-5A6B7C8D', receivedAt: now });
+    expect(parts.append).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'field-report.urgent.alerted',
+        after: expect.objectContaining({
+          delivered: false,
+          failureReason: 'smtp recusou a conexão',
+        }),
+      }),
+    );
+  });
+
+  it('não derruba o envio quando até a auditoria do alerta falha', async () => {
+    const parts = alerting({ append: vi.fn().mockRejectedValue(new Error('banco fora')) });
+    const urgent = { ...input, message: 'URGENTE: a capela parou.' };
+
+    await expect(submitUseCase(gateway(), parts).execute(urgent, context)).resolves.toEqual({
+      reference: 'INF-5A6B7C8D',
+      receivedAt: now,
+    });
+  });
+
+  it('não registra entrega quando o transporte é o de log (sem SMTP)', async () => {
+    const parts = alerting();
+    const semSmtp = { ...parts, notifier: { channel: 'log' as const, notify: parts.notify } };
+    const urgent = { ...input, message: 'URGENTE: a capela parou.' };
+
+    await submitUseCase(gateway(), semSmtp).execute(urgent, context);
+
+    expect(parts.append).toHaveBeenCalledWith(
+      expect.objectContaining({
+        after: expect.objectContaining({ delivered: false, channel: 'log' }),
+      }),
+    );
+  });
+
+  it('registra na trilha quando o laboratório não tem ninguém para avisar', async () => {
+    const parts = alerting({ recipients: [] });
+    const urgent = { ...input, message: 'URGENTE: a capela parou.' };
+
+    await submitUseCase(gateway(), parts).execute(urgent, context);
+
+    expect(parts.append).toHaveBeenCalledWith(
+      expect.objectContaining({
+        after: expect.objectContaining({ delivered: false, recipientCount: 0 }),
+      }),
+    );
   });
 
   it('recusa formulário de laboratório inexistente ou arquivado', async () => {

@@ -1,18 +1,8 @@
-import { Logger } from '@nestjs/common';
-import { createTransport, type Transporter } from 'nodemailer';
-
+import type { MailSender } from '../../../shared/infrastructure/mailer.module.js';
 import type {
   PasswordResetInvitation,
   PasswordResetNotifier,
 } from '../domain/ports/password-reset-notifier.port.js';
-
-export interface SmtpSettings {
-  readonly host: string;
-  readonly port: number;
-  readonly user: string;
-  readonly password: string;
-  readonly from: string;
-}
 
 function escapeHtml(value: string): string {
   return value
@@ -63,48 +53,20 @@ export function passwordResetEmailBody(invitation: PasswordResetInvitation): {
   return { subject, text, html };
 }
 
-export class SmtpPasswordResetNotifier implements PasswordResetNotifier {
-  public readonly channel = 'smtp' as const;
+/**
+ * Traduz o convite de redefinição para uma mensagem e entrega ao transporte
+ * compartilhado. Não conhece SMTP: se o transporte for o de log, o canal
+ * reportado muda junto, e a auditoria não registra um envio que não houve.
+ */
+export class MailPasswordResetNotifier implements PasswordResetNotifier {
+  public constructor(private readonly mail: MailSender) {}
 
-  private transporter: Transporter | undefined;
-
-  public constructor(private readonly settings: SmtpSettings) {}
+  public get channel(): 'smtp' | 'log' {
+    return this.mail.channel;
+  }
 
   public async sendResetLink(invitation: PasswordResetInvitation): Promise<void> {
     const { subject, text, html } = passwordResetEmailBody(invitation);
-    this.transporter ??= createTransport({
-      host: this.settings.host,
-      port: this.settings.port,
-      secure: this.settings.port === 465,
-      ...(this.settings.user === ''
-        ? {}
-        : { auth: { user: this.settings.user, pass: this.settings.password } }),
-    });
-
-    await this.transporter.sendMail({
-      from: this.settings.from,
-      to: invitation.email,
-      subject,
-      text,
-      html,
-    });
-  }
-}
-
-/**
- * Sem SMTP configurado o link vai para o log da API, e não para o vazio: em
- * desenvolvimento é assim que se completa o fluxo. O aviso em nível de alerta
- * existe para que isso não passe despercebido se escapar para a VM.
- */
-export class LoggingPasswordResetNotifier implements PasswordResetNotifier {
-  public readonly channel = 'log' as const;
-
-  private readonly logger = new Logger('PasswordReset');
-
-  public sendResetLink(invitation: PasswordResetInvitation): Promise<void> {
-    this.logger.warn(
-      `SMTP não configurado — link de redefinição de ${invitation.email} não foi enviado por e-mail: ${invitation.resetUrl}`,
-    );
-    return Promise.resolve();
+    await this.mail.send({ to: [invitation.email], subject, text, html });
   }
 }

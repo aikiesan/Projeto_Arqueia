@@ -185,6 +185,31 @@ describe('RequestPasswordResetUseCase', () => {
     expect(notifier.sendResetLink).not.toHaveBeenCalled();
   });
 
+  it('não registra entrega quando o transporte é o de log (sem SMTP)', async () => {
+    const audit: AuditEventWriter = { append: vi.fn().mockResolvedValue(undefined) };
+    const useCase = new RequestPasswordResetUseCase(
+      identitiesReturning({
+        principal: principalWith(),
+        passwordHash: 'hash',
+        failedAttempts: 0,
+        lockedUntil: null,
+      }),
+      tokenWriter(),
+      { channel: 'log', sendResetLink: vi.fn().mockResolvedValue(undefined) },
+      { generate: vi.fn().mockReturnValue(token) },
+      audit,
+      settings,
+    );
+
+    await useCase.execute({ email: 'usuario@unicamp.br' }, requestContext);
+
+    expect(audit.append).toHaveBeenCalledWith(
+      expect.objectContaining({
+        after: expect.objectContaining({ delivered: false, channel: 'log' }),
+      }),
+    );
+  });
+
   it('still acknowledges when delivery fails, and records the failure in the audit trail', async () => {
     const audit: AuditEventWriter = { append: vi.fn().mockResolvedValue(undefined) };
     const useCase = new RequestPasswordResetUseCase(

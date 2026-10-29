@@ -76,10 +76,7 @@ import { PostgresAuditEventWriter } from './infrastructure/postgres-audit-event-
 import { CryptoSecureTokenGenerator } from './infrastructure/crypto-secure-token-generator.js';
 import { PostgresLocalIdentityReader } from './infrastructure/postgres-local-identity-reader.js';
 import { PostgresPasswordResetTokenRepository } from './infrastructure/postgres-password-reset-token-repository.js';
-import {
-  LoggingPasswordResetNotifier,
-  SmtpPasswordResetNotifier,
-} from './infrastructure/smtp-password-reset-notifier.js';
+import { MailPasswordResetNotifier } from './infrastructure/mail-password-reset-notifier.js';
 import { PostgresLaboratoryRepository } from './infrastructure/postgres-laboratory-repository.js';
 import {
   PostgresMembershipRepository,
@@ -96,6 +93,11 @@ import { ProjectsController } from './interface/projects.controller.js';
 import { UsersController } from './interface/users.controller.js';
 import { loadApiEnvironment } from '../../configuration.js';
 import { DATABASE_POOL, DatabaseModule } from '../../shared/infrastructure/database.module.js';
+import {
+  MAIL_SENDER,
+  MailerModule,
+  type MailSender,
+} from '../../shared/infrastructure/mailer.module.js';
 
 const POSTGRES_IDENTITY_READER = Symbol('POSTGRES_IDENTITY_READER');
 const POSTGRES_USER_REPOSITORY = Symbol('POSTGRES_USER_REPOSITORY');
@@ -108,7 +110,7 @@ const POSTGRES_PASSWORD_RESET_TOKEN_REPOSITORY = Symbol(
 );
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, MailerModule],
   controllers: [
     AuthController,
     UsersController,
@@ -214,21 +216,9 @@ const POSTGRES_PASSWORD_RESET_TOKEN_REPOSITORY = Symbol(
       useFactory: () => new CryptoSecureTokenGenerator(),
     },
     {
-      // Sem SMTP_HOST o link vai para o log da API: em desenvolvimento é assim
-      // que se completa o fluxo sem depender do servidor de e-mail da Unicamp.
       provide: PASSWORD_RESET_NOTIFIER,
-      useFactory: () => {
-        const environment = loadApiEnvironment();
-        const host = environment.SMTP_HOST?.trim() ?? '';
-        if (host === '') return new LoggingPasswordResetNotifier();
-        return new SmtpPasswordResetNotifier({
-          host,
-          port: environment.SMTP_PORT ?? 587,
-          user: environment.SMTP_USER?.trim() ?? '',
-          password: environment.SMTP_PASSWORD ?? '',
-          from: environment.SMTP_FROM?.trim() || `Arqueia <nao-responda@${new URL(environment.PUBLIC_ORIGIN).hostname}>`,
-        });
-      },
+      inject: [MAIL_SENDER],
+      useFactory: (mail: MailSender) => new MailPasswordResetNotifier(mail),
     },
     {
       provide: RequestPasswordResetUseCase,
@@ -473,6 +463,7 @@ const POSTGRES_PASSWORD_RESET_TOKEN_REPOSITORY = Symbol(
     AuthRateLimitGuard,
   ],
   exports: [
+    AUDIT_EVENT_WRITER,
     JwtAuthGuard,
     AuthRateLimitGuard,
     AuthRateLimiterService,

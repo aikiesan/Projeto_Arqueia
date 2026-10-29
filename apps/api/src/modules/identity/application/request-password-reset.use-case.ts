@@ -80,7 +80,10 @@ export class RequestPasswordResetUseCase {
       origin: context.origin,
     });
 
-    let delivered = true;
+    // "Entregue" só quando a mensagem de fato saiu: sem SMTP o transporte é o
+    // de log, e registrar entrega aqui esconderia justamente o caso em que
+    // ninguém recebeu o link.
+    let delivered = this.notifier.channel === 'smtp';
     let failureReason: string | null = null;
     try {
       await this.notifier.sendResetLink({
