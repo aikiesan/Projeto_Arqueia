@@ -2,6 +2,17 @@ import { z } from 'zod';
 
 const nodeEnvironmentSchema = z.enum(['development', 'test', 'production']);
 
+// Prefixo publico da implantacao. Vazio na raiz; '/arqueia' na VM do CP2b.
+// A API precisa dele para montar o link de redefinicao de senha que vai por
+// e-mail: sem o prefixo, o link cai em 404 na VM.
+const basePathSchema = z
+  .string()
+  .trim()
+  .default('')
+  .refine((value) => value === '' || (value.startsWith('/') && !value.endsWith('/')), {
+    message: 'NEXT_PUBLIC_BASE_PATH deve ser vazio ou comecar com "/" sem barra final.',
+  });
+
 const serviceUrl = (protocols: readonly string[]) =>
   z.string().url().refine((value) => protocols.includes(new URL(value).protocol), {
     message: `Protocolo esperado: ${protocols.join(' ou ')}`,
@@ -31,6 +42,15 @@ export const apiEnvironmentSchema = z.object({
   AUTH_LOCKOUT_DURATION_SECONDS: z.coerce.number().int().min(60).max(86_400).default(900),
   AUTH_RATE_LIMIT_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(100).default(10),
   AUTH_RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(10).max(3600).default(60),
+  NEXT_PUBLIC_BASE_PATH: basePathSchema,
+  // Janela do link de "esqueci minha senha". Curta de proposito: o link e um
+  // equivalente temporario da senha enquanto vale.
+  PASSWORD_RESET_TOKEN_TTL_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(300)
+    .max(86_400)
+    .default(3_600),
 });
 
 export const workerEnvironmentSchema = z.object({
@@ -46,16 +66,9 @@ export const webEnvironmentSchema = z.object({
   // legado, conforme apps/web/app/lib/api-server.ts.
   API_INTERNAL_URL: z.string().url(),
   NEXT_PUBLIC_API_URL: z.string().url().optional(),
-  // Prefixo publico da implantacao. Vazio na raiz; '/arqueia' na VM do CP2b.
   // Um valor sem barra inicial ou com barra final produz um build quebrado
   // em silencio, por isso a validacao.
-  NEXT_PUBLIC_BASE_PATH: z
-    .string()
-    .trim()
-    .default('')
-    .refine((value) => value === '' || (value.startsWith('/') && !value.endsWith('/')), {
-      message: 'NEXT_PUBLIC_BASE_PATH deve ser vazio ou comecar com "/" sem barra final.',
-    }),
+  NEXT_PUBLIC_BASE_PATH: basePathSchema,
 });
 
 export type ApiEnvironment = z.infer<typeof apiEnvironmentSchema>;

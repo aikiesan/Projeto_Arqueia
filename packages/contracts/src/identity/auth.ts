@@ -116,6 +116,42 @@ export const resetUserPasswordInputSchema = z
   })
   .strict();
 
+/**
+ * Autoatendimento de "esqueci minha senha".
+ *
+ * O token é o segredo entregue por e-mail: 32 bytes aleatórios em hexadecimal.
+ * O banco guarda só o SHA-256 dele, então quem lê a tabela não consegue
+ * redefinir a senha de ninguém.
+ */
+export const passwordResetTokenSchema = z
+  .string()
+  .trim()
+  .regex(/^[0-9a-f]{64}$/, 'Token de redefinição inválido.');
+
+export const requestPasswordResetInputSchema = z
+  .object({
+    email: institutionalEmailSchema,
+  })
+  .strict();
+
+/**
+ * A resposta do pedido é sempre a mesma, exista a conta ou não: dizer "esse
+ * e-mail não está cadastrado" transformaria o formulário em um verificador de
+ * quem tem conta no Arqueia.
+ */
+export const requestPasswordResetResponseSchema = z
+  .object({
+    acknowledged: z.literal(true),
+  })
+  .strict();
+
+export const completePasswordResetInputSchema = z
+  .object({
+    token: passwordResetTokenSchema,
+    newPassword: z.string().min(12).max(128),
+  })
+  .strict();
+
 export type LocalLoginInput = z.input<typeof localLoginInputSchema>;
 export type AuthenticatedPrincipal = z.infer<typeof authenticatedPrincipalSchema>;
 export type SessionMetadata = z.infer<typeof sessionMetadataSchema>;
@@ -130,3 +166,6 @@ export type LoginResponse = z.infer<typeof loginResponseSchema>;
 export type OidcProviderMetadata = z.infer<typeof oidcProviderMetadataSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordInputSchema>;
 export type ResetUserPasswordInput = z.infer<typeof resetUserPasswordInputSchema>;
+export type RequestPasswordResetInput = z.infer<typeof requestPasswordResetInputSchema>;
+export type RequestPasswordResetResponse = z.infer<typeof requestPasswordResetResponseSchema>;
+export type CompletePasswordResetInput = z.infer<typeof completePasswordResetInputSchema>;

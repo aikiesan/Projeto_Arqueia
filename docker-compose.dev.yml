@@ -56,6 +56,15 @@ services:
       OIDC_ENABLED: ${OIDC_ENABLED:-false}
       OIDC_DISPLAY_NAME: ${OIDC_DISPLAY_NAME:-Entrar com Unicamp}
       OIDC_AUTHORIZATION_URL: ${OIDC_AUTHORIZATION_URL:-}
+      # Prefixo publico: a API monta com ele o link de redefinicao de senha.
+      NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
+      PASSWORD_RESET_TOKEN_TTL_SECONDS: ${PASSWORD_RESET_TOKEN_TTL_SECONDS:-3600}
+      # Vazio em dev: sem SMTP_HOST o link de redefinicao sai no log da API.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
     ports:
       - "${API_PORT:-4001}:4001"
     volumes:

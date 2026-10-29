@@ -8,7 +8,18 @@ const LOGIN_PATH = '/login';
 // boas práticas são abertos por decisão do laboratório; qualquer adição aqui
 // expõe a página à internet. `/informar` só ENVIA: a leitura dos informes
 // (`/informes`) exige sessão. `/boas-praticas` é conteúdo estático, sem dados.
-const PUBLIC_PATHS = new Set<string>([LOGIN_PATH, '/agenda-publica', '/informar', '/boas-praticas']);
+// `/esqueci-senha` e `/redefinir-senha` precisam ser públicas pela própria
+// natureza: quem esqueceu a senha não tem como autenticar. Nenhuma das duas
+// mostra dado de conta — a primeira responde igual exista ou não o e-mail, e a
+// segunda só aceita um token de uso único.
+const PUBLIC_PATHS = new Set<string>([
+  LOGIN_PATH,
+  '/agenda-publica',
+  '/informar',
+  '/boas-praticas',
+  '/esqueci-senha',
+  '/redefinir-senha',
+]);
 
 export function proxy(request: NextRequest): NextResponse {
   const hasSession = request.cookies.has(SESSION_COOKIE_NAME);

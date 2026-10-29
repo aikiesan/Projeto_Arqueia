@@ -3,7 +3,10 @@ import { inTransaction, type DatabasePool } from '@arqueia/database';
 
 import { IdentityEntityNotFoundError } from '../domain/errors/identity-entity-not-found.error.js';
 import type { IdentityMutationContext } from '../domain/ports/identity-mutation-context.js';
-import type { UserCredentialWriter } from '../domain/ports/user-credential-writer.port.js';
+import type {
+  UserCredentialWriteAction,
+  UserCredentialWriter,
+} from '../domain/ports/user-credential-writer.port.js';
 import type {
   CreateUserRecord,
   UserReader,
@@ -144,7 +147,7 @@ export class PostgresUserRepository implements UserReader, UserWriter, UserCrede
     userId: string,
     passwordHash: string,
     context: IdentityMutationContext,
-    action: 'identity.user.password_changed' | 'identity.user.password_reset_by_admin',
+    action: UserCredentialWriteAction,
   ): Promise<void> {
     try {
       await inTransaction(this.pool, async (client) => {

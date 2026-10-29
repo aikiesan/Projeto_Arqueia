@@ -51,6 +51,45 @@ export async function sessionToken(): Promise<string | null> {
   return (await cookies()).get(SESSION_COOKIE_NAME)?.value ?? null;
 }
 
+/**
+ * Encaminha um POST público para a API — sem cookie de sessão, porque quem
+ * esqueceu a senha não tem como autenticar. O IP de origem vai junto: é por ele
+ * que a API limita a frequência das tentativas.
+ */
+export async function publicApiRequest(request: Request, path: string): Promise<Response> {
+  const body = await request.text();
+  if (new TextEncoder().encode(body).byteLength > MAX_BODY_BYTES) {
+    return noStoreJson({ code: 'PAYLOAD_TOO_LARGE' }, 413);
+  }
+
+  try {
+    const upstream = await fetch(`${apiBaseUrl()}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Request-Id': crypto.randomUUID(),
+        'X-Forwarded-For': forwardedClientIp(request),
+      },
+      body,
+      cache: 'no-store',
+      signal: AbortSignal.timeout(10_000),
+    });
+    return new Response(await upstream.text(), {
+      status: upstream.status,
+      headers: {
+        'Cache-Control': 'no-store',
+        'Content-Type': 'application/json; charset=utf-8',
+        'X-Content-Type-Options': 'nosniff',
+      },
+    });
+  } catch {
+    return noStoreJson(
+      { code: 'API_UNAVAILABLE', message: 'Serviço temporariamente indisponível.' },
+      503,
+    );
+  }
+}
+
 export async function authorizedApiRequest(
   request: Request,
   path: string,

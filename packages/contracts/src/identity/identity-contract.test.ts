@@ -9,7 +9,10 @@ import {
   createUserInputSchema,
   bffPublicLoginResponseSchema,
   changePasswordInputSchema,
+  completePasswordResetInputSchema,
   localLoginInputSchema,
+  requestPasswordResetInputSchema,
+  requestPasswordResetResponseSchema,
   refreshSessionInputSchema,
   resetUserPasswordInputSchema,
   revokeAccessRequestSchema,
@@ -199,5 +202,36 @@ describe('identity contract', () => {
 
     expect(publicResponse).not.toHaveProperty('accessToken');
     expect(publicResponse).not.toHaveProperty('refreshToken');
+  });
+
+  it('accepts only institutional e-mail when asking for a password reset', () => {
+    expect(requestPasswordResetInputSchema.parse({ email: 'Usuario@Unicamp.BR' })).toEqual({
+      email: 'usuario@unicamp.br',
+    });
+    expect(() => requestPasswordResetInputSchema.parse({ email: 'alguem@gmail.com' })).toThrow();
+  });
+
+  it('answers a password reset request without saying whether the account exists', () => {
+    const response = requestPasswordResetResponseSchema.parse({ acknowledged: true });
+
+    expect(response).toEqual({ acknowledged: true });
+    expect(() =>
+      requestPasswordResetResponseSchema.parse({ acknowledged: true, userExists: true }),
+    ).toThrow();
+  });
+
+  it('requires a 64-hex token and a password of at least 12 characters to complete the reset', () => {
+    const token = 'f'.repeat(64);
+
+    expect(completePasswordResetInputSchema.parse({ token, newPassword: 'senha-nova-12' })).toEqual({
+      token,
+      newPassword: 'senha-nova-12',
+    });
+    expect(() =>
+      completePasswordResetInputSchema.parse({ token: 'curto', newPassword: 'senha-nova-12' }),
+    ).toThrow();
+    expect(() =>
+      completePasswordResetInputSchema.parse({ token, newPassword: 'curta' }),
+    ).toThrow();
   });
 });

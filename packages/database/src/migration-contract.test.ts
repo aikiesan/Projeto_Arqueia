@@ -39,6 +39,9 @@ const institutionalIdentityMigrationPath = fileURLToPath(
 const fieldReportsMigrationPath = fileURLToPath(
   new URL('../migrations/014_field_reports.cjs', import.meta.url),
 );
+const passwordResetTokensMigrationPath = fileURLToPath(
+  new URL('../migrations/015_password_reset_tokens.cjs', import.meta.url),
+);
 const require = createRequire(import.meta.url);
 
 function renderMigrationSql(path = migrationPath): string {
@@ -274,6 +277,34 @@ describe('field reports migration invariants', () => {
 
   it('does not persist network identifiers of anonymous reporters (ADR-009 §10)', () => {
     const sql = renderMigrationSql(fieldReportsMigrationPath);
+
+    expect(sql).not.toMatch(/ip_address|user_agent/);
+  });
+});
+
+describe('password reset tokens migration invariants', () => {
+  it('stores only the hash of the token, with an expiry the database enforces', () => {
+    const sql = renderMigrationSql(passwordResetTokensMigrationPath);
+
+    expect(sql).toContain('CREATE TABLE "password_reset_tokens"');
+    expect(sql).toContain("token_hash ~ '^[0-9a-f]{64}$'");
+    expect(sql).toContain('password_reset_tokens_expiry_ck');
+    expect(sql).toContain('expires_at > created_at');
+    // Nenhuma coluna guarda o token em claro: só existe "token_hash".
+    expect(sql).not.toContain('"token"');
+  });
+
+  it('makes a token single-use at the database boundary', () => {
+    const sql = renderMigrationSql(passwordResetTokensMigrationPath);
+
+    expect(sql).toContain('BEFORE UPDATE OR DELETE ON password_reset_tokens');
+    expect(sql).toContain('NEW.token_hash IS DISTINCT FROM OLD.token_hash');
+    expect(sql).toContain('OLD.used_at IS NOT NULL');
+    expect(sql).toContain('password_reset_tokens_pending_idx');
+  });
+
+  it('does not persist network identifiers of whoever asked for the reset (ADR-009 §10)', () => {
+    const sql = renderMigrationSql(passwordResetTokensMigrationPath);
 
     expect(sql).not.toMatch(/ip_address|user_agent/);
   });
