@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { LoggingMailSender } from '../../../shared/infrastructure/mailer.module.js';
 import {
-  LoggingPasswordResetNotifier,
+  MailPasswordResetNotifier,
   passwordResetEmailBody,
-} from './smtp-password-reset-notifier.js';
+} from './mail-password-reset-notifier.js';
 
 const invitation = {
   email: 'usuario@unicamp.br',
@@ -39,8 +40,28 @@ describe('passwordResetEmailBody', () => {
   });
 });
 
-describe('LoggingPasswordResetNotifier', () => {
-  it('declara o canal "log", para a auditoria não registrar um envio que não houve', () => {
-    expect(new LoggingPasswordResetNotifier().channel).toBe('log');
+describe('MailPasswordResetNotifier', () => {
+  it('reporta o canal do transporte, para a auditoria não registrar um envio que não houve', () => {
+    expect(new MailPasswordResetNotifier(new LoggingMailSender()).channel).toBe('log');
+  });
+
+  it('entrega a mensagem ao transporte, endereçada a quem pediu', async () => {
+    const sent: unknown[] = [];
+    const notifier = new MailPasswordResetNotifier({
+      channel: 'smtp',
+      send: (message) => {
+        sent.push(message);
+        return Promise.resolve();
+      },
+    });
+
+    await notifier.sendResetLink(invitation);
+
+    expect(sent).toEqual([
+      expect.objectContaining({
+        to: ['usuario@unicamp.br'],
+        subject: expect.stringContaining('Arqueia'),
+      }),
+    ]);
   });
 });
