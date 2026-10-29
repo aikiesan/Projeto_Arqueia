@@ -5,6 +5,8 @@ import { JwtService } from '@nestjs/jwt';
 import { AssignMembershipUseCase } from './application/assign-membership.use-case.js';
 import { AssignSystemRoleUseCase } from './application/assign-system-role.use-case.js';
 import { ChangePasswordUseCase } from './application/change-password.use-case.js';
+import { CompletePasswordResetUseCase } from './application/complete-password-reset.use-case.js';
+import { RequestPasswordResetUseCase } from './application/request-password-reset.use-case.js';
 import { CreateLaboratoryUseCase } from './application/create-laboratory.use-case.js';
 import { CreateProjectUseCase } from './application/create-project.use-case.js';
 import { CreateUserUseCase } from './application/create-user.use-case.js';
@@ -21,9 +23,15 @@ import { UpdateProjectUseCase } from './application/update-project.use-case.js';
 import { UpdateUserUseCase } from './application/update-user.use-case.js';
 import { ACCESS_TOKEN_ISSUER } from './domain/ports/access-token-issuer.port.js';
 import { ACCESS_TOKEN_VERIFIER } from './domain/ports/access-token-verifier.port.js';
-import { AUDIT_EVENT_WRITER } from './domain/ports/audit-event-writer.port.js';
+import {
+  AUDIT_EVENT_WRITER,
+  type AuditEventWriter,
+} from './domain/ports/audit-event-writer.port.js';
 import { CURRENT_CREDENTIAL_READER } from './domain/ports/current-credential-reader.port.js';
-import { LOCAL_IDENTITY_READER } from './domain/ports/local-identity-reader.port.js';
+import {
+  LOCAL_IDENTITY_READER,
+  type LocalIdentityReader,
+} from './domain/ports/local-identity-reader.port.js';
 import {
   LABORATORY_READER,
   LABORATORY_WRITER,
@@ -35,6 +43,19 @@ import {
   SYSTEM_ROLE_WRITER,
 } from './domain/ports/membership-repository.port.js';
 import { OIDC_PROVIDER } from './domain/ports/oidc-provider.port.js';
+import {
+  PASSWORD_RESET_NOTIFIER,
+  type PasswordResetNotifier,
+} from './domain/ports/password-reset-notifier.port.js';
+import {
+  PASSWORD_RESET_TOKEN_CONSUMER,
+  PASSWORD_RESET_TOKEN_WRITER,
+  type PasswordResetTokenWriter,
+} from './domain/ports/password-reset-token-repository.port.js';
+import {
+  SECURE_TOKEN_GENERATOR,
+  type SecureTokenGenerator,
+} from './domain/ports/secure-token-generator.port.js';
 import { PASSWORD_HASHER } from './domain/ports/password-hasher.port.js';
 import { PASSWORD_VERIFIER } from './domain/ports/password-verifier.port.js';
 import { PRINCIPAL_READER } from './domain/ports/principal-reader.port.js';
@@ -52,7 +73,13 @@ import { AuthRateLimiterService } from './infrastructure/auth-rate-limiter.servi
 import { JwtAccessTokenIssuer } from './infrastructure/jwt-access-token-issuer.js';
 import { JwtAccessTokenVerifier } from './infrastructure/jwt-access-token-verifier.js';
 import { PostgresAuditEventWriter } from './infrastructure/postgres-audit-event-writer.js';
+import { CryptoSecureTokenGenerator } from './infrastructure/crypto-secure-token-generator.js';
 import { PostgresLocalIdentityReader } from './infrastructure/postgres-local-identity-reader.js';
+import { PostgresPasswordResetTokenRepository } from './infrastructure/postgres-password-reset-token-repository.js';
+import {
+  LoggingPasswordResetNotifier,
+  SmtpPasswordResetNotifier,
+} from './infrastructure/smtp-password-reset-notifier.js';
 import { PostgresLaboratoryRepository } from './infrastructure/postgres-laboratory-repository.js';
 import {
   PostgresMembershipRepository,
@@ -76,6 +103,9 @@ const POSTGRES_LABORATORY_REPOSITORY = Symbol('POSTGRES_LABORATORY_REPOSITORY');
 const POSTGRES_PROJECT_REPOSITORY = Symbol('POSTGRES_PROJECT_REPOSITORY');
 const POSTGRES_MEMBERSHIP_REPOSITORY = Symbol('POSTGRES_MEMBERSHIP_REPOSITORY');
 const POSTGRES_SYSTEM_ROLE_REPOSITORY = Symbol('POSTGRES_SYSTEM_ROLE_REPOSITORY');
+const POSTGRES_PASSWORD_RESET_TOKEN_REPOSITORY = Symbol(
+  'POSTGRES_PASSWORD_RESET_TOKEN_REPOSITORY',
+);
 
 @Module({
   imports: [DatabaseModule],
@@ -163,6 +193,79 @@ const POSTGRES_SYSTEM_ROLE_REPOSITORY = Symbol('POSTGRES_SYSTEM_ROLE_REPOSITORY'
       ],
       useFactory: (...dependencies: ConstructorParameters<typeof LoginLocalUseCase>) =>
         new LoginLocalUseCase(...dependencies),
+    },
+    {
+      provide: POSTGRES_PASSWORD_RESET_TOKEN_REPOSITORY,
+      inject: [DATABASE_POOL],
+      useFactory: (pool: DatabasePool) => new PostgresPasswordResetTokenRepository(pool),
+    },
+    {
+      provide: PASSWORD_RESET_TOKEN_WRITER,
+      inject: [POSTGRES_PASSWORD_RESET_TOKEN_REPOSITORY],
+      useFactory: (repository: PostgresPasswordResetTokenRepository) => repository,
+    },
+    {
+      provide: PASSWORD_RESET_TOKEN_CONSUMER,
+      inject: [POSTGRES_PASSWORD_RESET_TOKEN_REPOSITORY],
+      useFactory: (repository: PostgresPasswordResetTokenRepository) => repository,
+    },
+    {
+      provide: SECURE_TOKEN_GENERATOR,
+      useFactory: () => new CryptoSecureTokenGenerator(),
+    },
+    {
+      // Sem SMTP_HOST o link vai para o log da API: em desenvolvimento é assim
+      // que se completa o fluxo sem depender do servidor de e-mail da Unicamp.
+      provide: PASSWORD_RESET_NOTIFIER,
+      useFactory: () => {
+        const environment = loadApiEnvironment();
+        const host = environment.SMTP_HOST?.trim() ?? '';
+        if (host === '') return new LoggingPasswordResetNotifier();
+        return new SmtpPasswordResetNotifier({
+          host,
+          port: environment.SMTP_PORT ?? 587,
+          user: environment.SMTP_USER?.trim() ?? '',
+          password: environment.SMTP_PASSWORD ?? '',
+          from: environment.SMTP_FROM?.trim() || `Arqueia <nao-responda@${new URL(environment.PUBLIC_ORIGIN).hostname}>`,
+        });
+      },
+    },
+    {
+      provide: RequestPasswordResetUseCase,
+      inject: [
+        LOCAL_IDENTITY_READER,
+        PASSWORD_RESET_TOKEN_WRITER,
+        PASSWORD_RESET_NOTIFIER,
+        SECURE_TOKEN_GENERATOR,
+        AUDIT_EVENT_WRITER,
+      ],
+      useFactory: (
+        identities: LocalIdentityReader,
+        tokens: PasswordResetTokenWriter,
+        notifier: PasswordResetNotifier,
+        tokenGenerator: SecureTokenGenerator,
+        auditEvents: AuditEventWriter,
+      ) => {
+        const environment = loadApiEnvironment();
+        return new RequestPasswordResetUseCase(
+          identities,
+          tokens,
+          notifier,
+          tokenGenerator,
+          auditEvents,
+          {
+            publicOrigin: environment.PUBLIC_ORIGIN,
+            basePath: environment.NEXT_PUBLIC_BASE_PATH,
+            tokenTtlSeconds: environment.PASSWORD_RESET_TOKEN_TTL_SECONDS,
+          },
+        );
+      },
+    },
+    {
+      provide: CompletePasswordResetUseCase,
+      inject: [PASSWORD_RESET_TOKEN_CONSUMER, USER_CREDENTIAL_WRITER, PASSWORD_HASHER],
+      useFactory: (...dependencies: ConstructorParameters<typeof CompletePasswordResetUseCase>) =>
+        new CompletePasswordResetUseCase(...dependencies),
     },
     PermissionEvaluator,
     {

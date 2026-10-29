@@ -148,8 +148,17 @@ export function LoginForm({
             />
           </label>
 
-          <label htmlFor="password">
-            <span>Senha</span>
+          {/*
+            O link fica fora do <label> de propósito: dentro dele, "Esqueceu a
+            senha?" entraria no nome acessível do campo, que deve ser só "Senha".
+          */}
+          <div className="login-password-field">
+            <div className="login-password-header">
+              <label htmlFor="password">Senha</label>
+              <a className="login-forgot-link" href={withBasePath('/esqueci-senha')}>
+                Esqueceu a senha?
+              </a>
+            </div>
             <input
               autoCapitalize="none"
               autoComplete="current-password"
@@ -163,7 +172,7 @@ export function LoginForm({
               type="password"
               value={password}
             />
-          </label>
+          </div>
 
           {error ? (
             <p className="form-error" role="alert">{error}</p>

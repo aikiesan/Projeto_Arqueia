@@ -59,6 +59,17 @@ describe('LoginForm Component', () => {
     });
   });
 
+  it('oferece o caminho de "esqueceu a senha?" junto do campo de senha', () => {
+    render(<LoginForm next="/" />);
+
+    expect(screen.getByRole('link', { name: 'Esqueceu a senha?' })).toHaveAttribute(
+      'href',
+      '/esqueci-senha',
+    );
+    // O link não entra no nome acessível do campo.
+    expect(screen.getByLabelText('Senha')).toHaveAttribute('type', 'password');
+  });
+
   it('does not offer institutional SSO in the local-only deployment', () => {
     render(<LoginForm next="/" />);
 

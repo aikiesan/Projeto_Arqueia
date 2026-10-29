@@ -24,6 +24,7 @@
     "qr:resolve": "tsx src/cli/qr-resolve.ts",
     "qr:labels": "tsx src/cli/qr-labels.ts",
     "agenda:check": "tsx src/cli/agenda-check.ts",
+    "password:set": "tsx src/cli/password-set.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
